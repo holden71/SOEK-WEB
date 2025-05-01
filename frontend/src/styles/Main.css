@@ -45,8 +45,13 @@
 }
 
 .search-button button {
+  position: relative;
+  min-width: 100px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 10px 40px;
-  min-width: 150px;
   background-color: #007bff;
   color: white;
   border: none;
@@ -254,6 +259,12 @@ th {
   position: sticky;
   top: 0;
   z-index: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+th:hover {
+  background-color: #e9ecef;
 }
 
 td {
@@ -270,14 +281,138 @@ tr:last-child td {
   border-bottom: none;
 }
 
+.pagination {
+  display: flex;
+  margin-top: 16px;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-buttons button {
+  padding: 4px 8px;
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #495057;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-buttons button:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #ced4da;
+}
+
+.pagination-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  color: #495057;
+  margin: 0 8px;
+  white-space: nowrap;
+}
+
+.pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-input {
+  width: 50px;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.page-input::-webkit-inner-spin-button,
+.page-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.page-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.pagination-right select {
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  color: #495057;
+  cursor: pointer;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .pagination-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .pagination-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .table-container {
+    margin: 0 -16px;
+    border-radius: 0;
+  }
+  
+  .pagination {
+    margin: 0 -16px;
+    border-radius: 0;
+  }
+}
+
 .no-results {
   text-align: center;
-  padding: 40px;
+  padding: 40px 20px;
   color: #6c757d;
   font-size: 16px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.table-container .no-results {
+  box-shadow: none;
+  margin: 0;
+  min-height: 100px;
+  background: transparent;
 }
 
 /* Add a subtle animation for hover effects */
@@ -321,4 +456,204 @@ th {
     --ag-cell-horizontal-padding: 8px;
     --ag-font-size: 12px;
   }
+}
+
+/* Table cell content */
+.cell-content-wrapper {
+  position: relative;
+}
+
+.cell-content {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  position: relative;
+}
+
+.cell-content:hover {
+  background-color: #f0f7ff;
+}
+
+.copy-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.cell-content.copied .cell-text {
+  color: transparent;
+}
+
+.cell-content.copied {
+  animation: copiedAnimation 0.5s ease;
+}
+
+@keyframes copiedAnimation {
+  0% {
+    background-color: #f0f7ff;
+  }
+  50% {
+    background-color: #007bff;
+  }
+  100% {
+    background-color: #f0f7ff;
+  }
+}
+
+.cell-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-tooltip {
+  visibility: hidden;
+  position: fixed;
+  background: #2c3e50;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: normal;
+  max-width: 300px;
+  width: max-content;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  line-height: 1.4;
+  word-wrap: break-word;
+  text-align: left;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.cell-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #2c3e50;
+}
+
+.cell-content:hover .cell-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Remove positioning rules that are no longer needed */
+.cell-content:last-child .cell-tooltip,
+.cell-content:first-child .cell-tooltip {
+  left: auto;
+  right: auto;
+}
+
+.cell-content:first-child .cell-tooltip::after {
+  left: 50%;
+  right: auto;
+}
+
+.cell-content:active {
+  background-color: #e3f2fd;
+  transform: scale(0.98);
+}
+
+/* Search field styles */
+.table-search {
+  margin: 20px 0;
+  position: relative;
+  max-width: 400px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #495057;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.search-input::placeholder {
+  color: #adb5bd;
+}
+
+.clear-search {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #adb5bd;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.clear-search:hover {
+  color: #495057;
+  background-color: #f8f9fa;
+}
+
+/* Responsive search field */
+@media (max-width: 768px) {
+  .table-search {
+    max-width: 100%;
+  }
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
