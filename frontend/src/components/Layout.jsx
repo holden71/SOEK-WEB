@@ -22,6 +22,14 @@ function Layout() {
           </li>
           <li>
             <Link 
+              to="/import" 
+              className={location.pathname === '/import' ? 'active' : ''}
+            >
+              📥 Імпорт з Excel
+            </Link>
+          </li>
+          <li>
+            <Link 
               to="/about" 
               className={location.pathname === '/about' ? 'active' : ''}
             >

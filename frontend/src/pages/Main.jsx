@@ -269,7 +269,7 @@ function Main() {
         <div className="filters-container">
           <div className="filters">
             <div className="filter-group">
-              <label htmlFor="plant">Вибір станції:</label>
+              <label htmlFor="plant">Станція:</label>
               <select
                 id="plant"
                 value={selectedPlant}
@@ -283,7 +283,7 @@ function Main() {
             </div>
 
             <div className="filter-group">
-              <label htmlFor="unit">Вибір енергоблоку:</label>
+              <label htmlFor="unit">Енергоблок:</label>
               <select
                 id="unit"
                 value={selectedUnit}
@@ -298,7 +298,7 @@ function Main() {
             </div>
 
             <div className="filter-group">
-              <label htmlFor="t">Вибір переліку:</label>
+              <label htmlFor="t">Перелік:</label>
               <select
                 id="t"
                 value={selectedT}
