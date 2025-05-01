@@ -266,9 +266,9 @@ function Main() {
     <div className="main-page">
       <PageHeader title="Перелік ЕК" />
       <div className="main-content">
-        <div className="filters-container">
-          <div className="filters">
-            <div className="filter-group">
+        <div className="main-filters-container">
+          <div className="main-filters-row">
+            <div className="main-filter-item">
               <label htmlFor="plant">Станція:</label>
               <select
                 id="plant"
@@ -282,7 +282,7 @@ function Main() {
               </select>
             </div>
 
-            <div className="filter-group">
+            <div className="main-filter-item">
               <label htmlFor="unit">Енергоблок:</label>
               <select
                 id="unit"
@@ -297,7 +297,7 @@ function Main() {
               </select>
             </div>
 
-            <div className="filter-group">
+            <div className="main-filter-item">
               <label htmlFor="t">Перелік:</label>
               <select
                 id="t"
