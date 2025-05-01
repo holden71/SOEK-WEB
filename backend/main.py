@@ -3,14 +3,14 @@
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import FastAPI, Depends, Query
-from fastapi.responses import HTMLResponse
+from db import DbSessionDep, DbSessionManager
+from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
-
-from db import DbSessionManager, DbSessionDep
+from fastapi.responses import HTMLResponse
+from models import Plant, SearchData, Term, Unit
 from settings import settings
-from models import Plant, Unit, Term
+from sqlalchemy import inspect, text
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -71,6 +71,41 @@ async def get_terms(
     terms = [Term(name=row[0], term_id=row[1]) for row in result]
     return terms
 
+@app.get("/api/search", response_model=List[SearchData])
+async def search_data(
+    db: DbSessionDep,
+    plant_id: int = Query(..., description="ID of the plant"),
+    unit_id: int = Query(..., description="ID of the unit"),
+    t_id: int = Query(..., description="Term ID (EKLIST_ID)")
+):
+    """Search data from SRTN_EK_SEISM_DATA table with dynamic column selection"""
+    # First, get all columns from the table
+    inspector = inspect(db.get_bind())
+    columns = inspector.get_columns('SRTN_EK_SEISM_DATA')
+    column_names = [col['name'] for col in columns]
+    
+    # Build the dynamic query
+    query = text(f"""
+        SELECT {', '.join(column_names)}
+        FROM SRTN_EK_SEISM_DATA
+        WHERE PLANT_ID = :plant_id
+        AND UNIT_ID = :unit_id
+        AND EKLIST_ID = :t_id
+    """)
+    
+    result = db.execute(query, {
+        "plant_id": plant_id,
+        "unit_id": unit_id,
+        "t_id": t_id
+    })
+    
+    # Convert each row to a dictionary with column names as keys
+    search_results = []
+    for row in result:
+        row_dict = {column_names[i]: value for i, value in enumerate(row)}
+        search_results.append(SearchData(data=row_dict))
+    
+    return search_results
 
 if __name__ == "__main__":
     import uvicorn

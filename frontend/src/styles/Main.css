@@ -81,8 +81,134 @@
 }
 
 .results {
-  margin-top: 30px;
+  margin-top: 20px;
   width: 100%;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Custom styles for react-data-table-component */
+.rdt_Table {
+  border: none !important;
+}
+
+.rdt_TableHead {
+  background-color: #f8f9fa !important;
+}
+
+.rdt_TableHeadRow {
+  border-bottom: 2px solid #dee2e6 !important;
+}
+
+.rdt_TableRow {
+  border-bottom: 1px solid #dee2e6 !important;
+}
+
+.rdt_TableRow:last-child {
+  border-bottom: none !important;
+}
+
+.rdt_Pagination {
+  border-top: 1px solid #dee2e6 !important;
+  background-color: #f8f9fa !important;
+  padding: 12px !important;
+}
+
+.rdt_Pagination button {
+  padding: 6px 12px !important;
+  border: 1px solid #dee2e6 !important;
+  background: white !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.rdt_Pagination button:hover:not(:disabled) {
+  background: #e9ecef !important;
+}
+
+.rdt_Pagination button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.rdt_Pagination select {
+  padding: 6px 12px !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 4px !important;
+  background: white !important;
+  cursor: pointer !important;
+}
+
+/* Make the table responsive */
+@media (max-width: 768px) {
+  .results {
+    margin: 0 -16px;
+    border-radius: 0;
+  }
+}
+
+.results.ag-theme-alpine {
+  --ag-header-background-color: #f8f9fa;
+  --ag-odd-row-background-color: #ffffff;
+  --ag-row-hover-color: #f8f9fa;
+  --ag-header-foreground-color: #495057;
+  --ag-foreground-color: #212529;
+  --ag-border-color: #dee2e6;
+  --ag-row-border-color: #dee2e6;
+  --ag-font-size: 14px;
+  --ag-font-family: inherit;
+  --ag-header-height: 40px;
+  --ag-row-height: 40px;
+  --ag-cell-horizontal-padding: 16px;
+}
+
+.ag-theme-alpine .ag-header {
+  border-bottom: 2px solid #dee2e6;
+}
+
+.ag-theme-alpine .ag-header-cell {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ag-theme-alpine .ag-paging-panel {
+  border-top: 1px solid #dee2e6;
+  padding: 12px;
+  background-color: #f8f9fa;
+}
+
+.ag-theme-alpine .ag-paging-button {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ag-theme-alpine .ag-paging-button:hover:not(:disabled) {
+  background: #e9ecef;
+}
+
+.ag-theme-alpine .ag-paging-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ag-theme-alpine .ag-paging-page-summary-panel {
+  margin: 0 12px;
+}
+
+.ag-theme-alpine .ag-paging-page-size {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
 }
 
 .results table {
@@ -100,4 +226,99 @@
 .results th {
   background-color: #f8f9fa;
   font-weight: 600;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: white;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+th {
+  background-color: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 2px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #dee2e6;
+  color: #212529;
+}
+
+tr:hover {
+  background-color: #f8f9fa;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+  font-size: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Add a subtle animation for hover effects */
+tr {
+  transition: background-color 0.2s ease;
+}
+
+/* Add a subtle shadow to the table container */
+.table-container {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Style the table header cells */
+th {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 12px;
+}
+
+/* Add some spacing between the table and other elements */
+.results {
+  margin-top: 20px;
+}
+
+/* Make the table responsive */
+@media (max-width: 768px) {
+  .table-container {
+    margin: 0 -16px;
+    border-radius: 0;
+  }
+  
+  table {
+    font-size: 12px;
+  }
+  
+  th, td {
+    padding: 8px 12px;
+  }
+
+  .results.ag-theme-alpine {
+    --ag-cell-horizontal-padding: 8px;
+    --ag-font-size: 12px;
+  }
 }

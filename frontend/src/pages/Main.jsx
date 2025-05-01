@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import DataTable from 'react-data-table-component';
 import PageHeader from '../components/PageHeader';
 import '../styles/Main.css';
 
@@ -6,12 +7,24 @@ function Main() {
   const [selectedPlant, setSelectedPlant] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('');
   const [selectedT, setSelectedT] = useState('');
-  const [results, setResults] = useState([]);
+  const [data, setData] = useState([]);
   const [plants, setPlants] = useState([]);
   const [units, setUnits] = useState([]);
   const [terms, setTerms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const columns = useMemo(() => {
+    if (data.length === 0) return [];
+    
+    return Object.keys(data[0]).map(key => ({
+      name: key,
+      selector: row => row[key],
+      sortable: true,
+      grow: 1,
+      minWidth: '100px',
+    }));
+  }, [data]);
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -92,14 +105,23 @@ function Main() {
     setSelectedT('');
   };
 
-  const handleSearch = () => {
-    // TODO: Implement actual API call
-    // For now, just show mock data
-    setResults([
-      { id: 1, value: 'Result 1' },
-      { id: 2, value: 'Result 2' },
-      { id: 3, value: 'Result 3' }
-    ]);
+  const handleSearch = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/search?plant_id=${selectedPlant}&unit_id=${selectedUnit}&t_id=${selectedT}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch search results');
+      }
+      
+      const result = await response.json();
+      console.log('Search results:', result);
+      setData(result.map(item => item.data));
+    } catch (err) {
+      setError(err.message);
+      console.error('Search error:', err);
+    }
   };
 
   const getUnitDefaultText = () => {
@@ -185,22 +207,42 @@ function Main() {
           </div>
 
           <div className="results">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map(result => (
-                  <tr key={result.id}>
-                    <td>{result.id}</td>
-                    <td>{result.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+              columns={columns}
+              data={data}
+              pagination
+              paginationPerPage={10}
+              paginationRowsPerPageOptions={[10, 20, 30, 40, 50]}
+              highlightOnHover
+              pointerOnHover
+              responsive
+              dense
+              customStyles={{
+                head: {
+                  style: {
+                    backgroundColor: '#f8f9fa',
+                    color: '#495057',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    fontSize: '12px',
+                  },
+                },
+                rows: {
+                  style: {
+                    minHeight: '40px',
+                    '&:hover': {
+                      backgroundColor: '#f8f9fa',
+                    },
+                  },
+                },
+                cells: {
+                  style: {
+                    padding: '12px 16px',
+                  },
+                },
+              }}
+            />
           </div>
         </div>
       </div>

@@ -1,4 +1,7 @@
+from typing import Any, Dict
+
 from pydantic import BaseModel
+
 
 class Plant(BaseModel):
     name: str
@@ -11,3 +14,6 @@ class Unit(BaseModel):
 class Term(BaseModel):
     name: str
     term_id: int 
+
+class SearchData(BaseModel):
+    data: Dict[str, Any] 

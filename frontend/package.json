@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ag-grid-community/client-side-row-model": "^32.3.5",
+    "@ag-grid-community/core": "^32.3.5",
+    "@tanstack/react-table": "^8.21.3",
+    "ag-grid-community": "^33.2.4",
     "react": "^19.0.0",
+    "react-data-table-component": "^7.7.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.1"
   },
