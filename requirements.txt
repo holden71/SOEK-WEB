@@ -5,3 +5,4 @@ pydantic
 asyncpg
 alembic
 openpyxl
+python-multipart

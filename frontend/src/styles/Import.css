@@ -225,6 +225,30 @@
   cursor: not-allowed;
 }
 
+/* Excel sheet selection styles */
+.analyzing-message {
+  padding: 10px;
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  color: #1890ff;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.analyzing-file {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  font-style: italic;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+/* End of Excel sheet selection styles */
+
 /* End of file import specific styles */
 
 .check-button {

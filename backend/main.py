@@ -1,12 +1,17 @@
 #!/usr/bin/env -S uv run
 
+import io
+import os
+import tempfile
 from contextlib import asynccontextmanager
 from typing import List
 
+import openpyxl
 from db import DbSessionDep, DbSessionManager
-from fastapi import Body, Depends, FastAPI, Query
+from fastapi import (Body, Depends, FastAPI, File, HTTPException, Query,
+                     UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from models import Plant, SearchData, Term, Unit
 from pydantic import BaseModel
 from settings import settings
@@ -166,6 +171,66 @@ async def check_building(
     )
     count = result.scalar()
     return {"exists": count > 0}
+
+@app.post("/api/analyze-excel")
+async def analyze_excel(
+    file: UploadFile = File(...),
+):
+    """
+    Analyze Excel file and return information about sheets
+    """
+    if not file.filename.endswith(('.xls', '.xlsx', '.xlsm')):
+        raise HTTPException(status_code=400, detail="File must be an Excel file (.xls, .xlsx, .xlsm)")
+    
+    try:
+        # Read file directly into memory
+        contents = await file.read()
+        file_object = io.BytesIO(contents)
+        
+        # Load workbook from memory buffer
+        workbook = openpyxl.load_workbook(file_object, read_only=True, data_only=True)
+        
+        # Get sheet names
+        sheet_names = workbook.sheetnames
+        
+        # Get basic info about each sheet
+        sheets_info = []
+        for sheet_name in sheet_names:
+            sheet = workbook[sheet_name]
+            # Get dimensions
+            try:
+                max_row = sheet.max_row
+                max_col = sheet.max_column
+                
+                if max_row > 0 and max_col > 0:
+                    sheets_info.append({
+                        "name": sheet_name,
+                        "rows": max_row,
+                        "columns": max_col
+                    })
+                else:
+                    sheets_info.append({
+                        "name": sheet_name,
+                        "rows": 0,
+                        "columns": 0
+                    })
+            except Exception as sheet_error:
+                # Add sheet with error info
+                sheets_info.append({
+                    "name": sheet_name,
+                    "rows": 0,
+                    "columns": 0,
+                    "error": str(sheet_error)
+                })
+        
+        # Make sure to close workbook and file objects
+        workbook.close()
+        file_object.close()
+        
+        return {"sheets": sheets_info}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing Excel file: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

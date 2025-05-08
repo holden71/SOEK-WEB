@@ -19,6 +19,9 @@ function Import() {
   const [buildingStatus, setBuildingStatus] = useState(null); // 'success', 'warning', or null
   const [roomStatus, setRoomStatus] = useState(null); // 'success', 'warning', or null
   const [roomMessage, setRoomMessage] = useState('');
+  const [sheetInfo, setSheetInfo] = useState(null);
+  const [selectedSheet, setSelectedSheet] = useState('');
+  const [analyzingFile, setAnalyzingFile] = useState(false);
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -168,12 +171,55 @@ function Import() {
     }
   };
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+  const handleFileChange = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setSheetInfo(null);
+      setSelectedSheet('');
+      
+      if (selectedPlant && selectedUnit && building) {
+        await analyzeExcelFile(selectedFile);
+      }
+    }
+  };
+
+  const analyzeExcelFile = async (fileToAnalyze) => {
+    if (!fileToAnalyze) return;
+    
+    setAnalyzingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', fileToAnalyze);
+      
+      const response = await fetch('http://localhost:8000/api/analyze-excel', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to analyze Excel file');
+      }
+      
+      const data = await response.json();
+      setSheetInfo(data.sheets);
+      
+      // Select the first sheet by default if there are sheets
+      if (data.sheets && data.sheets.length > 0) {
+        setSelectedSheet(data.sheets[0].name);
+      }
+    } catch (err) {
+      setError('Error analyzing Excel file: ' + err.message);
+      console.error('Error analyzing Excel file:', err);
+    } finally {
+      setAnalyzingFile(false);
+    }
   };
 
   const handleRemoveFile = () => {
     setFile(null);
+    setSheetInfo(null);
+    setSelectedSheet('');
     // Reset the file input
     const fileInput = document.getElementById('file');
     if (fileInput) {
@@ -187,10 +233,14 @@ function Import() {
     fileInputRef.current.click();
   };
 
+  const handleSheetChange = (e) => {
+    setSelectedSheet(e.target.value);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file || !selectedPlant || !selectedUnit) {
-      alert('Будь ласка, заповніть всі поля та виберіть файл');
+    if (!file || !selectedPlant || !selectedUnit || !selectedSheet) {
+      alert('Будь ласка, заповніть всі поля, виберіть файл та лист Excel');
       return;
     }
 
@@ -198,6 +248,13 @@ function Import() {
     formData.append('file', file);
     formData.append('plant_id', selectedPlant);
     formData.append('unit_id', selectedUnit);
+    formData.append('sheet_name', selectedSheet);
+    formData.append('building', building);
+    if (room) formData.append('room', room);
+    if (lev1) formData.append('level_from', lev1);
+    if (lev2) formData.append('level_to', lev2);
+    if (pga) formData.append('pga', pga);
+    formData.append('calculation_type', type);
 
     try {
       const response = await fetch('http://localhost:8000/api/import', {
@@ -213,8 +270,15 @@ function Import() {
       alert('Дані успішно імпортовано');
       // Reset form
       setFile(null);
+      setSheetInfo(null);
+      setSelectedSheet('');
       setSelectedPlant('');
       setSelectedUnit('');
+      setBuilding('');
+      setRoom('');
+      setLev1('');
+      setLev2('');
+      setPga('');
     } catch (err) {
       setError(err.message);
       alert('Помилка при імпорті даних: ' + err.message);
@@ -470,13 +534,48 @@ function Import() {
                   <button 
                     type="submit" 
                     className="import-button"
-                    disabled={!file || !selectedPlant || !selectedUnit}
+                    disabled={!file || !selectedPlant || !selectedUnit || !selectedSheet}
                   >
                     Імпортувати
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* Sheet selection */}
+            {file && sheetInfo && (
+              <div className="file-import-row">
+                <div className="filter-group">
+                  <label htmlFor="sheet">Лист Excel:</label>
+                  {analyzingFile ? (
+                    <div className="analyzing-file">Аналіз файлу...</div>
+                  ) : (
+                    <select
+                      id="sheet"
+                      value={selectedSheet}
+                      onChange={handleSheetChange}
+                      required
+                    >
+                      <option value="">Оберіть лист</option>
+                      {sheetInfo.map((sheet) => (
+                        <option key={sheet.name} value={sheet.name}>
+                          {sheet.name} ({sheet.rows} рядків, {sheet.columns} стовпців)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Show message while analyzing */}
+            {file && analyzingFile && (
+              <div className="file-import-row">
+                <div className="analyzing-message">
+                  Аналіз Excel файлу, будь ласка зачекайте...
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </div>
@@ -486,88 +585,6 @@ function Import() {
         }
         .uppercase-options option {
           text-transform: uppercase;
-        }
-        .hidden-file-input {
-          display: none;
-        }
-        .custom-file-input {
-          display: flex;
-          flex: 1;
-          gap: 10px;
-          align-items: center;
-          background-color: #f8f9fa;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          padding: 0;
-          transition: border-color 0.2s;
-          overflow: hidden;
-        }
-        .custom-file-input:hover {
-          border-color: #adb5bd;
-        }
-        .select-file-button {
-          background-color: #007bff;
-          color: white;
-          border: none;
-          padding: 8px 15px;
-          height: 40px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          font-weight: 500;
-          white-space: nowrap;
-          flex-shrink: 0;
-          transition: background-color 0.2s;
-          border-top-right-radius: 0;
-          border-bottom-right-radius: 0;
-        }
-        .select-file-button:hover {
-          background-color: #0056b3;
-        }
-        .file-icon {
-          font-size: 16px;
-        }
-        .file-display {
-          flex: 1;
-          padding: 0 10px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          display: flex;
-          align-items: center;
-          min-width: 0;
-        }
-        .selected-file {
-          display: flex;
-          width: 100%;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .file-name {
-          font-weight: 500;
-          color: #212529;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .no-file {
-          color: #6c757d;
-          font-style: italic;
-        }
-        .remove-file-button {
-          background: none;
-          border: none;
-          color: #dc3545;
-          cursor: pointer;
-          font-size: 16px;
-          padding: 0 5px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: color 0.2s;
-        }
-        .remove-file-button:hover {
-          color: #c82333;
         }
       `}</style>
     </div>
