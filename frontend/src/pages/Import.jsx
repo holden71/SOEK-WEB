@@ -7,6 +7,10 @@ function Import() {
   const [selectedUnit, setSelectedUnit] = useState('');
   const [building, setBuilding] = useState('');
   const [room, setRoom] = useState('');
+  const [lev1, setLev1] = useState('');
+  const [lev2, setLev2] = useState('');
+  const [pga, setPga] = useState('');
+  const [type, setType] = useState('Детермінистичний');
   const [plants, setPlants] = useState([]);
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +66,9 @@ function Import() {
   const handlePlantChange = (e) => {
     setSelectedPlant(e.target.value);
     setSelectedUnit('');
+    setBuildingStatus(null); // Reset building status
+    setRoomStatus(null); // Reset room status
+    setRoomMessage(''); // Reset room message
   };
 
   const handleUnitChange = (e) => {
@@ -205,6 +212,34 @@ function Import() {
     }
   };
 
+  const handleLev1Change = (e) => {
+    const value = e.target.value;
+    // Allow empty string or valid float
+    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+      setLev1(value);
+    }
+  };
+
+  const handleLev2Change = (e) => {
+    const value = e.target.value;
+    // Allow empty string or valid float
+    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+      setLev2(value);
+    }
+  };
+
+  const handlePgaChange = (e) => {
+    const value = e.target.value;
+    // Allow empty string or valid float
+    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+      setPga(value);
+    }
+  };
+
+  const handleTypeChange = (e) => {
+    setType(e.target.value);
+  };
+
   return (
     <div className="import-page">
       <PageHeader title="Імпорт з Excel" />
@@ -251,12 +286,12 @@ function Import() {
             <div className="filter-row">
               <div className="filter-group">
                 <div className="label-row">
-                  <label htmlFor="building">Будівля:</label>
+                  <label htmlFor="building" className={!selectedUnit ? "label-inactive" : ""}>Будівля:</label>
                   {buildingStatus === 'success' && (
-                    <span className="status-text success">Будівля знайдена</span>
+                    <span className="status-text success">Знайдено</span>
                   )}
                   {buildingStatus === 'warning' && (
-                    <span className="status-text warning">Будівля не знайдена</span>
+                    <span className="status-text warning">Не знайдено</span>
                   )}
                 </div>
                 <input
@@ -266,8 +301,9 @@ function Import() {
                   onChange={handleBuildingChange}
                   onBlur={handleBuildingBlur}
                   onKeyDown={handleBuildingKeyDown}
-                  placeholder="Введіть будівлю"
+                  placeholder={!selectedPlant ? 'Необхідно обрати станцію' : (!selectedUnit ? 'Необхідно обрати енергоблок' : 'Введіть будівлю')}
                   className={buildingStatus ? `border-${buildingStatus}` : ''}
+                  disabled={!selectedPlant || !selectedUnit}
                 />
               </div>
 
@@ -280,10 +316,10 @@ function Import() {
                     Приміщення:
                   </label>
                   {roomStatus === 'success' && (
-                    <span className="status-text success">Приміщення знайдено</span>
+                    <span className="status-text success">Знайдено</span>
                   )}
                   {roomStatus === 'warning' && (
-                    <span className="status-text warning">Приміщення не знайдено</span>
+                    <span className="status-text warning">Не знайдено</span>
                   )}
                 </div>
                 <input
@@ -293,10 +329,61 @@ function Import() {
                   onChange={handleRoomChange}
                   onBlur={handleRoomBlur}
                   onKeyDown={handleRoomKeyDown}
-                  placeholder="Введіть приміщення"
+                  placeholder={!selectedPlant ? 'Необхідно обрати станцію' : (!selectedUnit ? 'Необхідно обрати енергоблок' : (!building ? 'Необхідно ввести будівлю' : 'Введіть приміщення'))}
                   className={roomStatus ? `border-${roomStatus}` : ''}
-                  disabled={!building}
+                  disabled={!selectedPlant || !selectedUnit || !building}
                 />
+              </div>
+            </div>
+
+            <div className="filter-row">
+              <div className="filter-group">
+                <label htmlFor="lev1" className={!building ? "label-inactive" : ""}>Рівень, м, від:</label>
+                <input
+                  type="text"
+                  id="lev1"
+                  value={lev1}
+                  onChange={handleLev1Change}
+                  placeholder={!selectedPlant ? 'Необхідно обрати станцію' : (!selectedUnit ? 'Необхідно обрати енергоблок' : (!building ? 'Необхідно ввести будівлю' : 'Введіть рівень'))}
+                  disabled={!selectedPlant || !selectedUnit || !building}
+                />
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="lev2" className={!building ? "label-inactive" : ""}>Рівень, м, до:</label>
+                <input
+                  type="text"
+                  id="lev2"
+                  value={lev2}
+                  onChange={handleLev2Change}
+                  placeholder={!selectedPlant ? 'Необхідно обрати станцію' : (!selectedUnit ? 'Необхідно обрати енергоблок' : (!building ? 'Необхідно ввести будівлю' : 'Введіть рівень'))}
+                  disabled={!selectedPlant || !selectedUnit || !building}
+                />
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="pga" className={!building ? "label-inactive" : ""}>Прискорення на грунті, g:</label>
+                <input
+                  type="text"
+                  id="pga"
+                  value={pga}
+                  onChange={handlePgaChange}
+                  placeholder={!selectedPlant ? 'Необхідно обрати станцію' : (!selectedUnit ? 'Необхідно обрати енергоблок' : (!building ? 'Необхідно ввести будівлю' : 'Введіть прискорення'))}
+                  disabled={!selectedPlant || !selectedUnit || !building}
+                />
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="type" className={!building ? "label-inactive" : ""}>Тип:</label>
+                <select
+                  id="type"
+                  value={type}
+                  onChange={handleTypeChange}
+                  disabled={!selectedPlant || !selectedUnit || !building}
+                >
+                  <option value="Детермінистичний">Детермінистичний</option>
+                  <option value="Імовірнісний">Імовірнісний</option>
+                </select>
               </div>
             </div>
 
