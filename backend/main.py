@@ -4,10 +4,11 @@ from contextlib import asynccontextmanager
 from typing import List
 
 from db import DbSessionDep, DbSessionManager
-from fastapi import Depends, FastAPI, Query
+from fastapi import Body, Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from models import Plant, SearchData, Term, Unit
+from pydantic import BaseModel
 from settings import settings
 from sqlalchemy import inspect, text
 
@@ -106,6 +107,65 @@ async def search_data(
         search_results.append(SearchData(data=row_dict))
     
     return search_results
+
+class LocationCheck(BaseModel):
+    plant_id: int
+    unit_id: int
+    building: str
+    room: str
+
+@app.post("/api/check-location")
+async def check_location(
+    db: DbSessionDep,
+    location: LocationCheck = Body(...)
+):
+    """Check if building and room exist in SRTN_EK_SEISM_DATA table"""
+    result = db.execute(
+        text("""
+            SELECT COUNT(*) 
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE PLANT_ID = :plant_id 
+            AND UNIT_ID = :unit_id 
+            AND BUILDING = :building 
+            AND ROOM = :room
+        """),
+        {
+            "plant_id": location.plant_id,
+            "unit_id": location.unit_id,
+            "building": location.building,
+            "room": location.room
+        }
+    )
+    count = result.scalar()
+    return {"exists": count > 0}
+
+class BuildingCheck(BaseModel):
+    plant_id: int
+    unit_id: int
+    building: str
+
+@app.post("/api/check-building")
+async def check_building(
+    db: DbSessionDep,
+    data: BuildingCheck = Body(...)
+):
+    """Check if building exists in SRTN_EK_SEISM_DATA table for given plant and unit"""
+    result = db.execute(
+        text("""
+            SELECT COUNT(*)
+            FROM SRTN_EK_SEISM_DATA
+            WHERE PLANT_ID = :plant_id
+            AND UNIT_ID = :unit_id
+            AND BUILDING = :building
+        """),
+        {
+            "plant_id": data.plant_id,
+            "unit_id": data.unit_id,
+            "building": data.building
+        }
+    )
+    count = result.scalar()
+    return {"exists": count > 0}
 
 if __name__ == "__main__":
     import uvicorn

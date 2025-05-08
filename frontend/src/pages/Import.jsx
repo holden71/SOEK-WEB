@@ -12,6 +12,9 @@ function Import() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [file, setFile] = useState(null);
+  const [buildingStatus, setBuildingStatus] = useState(null); // 'success', 'warning', or null
+  const [roomStatus, setRoomStatus] = useState(null); // 'success', 'warning', or null
+  const [roomMessage, setRoomMessage] = useState('');
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -67,15 +70,82 @@ function Import() {
 
   const handleBuildingChange = (e) => {
     setBuilding(e.target.value);
+    setBuildingStatus(null); // Reset status on change
+    if (!e.target.value) {
+      setRoom('');
+      setRoomStatus(null);
+      setRoomMessage('');
+    }
+  };
+
+  const handleBuildingBlur = async () => {
+    if (!building || !selectedPlant || !selectedUnit) {
+      setBuildingStatus(null);
+      return;
+    }
+    try {
+      const response = await fetch('http://localhost:8000/api/check-building', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          plant_id: selectedPlant,
+          unit_id: selectedUnit,
+          building: building
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to check building');
+      const result = await response.json();
+      setBuildingStatus(result.exists ? 'success' : 'warning');
+    } catch (err) {
+      setBuildingStatus('warning');
+    }
   };
 
   const handleRoomChange = (e) => {
     setRoom(e.target.value);
+    setRoomStatus(null); // Reset status on change
+    setRoomMessage('');
   };
 
-  const handleCheck = () => {
-    // TODO: Implement check functionality
-    alert('Перевірка...');
+  const handleRoomBlur = async () => {
+    if (!room || !building || !selectedPlant || !selectedUnit) {
+      setRoomStatus(null);
+      setRoomMessage('');
+      return;
+    }
+    if (buildingStatus !== 'success') {
+      setRoomStatus('warning');
+      setRoomMessage('Будівля не знайдена або не підтверджена');
+      return;
+    }
+    try {
+      const response = await fetch('http://localhost:8000/api/check-location', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          plant_id: selectedPlant,
+          unit_id: selectedUnit,
+          building: building,
+          room: room
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to check room');
+      const result = await response.json();
+      if (result.exists) {
+        setRoomStatus('success');
+        setRoomMessage('Приміщення знайдено в базі даних');
+      } else {
+        setRoomStatus('warning');
+        setRoomMessage('Приміщення не знайдено в базі даних');
+      }
+    } catch (err) {
+      setRoomStatus('warning');
+      setRoomMessage('Помилка при перевірці приміщення');
+    }
   };
 
   const handleFileChange = (e) => {
@@ -119,6 +189,20 @@ function Import() {
   const getUnitDefaultText = () => {
     if (!selectedPlant) return "Необхідно обрати станцію";
     return "Оберіть енергоблок";
+  };
+
+  const handleBuildingKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleBuildingBlur();
+      e.target.blur();
+    }
+  };
+
+  const handleRoomKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleRoomBlur();
+      e.target.blur();
+    }
   };
 
   return (
@@ -166,36 +250,53 @@ function Import() {
 
             <div className="filter-row">
               <div className="filter-group">
-                <label htmlFor="building">Будівля:</label>
+                <div className="label-row">
+                  <label htmlFor="building">Будівля:</label>
+                  {buildingStatus === 'success' && (
+                    <span className="status-text success">Будівля знайдена</span>
+                  )}
+                  {buildingStatus === 'warning' && (
+                    <span className="status-text warning">Будівля не знайдена</span>
+                  )}
+                </div>
                 <input
                   type="text"
                   id="building"
                   value={building}
                   onChange={handleBuildingChange}
+                  onBlur={handleBuildingBlur}
+                  onKeyDown={handleBuildingKeyDown}
                   placeholder="Введіть будівлю"
+                  className={buildingStatus ? `border-${buildingStatus}` : ''}
                 />
               </div>
 
               <div className="filter-group">
-                <label htmlFor="room">Приміщення:</label>
+                <div className="label-row">
+                  <label
+                    htmlFor="room"
+                    className={!building ? "label-inactive" : ""}
+                  >
+                    Приміщення:
+                  </label>
+                  {roomStatus === 'success' && (
+                    <span className="status-text success">Приміщення знайдено</span>
+                  )}
+                  {roomStatus === 'warning' && (
+                    <span className="status-text warning">Приміщення не знайдено</span>
+                  )}
+                </div>
                 <input
                   type="text"
                   id="room"
                   value={room}
                   onChange={handleRoomChange}
+                  onBlur={handleRoomBlur}
+                  onKeyDown={handleRoomKeyDown}
                   placeholder="Введіть приміщення"
+                  className={roomStatus ? `border-${roomStatus}` : ''}
+                  disabled={!building}
                 />
-              </div>
-
-              <div className="check-button">
-                <button 
-                  type="button" 
-                  onClick={handleCheck}
-                  disabled={!building || !room}
-                  className={!building || !room ? 'disabled' : ''}
-                >
-                  Перевірити
-                </button>
               </div>
             </div>
 
