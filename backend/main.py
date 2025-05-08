@@ -2,13 +2,14 @@
 
 import io
 import os
+import re
 import tempfile
 from contextlib import asynccontextmanager
 from typing import List
 
 import openpyxl
 from db import DbSessionDep, DbSessionManager
-from fastapi import (Body, Depends, FastAPI, File, HTTPException, Query,
+from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException, Query,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -175,9 +176,11 @@ async def check_building(
 @app.post("/api/analyze-excel")
 async def analyze_excel(
     file: UploadFile = File(...),
+    filter_percentage_only: bool = Query(False, description="Filter sheets to include only percentage names")
 ):
     """
-    Analyze Excel file and return information about sheets
+    Analyze Excel file and return information about sheets.
+    Optionally filter to include only sheets with percentage names (like 4%, 0.2%, 1,2%)
     """
     if not file.filename.endswith(('.xls', '.xlsx', '.xlsm')):
         raise HTTPException(status_code=400, detail="File must be an Excel file (.xls, .xlsx, .xlsm)")
@@ -193,9 +196,17 @@ async def analyze_excel(
         # Get sheet names
         sheet_names = workbook.sheetnames
         
+        # Regex pattern for percentage names (e.g., 4%, 0.2%, 1,2%)
+        # This matches numbers with optional decimal parts (using . or , as separator) followed by %
+        percentage_pattern = re.compile(r'^[0-9]+([.,][0-9]+)?%$')
+        
         # Get basic info about each sheet
         sheets_info = []
         for sheet_name in sheet_names:
+            # Skip non-percentage sheets if filter is enabled
+            if filter_percentage_only and not percentage_pattern.match(sheet_name.strip()):
+                continue
+                
             sheet = workbook[sheet_name]
             # Get dimensions
             try:
@@ -231,6 +242,68 @@ async def analyze_excel(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing Excel file: {str(e)}")
+
+@app.post("/api/extract-sheet-data")
+async def extract_sheet_data(
+    file: UploadFile = File(...),
+    sheet_name: str = Form(...),
+):
+    """
+    Extract data from a specific sheet in an Excel file.
+    Returns a dictionary with sheet_name and column contents.
+    """
+    if not file.filename.endswith(('.xls', '.xlsx', '.xlsm')):
+        raise HTTPException(status_code=400, detail="File must be an Excel file (.xls, .xlsx, .xlsm)")
+    
+    try:
+        # Read file directly into memory
+        contents = await file.read()
+        file_object = io.BytesIO(contents)
+        
+        # Load workbook from memory buffer
+        workbook = openpyxl.load_workbook(file_object, read_only=True, data_only=True)
+        
+        if sheet_name not in workbook.sheetnames:
+            raise HTTPException(status_code=404, detail=f"Sheet '{sheet_name}' not found in the Excel file")
+        
+        sheet = workbook[sheet_name]
+        
+        # Get column headers (assuming first row contains headers)
+        headers = []
+        max_col = sheet.max_column
+        
+        for col in range(1, max_col + 1):
+            cell_value = sheet.cell(row=1, column=col).value
+            if cell_value is not None:
+                headers.append(str(cell_value))
+        
+        # Initialize result dictionary with sheet name
+        result = {
+            'demp': sheet_name
+        }
+        
+        # Extract column data
+        for col_idx, header in enumerate(headers, start=1):
+            column_data = []
+            for row_idx in range(2, sheet.max_row + 1):  # Start from row 2 (skip headers)
+                cell_value = sheet.cell(row=row_idx, column=col_idx).value
+                if cell_value is not None:
+                    column_data.append(str(cell_value))
+            
+            # Use column number as key if header is empty
+            col_key = f"column_{col_idx}" if not header.strip() else header
+            result[col_key] = column_data
+        
+        # Close workbook and file objects
+        workbook.close()
+        file_object.close()
+        
+        return result
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error extracting sheet data: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

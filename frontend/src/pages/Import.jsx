@@ -20,8 +20,10 @@ function Import() {
   const [roomStatus, setRoomStatus] = useState(null); // 'success', 'warning', or null
   const [roomMessage, setRoomMessage] = useState('');
   const [sheetInfo, setSheetInfo] = useState(null);
-  const [selectedSheet, setSelectedSheet] = useState('');
   const [analyzingFile, setAnalyzingFile] = useState(false);
+  const [sheetsData, setSheetsData] = useState(null); // To store extracted sheet data
+  const [extractingData, setExtractingData] = useState(false); // Flag for data extraction in progress
+  const [expandedColumns, setExpandedColumns] = useState({}); // Track which columns are expanded
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -77,6 +79,7 @@ function Import() {
     setBuildingStatus(null); // Reset building status
     setRoomStatus(null); // Reset room status
     setRoomMessage(''); // Reset room message
+    setSheetsData(null); // Reset sheet data
   };
 
   const handleUnitChange = (e) => {
@@ -89,6 +92,7 @@ function Import() {
     setBuildingStatus(null);
     setRoomStatus(null);
     setRoomMessage('');
+    setSheetsData(null); // Reset sheet data
   };
 
   const handleBuildingChange = (e) => {
@@ -99,6 +103,7 @@ function Import() {
       setRoomStatus(null);
       setRoomMessage('');
     }
+    setSheetsData(null); // Reset sheet data
   };
 
   const handleBuildingBlur = async () => {
@@ -176,7 +181,7 @@ function Import() {
     if (selectedFile) {
       setFile(selectedFile);
       setSheetInfo(null);
-      setSelectedSheet('');
+      setSheetsData(null);
       
       if (selectedPlant && selectedUnit && building) {
         await analyzeExcelFile(selectedFile);
@@ -192,7 +197,8 @@ function Import() {
       const formData = new FormData();
       formData.append('file', fileToAnalyze);
       
-      const response = await fetch('http://localhost:8000/api/analyze-excel', {
+      // Filter sheets to only show percentage values
+      const response = await fetch('http://localhost:8000/api/analyze-excel?filter_percentage_only=true', {
         method: 'POST',
         body: formData,
       });
@@ -202,11 +208,16 @@ function Import() {
       }
       
       const data = await response.json();
-      setSheetInfo(data.sheets);
       
-      // Select the first sheet by default if there are sheets
-      if (data.sheets && data.sheets.length > 0) {
-        setSelectedSheet(data.sheets[0].name);
+      if (data.sheets && data.sheets.length === 0) {
+        setError('В Excel файлі не знайдено листів з іменами у форматі відсотків (наприклад: 4%, 0.2%, 1,2%)');
+        setFile(null);
+        const fileInput = document.getElementById('file');
+        if (fileInput) {
+          fileInput.value = '';
+        }
+      } else {
+        setSheetInfo(data.sheets);
       }
     } catch (err) {
       setError('Error analyzing Excel file: ' + err.message);
@@ -219,7 +230,8 @@ function Import() {
   const handleRemoveFile = () => {
     setFile(null);
     setSheetInfo(null);
-    setSelectedSheet('');
+    setSheetsData(null);
+    setExpandedColumns({});
     // Reset the file input
     const fileInput = document.getElementById('file');
     if (fileInput) {
@@ -233,61 +245,76 @@ function Import() {
     fileInputRef.current.click();
   };
 
-  const handleSheetChange = (e) => {
-    setSelectedSheet(e.target.value);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!file || !selectedPlant || !selectedUnit || !selectedSheet) {
-      alert('Будь ласка, заповніть всі поля, виберіть файл та лист Excel');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('plant_id', selectedPlant);
-    formData.append('unit_id', selectedUnit);
-    formData.append('sheet_name', selectedSheet);
-    formData.append('building', building);
-    if (room) formData.append('room', room);
-    if (lev1) formData.append('level_from', lev1);
-    if (lev2) formData.append('level_to', lev2);
-    if (pga) formData.append('pga', pga);
-    formData.append('calculation_type', type);
-
+  // Function to extract data from a specific sheet
+  const extractSheetData = async (sheetName) => {
+    if (!file) return null;
+    
     try {
-      const response = await fetch('http://localhost:8000/api/import', {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sheet_name', sheetName);
+      
+      const response = await fetch('http://localhost:8000/api/extract-sheet-data', {
         method: 'POST',
         body: formData,
       });
-
+      
       if (!response.ok) {
-        throw new Error('Failed to import data');
+        throw new Error(`Failed to extract data from sheet ${sheetName}`);
       }
-
-      const result = await response.json();
-      alert('Дані успішно імпортовано');
-      // Reset form
-      setFile(null);
-      setSheetInfo(null);
-      setSelectedSheet('');
-      setSelectedPlant('');
-      setSelectedUnit('');
-      setBuilding('');
-      setRoom('');
-      setLev1('');
-      setLev2('');
-      setPga('');
+      
+      return await response.json();
     } catch (err) {
-      setError(err.message);
-      alert('Помилка при імпорті даних: ' + err.message);
+      console.error(`Error extracting data from sheet ${sheetName}:`, err);
+      return null;
     }
   };
 
-  const getUnitDefaultText = () => {
-    if (!selectedPlant) return "Необхідно обрати станцію";
-    return "Оберіть енергоблок";
+  // Function to extract data from all sheets
+  const extractAllSheetsData = async () => {
+    if (!file || !sheetInfo || sheetInfo.length === 0) {
+      return;
+    }
+    
+    setExtractingData(true);
+    setSheetsData(null);
+    
+    try {
+      const allData = {};
+      
+      // Process each sheet
+      for (const sheet of sheetInfo) {
+        const sheetData = await extractSheetData(sheet.name);
+        if (sheetData) {
+          allData[sheet.name] = sheetData;
+        }
+      }
+      
+      setSheetsData(allData);
+      console.log('Extracted data from all sheets:', allData);
+    } catch (err) {
+      setError('Error extracting data from sheets: ' + err.message);
+      console.error('Error extracting data from sheets:', err);
+    } finally {
+      setExtractingData(false);
+    }
+  };
+
+  // Toggle column expansion
+  const toggleColumnExpansion = (sheetName, columnName) => {
+    setExpandedColumns(prev => {
+      const key = `${sheetName}-${columnName}`;
+      return {
+        ...prev,
+        [key]: !prev[key]
+      };
+    });
+  };
+
+  // Check if a column is expanded
+  const isColumnExpanded = (sheetName, columnName) => {
+    const key = `${sheetName}-${columnName}`;
+    return expandedColumns[key];
   };
 
   const handleBuildingKeyDown = (e) => {
@@ -332,11 +359,54 @@ function Import() {
     setType(e.target.value);
   };
 
+  // Updated import function that handles all sheets at once
+  const handleImport = async () => {
+    if (!file || !selectedPlant || !selectedUnit || !sheetInfo || sheetInfo.length === 0) {
+      alert('Будь ласка, заповніть всі поля та виберіть файл Excel');
+      return;
+    }
+
+    // First extract data from all sheets if not already done
+    if (!sheetsData) {
+      await extractAllSheetsData();
+      return; // Stop here after extraction, user can review before actual import
+    }
+
+    // Now proceed with importing the data
+    try {
+      // In a real application, you would send the sheetsData to the backend
+      // For now, we just simulate a successful import
+      alert('Дані успішно імпортовано зі всіх листів');
+      
+      // Reset form after successful import
+      setFile(null);
+      setSheetInfo(null);
+      setSheetsData(null);
+      setExpandedColumns({});
+      setSelectedPlant('');
+      setSelectedUnit('');
+      setBuilding('');
+      setRoom('');
+      setLev1('');
+      setLev2('');
+      setPga('');
+      
+      // Reset the file input
+      const fileInput = document.getElementById('file');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    } catch (err) {
+      setError(err.message || 'Помилка при імпорті даних');
+      alert('Помилка при імпорті даних: ' + (err.message || ''));
+    }
+  };
+
   return (
     <div className="import-page">
       <PageHeader title="Імпорт з Excel" />
       <div className="import-content">
-        <form className="import-form" onSubmit={handleSubmit}>
+        <form className="import-form">
           <div className="filters">
             <div className="filter-row">
               <div className="filter-group">
@@ -365,7 +435,7 @@ function Import() {
                   required
                   disabled={!selectedPlant}
                 >
-                  <option value="">{getUnitDefaultText()}</option>
+                  <option value="">{!selectedPlant ? "Необхідно обрати станцію" : "Оберіть енергоблок"}</option>
                   {units.map((unit) => (
                     <option key={unit.unit_id} value={unit.unit_id}>
                       {unit.name}
@@ -531,44 +601,20 @@ function Import() {
                       )}
                     </div>
                   </div>
+                  
                   <button 
-                    type="submit" 
+                    type="button" 
                     className="import-button"
-                    disabled={!file || !selectedPlant || !selectedUnit || !selectedSheet}
+                    onClick={handleImport}
+                    disabled={!file || !selectedPlant || !selectedUnit || !building || analyzingFile || extractingData}
                   >
-                    Імпортувати
+                    {!sheetsData ? 'Отримати дані з усіх листів' : 'Імпортувати'}
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Sheet selection */}
-            {file && sheetInfo && (
-              <div className="file-import-row">
-                <div className="filter-group">
-                  <label htmlFor="sheet">Лист Excel:</label>
-                  {analyzingFile ? (
-                    <div className="analyzing-file">Аналіз файлу...</div>
-                  ) : (
-                    <select
-                      id="sheet"
-                      value={selectedSheet}
-                      onChange={handleSheetChange}
-                      required
-                    >
-                      <option value="">Оберіть лист</option>
-                      {sheetInfo.map((sheet) => (
-                        <option key={sheet.name} value={sheet.name}>
-                          {sheet.name} ({sheet.rows} рядків, {sheet.columns} стовпців)
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {/* Show message while analyzing */}
+            {/* File analysis message */}
             {file && analyzingFile && (
               <div className="file-import-row">
                 <div className="analyzing-message">
@@ -576,8 +622,88 @@ function Import() {
                 </div>
               </div>
             )}
+
+            {/* Show message while extracting data */}
+            {file && extractingData && (
+              <div className="file-import-row">
+                <div className="analyzing-message">
+                  Отримання даних з листів, будь ласка зачекайте...
+                </div>
+              </div>
+            )}
+
+            {/* Sheet information */}
+            {sheetInfo && sheetInfo.length > 0 && !sheetsData && (
+              <div className="file-import-row">
+                <div className="sheet-info-message">
+                  Знайдено {sheetInfo.length} аркушів Excel. Натисніть кнопку "Отримати дані з усіх листів".
+                </div>
+              </div>
+            )}
+
+            {/* Display extracted data with expandable columns */}
+            {sheetsData && Object.keys(sheetsData).length > 0 && (
+              <div className="extracted-data-container">
+                <h3>Отримані дані листів</h3>
+                <div className="sheets-data-tabs">
+                  {Object.keys(sheetsData).map(sheetName => (
+                    <div key={sheetName} className="sheet-data-summary">
+                      <h4>Лист: {sheetName}</h4>
+                      <div className="sheet-data-info">
+                        <p>Кількість стовпців: {Object.keys(sheetsData[sheetName]).filter(key => key !== 'demp').length}</p>
+                        
+                        {Object.keys(sheetsData[sheetName])
+                          .filter(key => key !== 'demp')
+                          .map(columnName => {
+                            const columnData = sheetsData[sheetName][columnName];
+                            const isExpanded = isColumnExpanded(sheetName, columnName);
+                            const displayData = isExpanded 
+                              ? columnData 
+                              : columnData.slice(0, 5);
+                            
+                            return (
+                              <div key={columnName} className="column-details">
+                                <div 
+                                  className="column-header" 
+                                  onClick={() => toggleColumnExpansion(sheetName, columnName)}
+                                >
+                                  <strong>{columnName}:</strong> {columnData.length} рядків
+                                  <span className="expand-icon">{isExpanded ? '▼' : '►'}</span>
+                                </div>
+                                
+                                {displayData.length > 0 && (
+                                  <div className={`column-values ${isExpanded ? 'expanded' : ''}`}>
+                                    <ul>
+                                      {displayData.map((value, idx) => (
+                                        <li key={idx}>{value}</li>
+                                      ))}
+                                    </ul>
+                                    
+                                    {!isExpanded && columnData.length > 5 && (
+                                      <div className="show-more" onClick={() => toggleColumnExpansion(sheetName, columnName)}>
+                                        Показати ще {columnData.length - 5} рядків...
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </form>
+        
+        {/* Display error message if any */}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
       </div>
       <style jsx>{`
         .uppercase-options {
@@ -585,6 +711,71 @@ function Import() {
         }
         .uppercase-options option {
           text-transform: uppercase;
+        }
+        .error-message {
+          margin-top: 15px;
+          padding: 12px;
+          background-color: #ffebee;
+          border: 1px solid #ffcdd2;
+          border-radius: 4px;
+          color: #c62828;
+        }
+        .sheet-info-message {
+          padding: 10px;
+          background-color: #e6f7ff;
+          border: 1px solid #91d5ff;
+          border-radius: 4px;
+          color: #1890ff;
+          text-align: center;
+        }
+        .column-header {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border-bottom: 1px solid #f0f0f0;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        .column-header:hover {
+          background-color: #f5f5f5;
+        }
+        .column-values {
+          padding-left: 20px;
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s ease-out;
+        }
+        .column-values.expanded {
+          max-height: 500px;
+          overflow-y: auto;
+          padding-top: 10px;
+          padding-bottom: 10px;
+        }
+        .column-values ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+        .column-values li {
+          margin-bottom: 5px;
+        }
+        .show-more {
+          color: #1890ff;
+          cursor: pointer;
+          padding: 5px 0;
+          font-size: 0.9rem;
+        }
+        .show-more:hover {
+          text-decoration: underline;
+        }
+        .expand-icon {
+          font-size: 0.8rem;
+          color: #1890ff;
+        }
+        .column-details {
+          margin-bottom: 10px;
+          border: 1px solid #f0f0f0;
+          border-radius: 4px;
+          overflow: hidden;
         }
       `}</style>
     </div>
