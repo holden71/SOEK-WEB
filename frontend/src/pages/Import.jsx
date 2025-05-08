@@ -66,6 +66,11 @@ function Import() {
   const handlePlantChange = (e) => {
     setSelectedPlant(e.target.value);
     setSelectedUnit('');
+    setBuilding('');
+    setRoom('');
+    setLev1('');
+    setLev2('');
+    setPga('');
     setBuildingStatus(null); // Reset building status
     setRoomStatus(null); // Reset room status
     setRoomMessage(''); // Reset room message
@@ -73,6 +78,14 @@ function Import() {
 
   const handleUnitChange = (e) => {
     setSelectedUnit(e.target.value);
+    setBuilding('');
+    setRoom('');
+    setLev1('');
+    setLev2('');
+    setPga('');
+    setBuildingStatus(null);
+    setRoomStatus(null);
+    setRoomMessage('');
   };
 
   const handleBuildingChange = (e) => {
@@ -157,6 +170,21 @@ function Import() {
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    // Reset the file input
+    const fileInput = document.getElementById('file');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  const fileInputRef = React.useRef(null);
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
   };
 
   const handleSubmit = async (e) => {
@@ -388,22 +416,67 @@ function Import() {
               </div>
             </div>
 
-            <div className="filter-group">
-              <label htmlFor="file">Файл Excel:</label>
-              <input
-                type="file"
-                id="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileChange}
-                required
-              />
+            <div className="file-import-row">
+              <div className="filter-group file-input-group">
+                <label htmlFor="file">Файл Excel:</label>
+                <div className="file-input-container">
+                  <div className="custom-file-input">
+                    <input
+                      type="file"
+                      id="file"
+                      ref={fileInputRef}
+                      accept=".xlsx,.xls,.xlsm"
+                      onChange={handleFileChange}
+                      required
+                      className="hidden-file-input"
+                    />
+                    <button 
+                      type="button" 
+                      className="select-file-button"
+                      onClick={triggerFileInput}
+                      disabled={!selectedPlant || !selectedUnit || !building}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                        <path d="M8.5 8.5V6.5h2a.5.5 0 0 1 0 1h-2v1.5h2a.5.5 0 0 1 0 1h-2v1.5H10a.5.5 0 0 1 0 1H8.5V14H10a.5.5 0 0 1 0 1H6a.5.5 0 0 1 0-1h1.5v-1.5H6a.5.5 0 0 1 0-1h1.5V10H6a.5.5 0 0 1 0-1h1.5V7.5H6a.5.5 0 0 1 0-1h2V5z"/>
+                      </svg>
+                      Вибрати файл
+                    </button>
+                    <div className="file-display">
+                      {file ? (
+                        <div className="selected-file">
+                          <span className="file-name">{file.name}</span>
+                          <button
+                            type="button"
+                            className="remove-file-button"
+                            onClick={handleRemoveFile}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="no-file">
+                          {!selectedPlant 
+                            ? 'Необхідно обрати станцію' 
+                            : !selectedUnit 
+                              ? 'Необхідно обрати енергоблок' 
+                              : !building
+                                ? 'Необхідно ввести будівлю'
+                                : 'Файл не вибрано'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button 
+                    type="submit" 
+                    className="import-button"
+                    disabled={!file || !selectedPlant || !selectedUnit}
+                  >
+                    Імпортувати
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="submit-button">
-            <button type="submit" disabled={!file || !selectedPlant || !selectedUnit}>
-              Імпортувати
-            </button>
           </div>
         </form>
       </div>
@@ -413,6 +486,88 @@ function Import() {
         }
         .uppercase-options option {
           text-transform: uppercase;
+        }
+        .hidden-file-input {
+          display: none;
+        }
+        .custom-file-input {
+          display: flex;
+          flex: 1;
+          gap: 10px;
+          align-items: center;
+          background-color: #f8f9fa;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          padding: 0;
+          transition: border-color 0.2s;
+          overflow: hidden;
+        }
+        .custom-file-input:hover {
+          border-color: #adb5bd;
+        }
+        .select-file-button {
+          background-color: #007bff;
+          color: white;
+          border: none;
+          padding: 8px 15px;
+          height: 40px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-weight: 500;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: background-color 0.2s;
+          border-top-right-radius: 0;
+          border-bottom-right-radius: 0;
+        }
+        .select-file-button:hover {
+          background-color: #0056b3;
+        }
+        .file-icon {
+          font-size: 16px;
+        }
+        .file-display {
+          flex: 1;
+          padding: 0 10px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: flex;
+          align-items: center;
+          min-width: 0;
+        }
+        .selected-file {
+          display: flex;
+          width: 100%;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .file-name {
+          font-weight: 500;
+          color: #212529;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .no-file {
+          color: #6c757d;
+          font-style: italic;
+        }
+        .remove-file-button {
+          background: none;
+          border: none;
+          color: #dc3545;
+          cursor: pointer;
+          font-size: 16px;
+          padding: 0 5px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: color 0.2s;
+        }
+        .remove-file-button:hover {
+          color: #c82333;
         }
       `}</style>
     </div>

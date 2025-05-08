@@ -73,6 +73,160 @@
   padding: 6px;
 }
 
+/* File import specific styles */
+.file-import-row {
+  width: 100%;
+  margin-top: 10px;
+  max-width: 800px;
+}
+
+.file-input-group {
+  width: 100%;
+}
+
+.file-input-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Custom file input styles */
+.hidden-file-input {
+  display: none;
+}
+
+.custom-file-input {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0;
+  transition: border-color 0.2s;
+  overflow: hidden;
+  max-width: 600px;
+}
+
+.custom-file-input:hover:not(:disabled) {
+  border-color: #adb5bd;
+}
+
+.select-file-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.select-file-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.select-file-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.file-icon {
+  font-size: 16px;
+}
+
+.file-display {
+  flex: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.selected-file {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #212529;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-file {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.remove-file-button {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.remove-file-button:hover {
+  color: #c82333;
+}
+/* End of custom file input styles */
+
+.import-button {
+  min-width: 150px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.import-button:hover:not(:disabled) {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.import-button:active:not(:disabled) {
+  background-color: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.import-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* End of file import specific styles */
+
 .check-button {
   display: flex;
   align-items: center;
@@ -158,51 +312,9 @@
   box-shadow: none;
 }
 
+/* Removing the old submit button styles as we now have an inline button */
 .submit-button {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.submit-button button {
-  position: relative;
-  min-width: 100px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 40px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.submit-button button:hover {
-  background-color: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.submit-button button:active {
-  background-color: #004494;
-  transform: translateY(1px);
-  box-shadow: none;
-}
-
-.submit-button button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.submit-button button:disabled:hover {
-  background-color: #cccccc;
-  transform: none;
-  box-shadow: none;
+  display: none;
 }
 
 .border-success,
@@ -237,6 +349,20 @@
 
   .check-button {
     margin-top: 10px;
+  }
+  
+  .file-input-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .import-button {
+    width: 100%;
+  }
+  
+  .custom-file-input {
+    height: 40px;
   }
 }
 
