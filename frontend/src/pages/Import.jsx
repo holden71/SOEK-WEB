@@ -362,7 +362,7 @@ function Import() {
               </div>
 
               <div className="filter-group">
-                <label htmlFor="pga" className={!building ? "label-inactive" : ""}>Прискорення на грунті, g:</label>
+                <label htmlFor="pga" className={!building ? "label-inactive" : ""}>PGA, g:</label>
                 <input
                   type="text"
                   id="pga"
@@ -374,12 +374,13 @@ function Import() {
               </div>
 
               <div className="filter-group">
-                <label htmlFor="type" className={!building ? "label-inactive" : ""}>Тип:</label>
+                <label htmlFor="type" className={!building ? "label-inactive" : ""}>Тип розрахунку:</label>
                 <select
                   id="type"
                   value={type}
                   onChange={handleTypeChange}
                   disabled={!selectedPlant || !selectedUnit || !building}
+                  className="uppercase-options"
                 >
                   <option value="Детермінистичний">Детермінистичний</option>
                   <option value="Імовірнісний">Імовірнісний</option>
@@ -406,6 +407,14 @@ function Import() {
           </div>
         </form>
       </div>
+      <style jsx>{`
+        .uppercase-options {
+          text-transform: uppercase;
+        }
+        .uppercase-options option {
+          text-transform: uppercase;
+        }
+      `}</style>
     </div>
   );
 }
