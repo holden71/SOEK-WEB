@@ -18,7 +18,7 @@ function Import() {
   const [lev1, setLev1] = useState('');
   const [lev2, setLev2] = useState('');
   const [pga, setPga] = useState('');
-  const [type, setType] = useState('Детермінистичний');
+  const [type, setType] = useState('ДЕТЕРМІНИСТИЧНИЙ');
   const [plants, setPlants] = useState([]);
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +37,8 @@ function Import() {
   const [tableGlobalFilter, setTableGlobalFilter] = useState('');
   const [tableSorting, setTableSorting] = useState([]);
   const [savingData, setSavingData] = useState(false); // Add state for saving progress
+  const [importStatus, setImportStatus] = useState(null); // 'success', 'error', or null
+  const [dataImported, setDataImported] = useState(false); // Track if data was successfully imported
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -93,6 +95,7 @@ function Import() {
     setRoomStatus(null); // Reset room status
     setRoomMessage(''); // Reset room message
     setSheetsData(null); // Reset sheet data
+    setDataImported(false); // Reset imported state
   };
 
   const handleUnitChange = (e) => {
@@ -106,6 +109,7 @@ function Import() {
     setRoomStatus(null);
     setRoomMessage('');
     setSheetsData(null); // Reset sheet data
+    setDataImported(false); // Reset imported state
   };
 
   const handleBuildingChange = (e) => {
@@ -117,6 +121,7 @@ function Import() {
       setRoomMessage('');
     }
     setSheetsData(null); // Reset sheet data
+    setDataImported(false); // Reset imported state
   };
 
   const handleBuildingBlur = async () => {
@@ -148,6 +153,7 @@ function Import() {
     setRoom(e.target.value);
     setRoomStatus(null); // Reset status on change
     setRoomMessage('');
+    setDataImported(false); // Reset imported state
   };
 
   const handleRoomBlur = async () => {
@@ -195,6 +201,8 @@ function Import() {
       setFile(selectedFile);
       setSheetInfo(null);
       setSheetsData(null);
+      setDataImported(false); // Reset imported state when file changes
+      setImportStatus(null); // Clear any previous import status
       
       if (selectedPlant && selectedUnit && building) {
         await analyzeExcelFile(selectedFile);
@@ -245,6 +253,7 @@ function Import() {
     setSheetInfo(null);
     setSheetsData(null);
     setExpandedColumns({});
+    setDataImported(false);
     // Reset the file input
     const fileInput = document.getElementById('file');
     if (fileInput) {
@@ -378,6 +387,19 @@ function Import() {
       return { success: false, message: 'Missing required data' };
     }
 
+    // Check if at least one of LEV1 or LEV2 is provided
+    let level1 = lev1 ? parseFloat(lev1) : null;
+    let level2 = lev2 ? parseFloat(lev2) : null;
+    
+    // Auto-fill logic for levels
+    if (level1 !== null && level2 === null) {
+      // If only LEV1 provided, set LEV2 = LEV1 + 200
+      level2 = level1 + 200;
+    } else if (level1 === null && level2 !== null) {
+      // If only LEV2 provided, set LEV1 = LEV2 - 200
+      level1 = level2 - 200;
+    }
+
     setSavingData(true);
     try {
       // Transform the imported data into the format expected by the backend
@@ -386,8 +408,8 @@ function Import() {
         unit_id: selectedUnit,
         building: building,
         room: room || null,
-        lev1: lev1 ? parseFloat(lev1) : null,
-        lev2: lev2 ? parseFloat(lev2) : null,
+        lev1: level1,
+        lev2: level2,
         pga: pga ? parseFloat(pga) : null,
         calc_type: type,
         sheets: {}
@@ -436,6 +458,16 @@ function Import() {
       alert('Будь ласка, заповніть всі поля та виберіть файл Excel');
       return;
     }
+
+    // Check if at least one of LEV1 or LEV2 is provided
+    if (!lev1 && !lev2) {
+      alert('Будь ласка, введіть хоча б один з параметрів: "Рівень, м, від" або "Рівень, м, до"');
+      return;
+    }
+
+    // Reset any previous import status
+    setImportStatus(null);
+    setError(null);
 
     try {
       // First analyze the file if not already analyzed
@@ -514,12 +546,9 @@ function Import() {
       if (!saveResult.success) {
         throw new Error(`Помилка при збереженні даних: ${saveResult.message}`);
       }
-      alert('Дані успішно збережено в базі даних');
+      setImportStatus('success');
+      setDataImported(true);
 
-      // Reset form after successful import
-      setSheetsData(null);
-      setExpandedColumns({});
-      
       // Only reset the file input
       const fileInput = document.getElementById('file');
       if (fileInput) {
@@ -527,7 +556,7 @@ function Import() {
       }
     } catch (err) {
       setError(err.message || 'Помилка при імпорті даних');
-      alert('Помилка при імпорті даних: ' + (err.message || ''));
+      setImportStatus('error');
     } finally {
       setAnalyzingFile(false);
       setExtractingData(false);
@@ -677,8 +706,8 @@ function Import() {
                   disabled={!selectedPlant || !selectedUnit || !building}
                   className="uppercase-options"
                 >
-                  <option value="Детермінистичний">Детермінистичний</option>
-                  <option value="Імовірнісний">Імовірнісний</option>
+                  <option value="ДЕТЕРМІНИСТИЧНИЙ">ДЕТЕРМІНИСТИЧНИЙ</option>
+                  <option value="ІМОВІРНІСНИЙ">ІМОВІРНІСНИЙ</option>
                 </select>
               </div>
             </div>
@@ -737,11 +766,11 @@ function Import() {
                   
                   <button 
                     type="button" 
-                    className="import-button"
+                    className={`import-button ${(analyzingFile || extractingData || savingData) ? 'pulsing-button' : ''}`}
                     onClick={handleImport}
-                    disabled={!file || !selectedPlant || !selectedUnit || !building || analyzingFile || extractingData || savingData}
+                    disabled={!file || !selectedPlant || !selectedUnit || !building || analyzingFile || extractingData || savingData || dataImported}
                   >
-                    {analyzingFile ? 'Аналіз файлу...' : extractingData ? 'Отримання даних...' : savingData ? 'Збереження даних...' : 'Імпортувати'}
+                    {analyzingFile ? 'Аналіз файлу...' : extractingData ? 'Отримання даних...' : savingData ? 'Імпорт даних...' : 'Імпортувати'}
                   </button>
                 </div>
               </div>
@@ -760,71 +789,17 @@ function Import() {
             {file && extractingData && (
               <div className="file-import-row">
                 <div className="analyzing-message">
-                  Отримання даних з листів, будь ласка зачекайте...
+                  Отримання даних з файлу, будь ласка зачекайте...
                 </div>
               </div>
             )}
 
             {/* Sheet information */}
-            {sheetInfo && sheetInfo.length > 0 && !sheetsData && (
+            {sheetInfo && sheetInfo.length > 0 && !sheetsData && !dataImported && 
+             !analyzingFile && !extractingData && !savingData && (
               <div className="file-import-row">
                 <div className="sheet-info-message">
                   Знайдено {sheetInfo.length} аркушів Excel. Натисніть кнопку "Імпортувати".
-                </div>
-              </div>
-            )}
-
-            {/* Display extracted data with expandable columns */}
-            {sheetsData && Object.keys(sheetsData).length > 0 && (
-              <div className="extracted-data-container">
-                <h3>Отримані дані листів</h3>
-                <div className="sheets-data-tabs">
-                  {Object.keys(sheetsData).map(sheetName => (
-                    <div key={sheetName} className="sheet-data-summary">
-                      <h4>Лист: {sheetName}</h4>
-                      <div className="sheet-data-info">
-                        <p>Кількість стовпців: {Object.keys(sheetsData[sheetName]).filter(key => key !== 'demp').length}</p>
-                        
-                        {Object.keys(sheetsData[sheetName])
-                          .filter(key => key !== 'demp')
-                          .map(columnName => {
-                            const columnData = sheetsData[sheetName][columnName];
-                            const isExpanded = isColumnExpanded(sheetName, columnName);
-                            const displayData = isExpanded 
-                              ? columnData 
-                              : columnData.slice(0, 5);
-                            
-                            return (
-                              <div key={columnName} className="column-details">
-                                <div 
-                                  className="column-header" 
-                                  onClick={() => toggleColumnExpansion(sheetName, columnName)}
-                                >
-                                  <strong>{columnName}:</strong> {columnData.length} рядків
-                                  <span className="expand-icon">{isExpanded ? '▼' : '►'}</span>
-                                </div>
-                                
-                                {displayData.length > 0 && (
-                                  <div className={`column-values ${isExpanded ? 'expanded' : ''}`}>
-                                    <ul>
-                                      {displayData.map((value, idx) => (
-                                        <li key={idx}>{value}</li>
-                                      ))}
-                                    </ul>
-                                    
-                                    {!isExpanded && columnData.length > 5 && (
-                                      <div className="show-more" onClick={() => toggleColumnExpansion(sheetName, columnName)}>
-                                        Показати ще {columnData.length - 5} рядків...
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -833,7 +808,25 @@ function Import() {
             {file && savingData && (
               <div className="file-import-row">
                 <div className="analyzing-message">
-                  Збереження даних в базу, будь ласка зачекайте...
+                  Дані імпортуються в базу...
+                </div>
+              </div>
+            )}
+
+            {/* Show success message when import complete */}
+            {importStatus === 'success' && (
+              <div className="file-import-row">
+                <div className="success-message">
+                  Дані успішно імпортовано
+                </div>
+              </div>
+            )}
+
+            {/* Show error message if any */}
+            {importStatus === 'error' && error && (
+              <div className="file-import-row">
+                <div className="error-message">
+                  Помилка при імпорті даних: {error}
                 </div>
               </div>
             )}
@@ -847,10 +840,10 @@ function Import() {
           </div>
         )}
 
-        {/* Display imported data in a table after import */}
+        {/* Display data in a table */}
         {importedData && selectedSheet && (
           <div className="imported-table-container">
-            <h3>Таблиця імпортованих даних</h3>
+            <h3>Отримані дані</h3>
             <div className="sheet-tabs">
               {Object.keys(importedData).map(sheetName => (
                 <button
@@ -946,6 +939,38 @@ function Import() {
           border: 1px solid #ffcdd2;
           border-radius: 4px;
           color: #c62828;
+        }
+        .success-message {
+          margin-top: 15px;
+          padding: 12px;
+          background-color: #e8f5e9;
+          border: 1px solid #a5d6a7;
+          border-radius: 4px;
+          color: #2e7d32;
+          text-align: center;
+          font-weight: 600;
+        }
+        .pulsing-button {
+          animation: pulse 2s infinite ease-in-out;
+          position: relative;
+          overflow: visible;
+          background-color: #0062cc;
+          color: white;
+          transition: background-color 0.3s;
+        }
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(0, 98, 204, 0.4);
+            opacity: 1;
+          }
+          50% {
+            box-shadow: 0 0 0 5px rgba(0, 98, 204, 0);
+            opacity: 0.85;
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(0, 98, 204, 0);
+            opacity: 1;
+          }
         }
         .sheet-info-message {
           padding: 10px;

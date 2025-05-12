@@ -413,21 +413,10 @@ async def save_accel_data(
                 # First create a set record in SRTN_ACCEL_SET
                 
                 # Middle level elevation (or null if both are null)
-                lev = None
-                if data.lev1 is not None and data.lev2 is not None:
-                    lev = (data.lev1 + data.lev2) / 2
+                lev = None  # Always set LEV to null
                 
-                # Modified for Oracle - direct insert without RETURNING
-                modified_set_query = text("""
-                    INSERT INTO SRTN_ACCEL_SET(SET_TYPE, BUILDING, ROOM, LEV, LEV1, LEV2, DEMPF, 
-                    PLANT_ID, PLANT_NAME, UNIT_ID, UNIT_NAME, SPECTR_EARTHQ_TYPE, CALC_TYPE) 
-                    VALUES(:set_type, :building, :room, :lev, :lev1, :lev2, :dempf, :plant_id, 
-                    :plant_name, :unit_id, :unit_name, :spectr_type, :calc_type)
-                """)
-                
-                # Remove PGA from parameters
                 set_params = {
-                    "set_type": data.calc_type,  # Детермінистичний/Імовірнісний
+                    "set_type": "ВИМОГИ",  # Always use "ВИМОГИ"
                     "building": data.building,
                     "room": data.room,
                     "lev": lev,
@@ -439,10 +428,15 @@ async def save_accel_data(
                     "unit_id": data.unit_id,
                     "unit_name": unit_name,
                     "spectr_type": spectrum_type,  # МРЗ/ПЗ
-                    "calc_type": data.calc_type
+                    "calc_type": data.calc_type  # ДЕТЕРМІНИСТИЧНИЙ/ІМОВІРНІСНИЙ
                 }
                 
-                db.execute(modified_set_query, set_params)
+                db.execute(text("""
+                    INSERT INTO SRTN_ACCEL_SET(SET_TYPE, BUILDING, ROOM, LEV, LEV1, LEV2, DEMPF, 
+                    PLANT_ID, PLANT_NAME, UNIT_ID, UNIT_NAME, SPECTR_EARTHQ_TYPE, CALC_TYPE) 
+                    VALUES(:set_type, :building, :room, :lev, :lev1, :lev2, :dempf, :plant_id, 
+                    :plant_name, :unit_id, :unit_name, :spectr_type, :calc_type)
+                """), set_params)
                 
                 # Get the last inserted ID using a separate query
                 id_query = text("""
