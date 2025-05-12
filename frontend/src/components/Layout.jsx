@@ -25,7 +25,7 @@ function Layout() {
               to="/import" 
               className={location.pathname === '/import' ? 'active' : ''}
             >
-              📥 Імпорт з Excel
+              📥 Імпорт спектрів
             </Link>
           </li>
           <li>

@@ -566,7 +566,7 @@ function Import() {
 
   return (
     <div className="import-page">
-      <PageHeader title="Імпорт з Excel" />
+      <PageHeader title="Імпорт спектрів" />
       <div className="import-content">
         <form className="import-form">
           <div className="filters">
