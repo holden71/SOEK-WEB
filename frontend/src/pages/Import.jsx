@@ -36,6 +36,7 @@ function Import() {
   const [selectedSheet, setSelectedSheet] = useState(null); // Track selected sheet for table
   const [tableGlobalFilter, setTableGlobalFilter] = useState('');
   const [tableSorting, setTableSorting] = useState([]);
+  const [savingData, setSavingData] = useState(false); // Add state for saving progress
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -371,6 +372,63 @@ function Import() {
     setType(e.target.value);
   };
 
+  // Function to save imported data to database
+  const saveImportedDataToDatabase = async (data) => {
+    if (!data || !selectedPlant || !selectedUnit || !building) {
+      return { success: false, message: 'Missing required data' };
+    }
+
+    setSavingData(true);
+    try {
+      // Transform the imported data into the format expected by the backend
+      const transformedData = {
+        plant_id: selectedPlant,
+        unit_id: selectedUnit,
+        building: building,
+        room: room || null,
+        lev1: lev1 ? parseFloat(lev1) : null,
+        lev2: lev2 ? parseFloat(lev2) : null,
+        pga: pga ? parseFloat(pga) : null,
+        calc_type: type,
+        sheets: {}
+      };
+
+      // For each sheet (representing a DEMPF value)
+      Object.entries(data).forEach(([sheetName, sheetData]) => {
+        // Convert sheet name to DEMPF value (e.g., "5%" -> 5)
+        const dempf = parseFloat(sheetName.replace('%', '').replace(',', '.'));
+        
+        // Add sheet data to transformation
+        transformedData.sheets[sheetName] = {
+          dempf: dempf,
+          data: sheetData
+        };
+      });
+
+      // Send data to backend
+      const response = await fetch('http://localhost:8000/api/save-accel-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transformedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to save data');
+      }
+
+      const result = await response.json();
+      return { success: true, data: result };
+    } catch (err) {
+      console.error('Error saving data to database:', err);
+      return { success: false, message: err.message };
+    } finally {
+      setSavingData(false);
+    }
+  };
+
   // Updated import function that handles all sheets at once
   const handleImport = async (e) => {
     if (e) e.preventDefault();
@@ -450,17 +508,18 @@ function Import() {
       setImportedData(importedTableData);
       setSelectedSheet(Object.keys(importedTableData)[0] || null);
 
+      // Save the data to the database
+      setSavingData(true);
+      const saveResult = await saveImportedDataToDatabase(allData);
+      if (!saveResult.success) {
+        throw new Error(`Помилка при збереженні даних: ${saveResult.message}`);
+      }
+      alert('Дані успішно збережено в базі даних');
+
       // Reset form after successful import
       setSheetsData(null);
       setExpandedColumns({});
-      // Do NOT reset form fields below
-      // setSelectedPlant('');
-      // setSelectedUnit('');
-      // setBuilding('');
-      // setRoom('');
-      // setLev1('');
-      // setLev2('');
-      // setPga('');
+      
       // Only reset the file input
       const fileInput = document.getElementById('file');
       if (fileInput) {
@@ -472,6 +531,7 @@ function Import() {
     } finally {
       setAnalyzingFile(false);
       setExtractingData(false);
+      setSavingData(false);
     }
   };
 
@@ -679,9 +739,9 @@ function Import() {
                     type="button" 
                     className="import-button"
                     onClick={handleImport}
-                    disabled={!file || !selectedPlant || !selectedUnit || !building || analyzingFile || extractingData}
+                    disabled={!file || !selectedPlant || !selectedUnit || !building || analyzingFile || extractingData || savingData}
                   >
-                    {analyzingFile ? 'Аналіз файлу...' : extractingData ? 'Отримання даних...' : 'Імпортувати'}
+                    {analyzingFile ? 'Аналіз файлу...' : extractingData ? 'Отримання даних...' : savingData ? 'Збереження даних...' : 'Імпортувати'}
                   </button>
                 </div>
               </div>
@@ -765,6 +825,15 @@ function Import() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Show message while saving data */}
+            {file && savingData && (
+              <div className="file-import-row">
+                <div className="analyzing-message">
+                  Збереження даних в базу, будь ласка зачекайте...
                 </div>
               </div>
             )}

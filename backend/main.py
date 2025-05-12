@@ -305,6 +305,305 @@ async def extract_sheet_data(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error extracting sheet data: {str(e)}")
 
+class AccelDataItem(BaseModel):
+    dempf: float
+    data: dict
+
+class AccelData(BaseModel):
+    plant_id: int
+    unit_id: int
+    building: str
+    room: str = None
+    lev1: float = None
+    lev2: float = None
+    pga: float = None
+    calc_type: str
+    sheets: dict[str, AccelDataItem]
+
+@app.post("/api/save-accel-data")
+async def save_accel_data(
+    db: DbSessionDep,
+    data: AccelData = Body(...)
+):
+    """
+    Save acceleration data to the database tables: 
+    SRTN_ACCEL_SET, SRTN_ACCEL_PLOT, and SRTN_ACCEL_POINT
+    """
+    try:
+        # Debug: Get actual column names from SRTN_ACCEL_SET table
+        inspector = inspect(db.get_bind())
+        columns = inspector.get_columns('SRTN_ACCEL_SET')
+        column_names = [col['name'] for col in columns]
+        print("Available columns in SRTN_ACCEL_SET:", column_names)
+        
+        # Check if PGA column exists and note its exact name
+        pga_column = None
+        for col in column_names:
+            if col.upper() == 'PGA' or col.upper().startswith('PGA_'):
+                pga_column = col
+                print(f"Found PGA column: {pga_column}")
+                break
+
+        # Get plant and unit names
+        plant_result = db.execute(
+            text("SELECT NAME FROM UNS_PLANTS WHERE PLANT_ID = :plant_id"),
+            {"plant_id": data.plant_id}
+        )
+        plant_name = plant_result.scalar()
+
+        unit_result = db.execute(
+            text("SELECT NAME FROM UNS_UNITS WHERE UNIT_ID = :unit_id"),
+            {"unit_id": data.unit_id}
+        )
+        unit_name = unit_result.scalar()
+
+        if not plant_name or not unit_name:
+            raise HTTPException(status_code=400, detail="Invalid plant or unit ID")
+
+        # Store created record IDs for the response
+        created_records = {
+            "sets": [],
+            "plots": [],
+            "points": 0
+        }
+
+        # Process each sheet
+        for sheet_name, sheet_data in data.sheets.items():
+            dempf = sheet_data.dempf
+            sheet_columns = sheet_data.data
+
+            # Get frequency column
+            freq_column = None
+            for col_name in sheet_columns.keys():
+                if col_name.lower() in ["частота", "частота, гц", "частота,гц", "частота гц", "част", "frequency", "freq", "hz"]:
+                    freq_column = col_name
+                    break
+
+            if not freq_column:
+                # Assume first column is frequency if no clear frequency column found
+                columns = list(sheet_columns.keys())
+                if columns:
+                    freq_column = columns[0]
+                else:
+                    continue  # Skip this sheet if no data
+
+            # Filter to only keep relevant columns
+            valid_spectrum_types = ["МРЗ", "ПЗ"]
+            valid_axes = ["x", "y", "z"]
+            
+            # Find all valid columns that match our pattern (МРЗ_x, МРЗ_y, etc.)
+            relevant_columns = [freq_column]  # Always include frequency column
+            
+            for column_name in sheet_columns.keys():
+                if "_" in column_name:
+                    parts = column_name.split("_")
+                    if len(parts) == 2 and parts[0] in valid_spectrum_types and parts[1].lower() in valid_axes:
+                        relevant_columns.append(column_name)
+            
+            # Only process spectrum types that exist in the relevant columns
+            spectrum_types = set()
+            for column_name in relevant_columns:
+                if "_" in column_name:
+                    spectrum_type = column_name.split("_")[0]
+                    if spectrum_type in valid_spectrum_types:
+                        spectrum_types.add(spectrum_type)
+
+            # Process each spectrum type (МРЗ, ПЗ)
+            for spectrum_type in spectrum_types:
+                # First create a set record in SRTN_ACCEL_SET
+                
+                # Middle level elevation (or null if both are null)
+                lev = None
+                if data.lev1 is not None and data.lev2 is not None:
+                    lev = (data.lev1 + data.lev2) / 2
+                
+                # Modified for Oracle - direct insert without RETURNING
+                modified_set_query = text("""
+                    INSERT INTO SRTN_ACCEL_SET(SET_TYPE, BUILDING, ROOM, LEV, LEV1, LEV2, DEMPF, 
+                    PLANT_ID, PLANT_NAME, UNIT_ID, UNIT_NAME, SPECTR_EARTHQ_TYPE, CALC_TYPE) 
+                    VALUES(:set_type, :building, :room, :lev, :lev1, :lev2, :dempf, :plant_id, 
+                    :plant_name, :unit_id, :unit_name, :spectr_type, :calc_type)
+                """)
+                
+                # Remove PGA from parameters
+                set_params = {
+                    "set_type": data.calc_type,  # Детермінистичний/Імовірнісний
+                    "building": data.building,
+                    "room": data.room,
+                    "lev": lev,
+                    "lev1": data.lev1,
+                    "lev2": data.lev2,
+                    "dempf": dempf,
+                    "plant_id": data.plant_id,
+                    "plant_name": plant_name,
+                    "unit_id": data.unit_id,
+                    "unit_name": unit_name,
+                    "spectr_type": spectrum_type,  # МРЗ/ПЗ
+                    "calc_type": data.calc_type
+                }
+                
+                db.execute(modified_set_query, set_params)
+                
+                # Get the last inserted ID using a separate query
+                id_query = text("""
+                    SELECT ACCEL_SET_ID FROM (
+                        SELECT ACCEL_SET_ID FROM SRTN_ACCEL_SET 
+                        WHERE PLANT_ID = :plant_id 
+                        AND UNIT_ID = :unit_id 
+                        AND BUILDING = :building
+                        AND DEMPF = :dempf
+                        AND SPECTR_EARTHQ_TYPE = :spectr_type
+                        ORDER BY ACCEL_SET_ID DESC
+                    ) WHERE ROWNUM = 1
+                """)
+                
+                id_result = db.execute(id_query, {
+                    "plant_id": data.plant_id,
+                    "unit_id": data.unit_id,
+                    "building": data.building,
+                    "dempf": dempf,
+                    "spectr_type": spectrum_type
+                })
+                
+                set_id = id_result.scalar()
+                created_records["sets"].append(set_id)
+                
+                # If PGA value is provided, add it with a separate update statement
+                if data.pga is not None:
+                    try:
+                        # Try updating with column name we discovered
+                        if pga_column:
+                            update_pga_query = text(f"""
+                                UPDATE SRTN_ACCEL_SET
+                                SET {pga_column} = :pga_value
+                                WHERE ACCEL_SET_ID = :set_id
+                            """)
+                            
+                            db.execute(update_pga_query, {
+                                "pga_value": data.pga,
+                                "set_id": set_id
+                            })
+                        else:
+                            # Try alternative column names if pga_column not found
+                            try_columns = ['FGA', 'PGA']  # Try FGA as alternative
+                            for col_name in try_columns:
+                                try:
+                                    update_query = text(f"""
+                                        UPDATE SRTN_ACCEL_SET
+                                        SET {col_name} = :pga_value
+                                        WHERE ACCEL_SET_ID = :set_id
+                                    """)
+                                    
+                                    db.execute(update_query, {
+                                        "pga_value": data.pga,
+                                        "set_id": set_id
+                                    })
+                                    print(f"Successfully updated {col_name} column")
+                                    break
+                                except Exception as err:
+                                    print(f"Failed to update with column {col_name}: {err}")
+                    except Exception as pga_error:
+                        print(f"Error updating PGA value: {pga_error}")
+                
+                # Create plot records for X, Y, Z axes
+                plot_ids = {}
+                for axis in ["x", "y", "z"]:
+                    column_name = f"{spectrum_type}_{axis}"
+                    if column_name not in sheet_columns:
+                        continue
+                        
+                    modified_plot_query = text("""
+                        INSERT INTO SRTN_ACCEL_PLOT (AXIS, NAME)
+                        VALUES (:axis, :name)
+                    """)
+                    
+                    plot_params = {
+                        "axis": axis.upper(),
+                        "name": column_name
+                    }
+                    
+                    db.execute(modified_plot_query, plot_params)
+                    
+                    # Get the last inserted plot ID
+                    plot_id_query = text("""
+                        SELECT PLOT_ID FROM (
+                            SELECT PLOT_ID FROM SRTN_ACCEL_PLOT 
+                            WHERE AXIS = :axis AND NAME = :name
+                            ORDER BY PLOT_ID DESC
+                        ) WHERE ROWNUM = 1
+                    """)
+                    
+                    plot_id_result = db.execute(plot_id_query, plot_params)
+                    plot_id = plot_id_result.scalar()
+                    
+                    plot_ids[axis] = plot_id
+                    created_records["plots"].append(plot_id)
+                
+                # Update set record with plot IDs
+                update_set_query = text("""
+                    UPDATE SRTN_ACCEL_SET
+                    SET X_PLOT_ID = :x_plot_id, Y_PLOT_ID = :y_plot_id, Z_PLOT_ID = :z_plot_id
+                    WHERE ACCEL_SET_ID = :set_id
+                """)
+                
+                update_set_params = {
+                    "x_plot_id": plot_ids.get("x"),
+                    "y_plot_id": plot_ids.get("y"),
+                    "z_plot_id": plot_ids.get("z"),
+                    "set_id": set_id
+                }
+                
+                db.execute(update_set_query, update_set_params)
+                
+                # Insert frequency-acceleration points for each axis
+                for axis in ["x", "y", "z"]:
+                    column_name = f"{spectrum_type}_{axis}"
+                    if column_name not in sheet_columns or column_name not in relevant_columns or axis not in plot_ids:
+                        continue
+                        
+                    plot_id = plot_ids[axis]
+                    frequencies = sheet_columns.get(freq_column, [])
+                    accelerations = sheet_columns.get(column_name, [])
+                    
+                    # Make sure we have equal number of values
+                    num_points = min(len(frequencies), len(accelerations))
+                    
+                    for i in range(num_points):
+                        try:
+                            freq = float(frequencies[i])
+                            accel = float(accelerations[i])
+                            
+                            point_query = text("""
+                                INSERT INTO SRTN_ACCEL_POINT (FREQ, ACCEL, PLOT_ID)
+                                VALUES (:freq, :accel, :plot_id)
+                            """)
+                            
+                            point_params = {
+                                "freq": freq,
+                                "accel": accel,
+                                "plot_id": plot_id
+                            }
+                            
+                            db.execute(point_query, point_params)
+                            created_records["points"] += 1
+                        except (ValueError, TypeError):
+                            # Skip invalid numeric values
+                            continue
+        
+        # Commit all changes
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Data saved successfully",
+            "created": created_records
+        }
+        
+    except Exception as e:
+        # Rollback in case of error
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error saving acceleration data: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     
