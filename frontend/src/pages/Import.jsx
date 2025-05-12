@@ -372,7 +372,8 @@ function Import() {
   };
 
   // Updated import function that handles all sheets at once
-  const handleImport = async () => {
+  const handleImport = async (e) => {
+    if (e) e.preventDefault();
     if (!file || !selectedPlant || !selectedUnit || !building) {
       alert('Будь ласка, заповніть всі поля та виберіть файл Excel');
       return;
@@ -449,23 +450,18 @@ function Import() {
       setImportedData(importedTableData);
       setSelectedSheet(Object.keys(importedTableData)[0] || null);
 
-      // Finally, perform the actual import
-      alert('Дані успішно імпортовано');
-      
       // Reset form after successful import
-      setFile(null);
-      setSheetInfo(null);
       setSheetsData(null);
       setExpandedColumns({});
-      setSelectedPlant('');
-      setSelectedUnit('');
-      setBuilding('');
-      setRoom('');
-      setLev1('');
-      setLev2('');
-      setPga('');
-      
-      // Reset the file input
+      // Do NOT reset form fields below
+      // setSelectedPlant('');
+      // setSelectedUnit('');
+      // setBuilding('');
+      // setRoom('');
+      // setLev1('');
+      // setLev2('');
+      // setPga('');
+      // Only reset the file input
       const fileInput = document.getElementById('file');
       if (fileInput) {
         fileInput.value = '';
