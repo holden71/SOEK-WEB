@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import '../styles/Import.css';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  getFilteredRowModel,
+  flexRender,
+} from '@tanstack/react-table';
 
 function Import() {
   const [selectedPlant, setSelectedPlant] = useState('');
@@ -24,6 +32,10 @@ function Import() {
   const [sheetsData, setSheetsData] = useState(null); // To store extracted sheet data
   const [extractingData, setExtractingData] = useState(false); // Flag for data extraction in progress
   const [expandedColumns, setExpandedColumns] = useState({}); // Track which columns are expanded
+  const [importedData, setImportedData] = useState(null); // Store imported data for table
+  const [selectedSheet, setSelectedSheet] = useState(null); // Track selected sheet for table
+  const [tableGlobalFilter, setTableGlobalFilter] = useState('');
+  const [tableSorting, setTableSorting] = useState([]);
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -361,22 +373,84 @@ function Import() {
 
   // Updated import function that handles all sheets at once
   const handleImport = async () => {
-    if (!file || !selectedPlant || !selectedUnit || !sheetInfo || sheetInfo.length === 0) {
+    if (!file || !selectedPlant || !selectedUnit || !building) {
       alert('Будь ласка, заповніть всі поля та виберіть файл Excel');
       return;
     }
 
-    // First extract data from all sheets if not already done
-    if (!sheetsData) {
-      await extractAllSheetsData();
-      return; // Stop here after extraction, user can review before actual import
-    }
-
-    // Now proceed with importing the data
     try {
-      // In a real application, you would send the sheetsData to the backend
-      // For now, we just simulate a successful import
-      alert('Дані успішно імпортовано зі всіх листів');
+      // First analyze the file if not already analyzed
+      if (!sheetInfo) {
+        setAnalyzingFile(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('http://localhost:8000/api/analyze-excel?filter_percentage_only=true', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to analyze Excel file');
+        }
+        
+        const data = await response.json();
+        
+        if (data.sheets && data.sheets.length === 0) {
+          throw new Error('В Excel файлі не знайдено листів з іменами у форматі відсотків (наприклад: 4%, 0.2%, 1,2%)');
+        }
+        
+        setSheetInfo(data.sheets);
+        setAnalyzingFile(false);
+      }
+
+      // Then extract data from all sheets
+      setExtractingData(true);
+      const allData = {};
+      
+      for (const sheet of sheetInfo) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('sheet_name', sheet.name);
+        
+        const response = await fetch('http://localhost:8000/api/extract-sheet-data', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to extract data from sheet ${sheet.name}`);
+        }
+        
+        const sheetData = await response.json();
+        if (sheetData) {
+          allData[sheet.name] = sheetData;
+        }
+      }
+      
+      setSheetsData(allData);
+      setExtractingData(false);
+
+      // Prepare data for table: convert columns to array of objects
+      const importedTableData = {};
+      Object.entries(allData).forEach(([sheetName, columns]) => {
+        // columns: { col1: [v1, v2], col2: [v1, v2] }
+        const keys = Object.keys(columns).filter(k => k !== 'demp');
+        const rowCount = columns[keys[0]]?.length || 0;
+        const rows = Array.from({ length: rowCount }, (_, i) => {
+          const row = {};
+          keys.forEach(k => {
+            row[k] = columns[k][i];
+          });
+          return row;
+        });
+        importedTableData[sheetName] = rows;
+      });
+      setImportedData(importedTableData);
+      setSelectedSheet(Object.keys(importedTableData)[0] || null);
+
+      // Finally, perform the actual import
+      alert('Дані успішно імпортовано');
       
       // Reset form after successful import
       setFile(null);
@@ -399,6 +473,9 @@ function Import() {
     } catch (err) {
       setError(err.message || 'Помилка при імпорті даних');
       alert('Помилка при імпорті даних: ' + (err.message || ''));
+    } finally {
+      setAnalyzingFile(false);
+      setExtractingData(false);
     }
   };
 
@@ -608,7 +685,7 @@ function Import() {
                     onClick={handleImport}
                     disabled={!file || !selectedPlant || !selectedUnit || !building || analyzingFile || extractingData}
                   >
-                    {!sheetsData ? 'Отримати дані з усіх листів' : 'Імпортувати'}
+                    {analyzingFile ? 'Аналіз файлу...' : extractingData ? 'Отримання даних...' : 'Імпортувати'}
                   </button>
                 </div>
               </div>
@@ -636,7 +713,7 @@ function Import() {
             {sheetInfo && sheetInfo.length > 0 && !sheetsData && (
               <div className="file-import-row">
                 <div className="sheet-info-message">
-                  Знайдено {sheetInfo.length} аркушів Excel. Натисніть кнопку "Отримати дані з усіх листів".
+                  Знайдено {sheetInfo.length} аркушів Excel. Натисніть кнопку "Імпортувати".
                 </div>
               </div>
             )}
@@ -704,8 +781,93 @@ function Import() {
             {error}
           </div>
         )}
+
+        {/* Display imported data in a table after import */}
+        {importedData && selectedSheet && (
+          <div className="imported-table-container">
+            <h3>Таблиця імпортованих даних</h3>
+            <div className="sheet-tabs">
+              {Object.keys(importedData).map(sheetName => (
+                <button
+                  key={sheetName}
+                  className={`sheet-tab${selectedSheet === sheetName ? ' active' : ''}`}
+                  onClick={() => setSelectedSheet(sheetName)}
+                >
+                  {sheetName}
+                </button>
+              ))}
+            </div>
+            <ImportedSheetTable
+              data={importedData[selectedSheet]}
+              globalFilter={tableGlobalFilter}
+              setGlobalFilter={setTableGlobalFilter}
+              sorting={tableSorting}
+              setSorting={setTableSorting}
+            />
+          </div>
+        )}
       </div>
       <style jsx>{`
+        .imported-table-container {
+          padding: 24px 20px 28px 20px;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+          margin-top: 18px;
+          font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+        }
+        .imported-table-container h3 {
+          font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+          font-size: 1.25rem;
+          font-weight: 700;
+          margin-bottom: 18px;
+        }
+        .sheet-tabs {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 20px;
+          font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+        }
+        .sheet-tab {
+          padding: 8px 22px;
+          border: 2px solid #007bff;
+          border-radius: 8px;
+          background-color: #fff;
+          color: #007bff;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s, border 0.2s, box-shadow 0.2s;
+          outline: none;
+          box-shadow: none;
+          position: relative;
+          z-index: 1;
+          font-family: inherit;
+        }
+        .sheet-tab:not(.active):hover {
+          background-color: #e6f0ff;
+          color: #0056b3;
+          border-color: #0056b3;
+        }
+        .sheet-tab.active {
+          background-color: #007bff;
+          color: #fff;
+          border-color: #007bff;
+          box-shadow: 0 2px 8px rgba(0,123,255,0.10);
+          z-index: 2;
+        }
+        .imported-table-block thead tr {
+          margin-bottom: 12px;
+          display: table-row;
+          font-family: inherit;
+        }
+        .imported-table-block thead {
+          display: table-header-group;
+          font-family: inherit;
+        }
+        .imported-table-block, .imported-table-block table, .imported-table-block td, .imported-table-block th {
+          font-family: inherit;
+        }
         .uppercase-options {
           text-transform: uppercase;
         }
@@ -778,6 +940,160 @@ function Import() {
           overflow: hidden;
         }
       `}</style>
+    </div>
+  );
+}
+
+function ImportedSheetTable({ data, globalFilter, setGlobalFilter, sorting, setSorting }) {
+  const columns = React.useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return Object.keys(data[0]).map(key => ({
+      accessorKey: key,
+      header: key,
+      cell: info => {
+        const content = info.getValue()?.toString() || '';
+        const handleMouseMove = (e) => {
+          const tooltip = e.currentTarget.querySelector('.cell-tooltip');
+          if (tooltip) {
+            const x = e.clientX;
+            const y = e.clientY;
+            tooltip.style.left = `${x + 10}px`;
+            tooltip.style.top = `${y - 10}px`;
+          }
+        };
+        const handleCopy = async (e) => {
+          const element = e.currentTarget;
+          await navigator.clipboard.writeText(content);
+          element.classList.add('copied');
+          const label = document.createElement('span');
+          label.className = 'copy-label';
+          label.textContent = '📋';
+          element.appendChild(label);
+          setTimeout(() => {
+            element.classList.remove('copied');
+            element.removeChild(label);
+          }, 500);
+        };
+        return (
+          <div className="cell-content-wrapper">
+            <div className="cell-content" onClick={handleCopy} onMouseMove={handleMouseMove}>
+              <span className="cell-text">{content}</span>
+              <span className="cell-tooltip">{content}</span>
+            </div>
+          </div>
+        );
+      },
+    }));
+  }, [data]);
+
+  const table = useReactTable({
+    data: data || [],
+    columns,
+    state: { sorting, globalFilter },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: (row, columnId, filterValue) => {
+      const value = row.getValue(columnId);
+      return value?.toString().toLowerCase().includes(filterValue.toLowerCase());
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  });
+
+  return (
+    <div className="imported-table-block">
+      <div className="table-search">
+        <input
+          type="text"
+          value={globalFilter ?? ''}
+          onChange={e => setGlobalFilter(e.target.value)}
+          placeholder="Пошук у таблиці..."
+          className="search-input"
+        />
+        {globalFilter && (
+          <button
+            onClick={() => setGlobalFilter('')}
+            className="clear-search"
+            title="Очистити пошук"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <th key={header.id} onClick={header.column.getToggleSortingHandler()}>
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {{ asc: ' 🔼', desc: ' 🔽' }[header.column.getIsSorted()] ?? null}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          {table.getRowModel().rows.length > 0 ? (
+            <tbody>
+              {table.getRowModel().rows.map(row => (
+                <tr key={row.id}>
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          ) : (
+            <tbody>
+              <tr>
+                <td colSpan={columns.length}>
+                  <div className="no-results">Немає даних для відображення</div>
+                </td>
+              </tr>
+            </tbody>
+          )}
+        </table>
+      </div>
+      {table.getRowModel().rows.length > 0 && (
+        <div className="pagination">
+          <div className="pagination-controls">
+            <div className="pagination-buttons">
+              <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>{'<<'}</button>
+              <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{'<'}</button>
+              <span className="page-info">
+                Сторінка <strong>{table.getState().pagination.pageIndex + 1} з {table.getPageCount()}</strong>
+              </span>
+              <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{'>'}</button>
+              <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>{'>>'}</button>
+            </div>
+            <div className="pagination-right">
+              <input
+                type="number"
+                defaultValue={table.getState().pagination.pageIndex + 1}
+                onChange={e => {
+                  const page = e.target.value ? Number(e.target.value) - 1 : 0;
+                  table.setPageIndex(page);
+                }}
+                className="page-input"
+                title="Go to page"
+              />
+              <select
+                value={table.getState().pagination.pageSize}
+                onChange={e => table.setPageSize(Number(e.target.value))}
+                title="Rows per page"
+              >
+                {[10, 20, 30, 40, 50].map(pageSize => (
+                  <option key={pageSize} value={pageSize}>{pageSize}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
