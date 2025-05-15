@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -24,56 +24,111 @@ function Main() {
   const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupRowId, setPopupRowId] = useState(null);
+  const [popupRowData, setPopupRowData] = useState(null);
+  const [sameTypeCount, setSameTypeCount] = useState(0);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const popupRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const columns = useMemo(() => {
     if (data.length === 0) return [];
     
-    return Object.keys(data[0]).map(key => ({
-      accessorKey: key,
-      header: key,
-      cell: info => {
-        const content = info.getValue()?.toString() || '';
-        
-        const handleMouseMove = (e) => {
-          const tooltip = e.currentTarget.querySelector('.cell-tooltip');
-          if (tooltip) {
-            const x = e.clientX;
-            const y = e.clientY;
-            tooltip.style.left = `${x + 10}px`;
-            tooltip.style.top = `${y - 10}px`;
-          }
-        };
+    return [
+      {
+        id: 'importButton',
+        header: '',
+        size: 50,
+        maxSize: 50,
+        minSize: 50,
+        cell: ({ row }) => {
+          const handleImportClick = (e) => {
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            setPopupPosition({ 
+              x: Math.max(rect.left - 200, 10), 
+              y: rect.bottom 
+            });
+            
+            // Get current row data
+            const rowData = row.original;
+            console.log("Row data:", rowData); // Log to see what we have
+            setPopupRowData(rowData);
+            
+            // Count items with the same ptype_id
+            if (rowData && rowData.ptype_id) {
+              const sameTypeItems = data.filter(item => item.ptype_id === rowData.ptype_id);
+              setSameTypeCount(sameTypeItems.length);
+            } else {
+              setSameTypeCount(0);
+            }
+            
+            setShowPopup(true);
+            setPopupRowId(row.id);
+          };
 
-        const handleCopy = async (e) => {
-          const element = e.currentTarget;
-          await handleCopyContent(content);
-          element.classList.add('copied');
-          const label = document.createElement('span');
-          label.className = 'copy-label';
-          label.textContent = '📋';
-          element.appendChild(label);
-          setTimeout(() => {
-            element.classList.remove('copied');
-            element.removeChild(label);
-          }, 500);
-        };
-
-        return (
-          <div 
-            className="cell-content-wrapper"
-          >
-            <div 
-              className="cell-content"
-              onClick={handleCopy}
-              onMouseMove={handleMouseMove}
-            >
-              <span className="cell-text">{content}</span>
-              <span className="cell-tooltip">{content}</span>
+          return (
+            <div className="import-button-container">
+              <button 
+                className="tiny-import-button" 
+                onClick={handleImportClick}
+                title="Імпорт характеристик"
+              >
+                ↴
+              </button>
             </div>
-          </div>
-        );
+          );
+        },
       },
-    }));
+      ...Object.keys(data[0]).map(key => ({
+        accessorKey: key,
+        header: key,
+        cell: info => {
+          const content = info.getValue()?.toString() || '';
+          
+          const handleMouseMove = (e) => {
+            const tooltip = e.currentTarget.querySelector('.cell-tooltip');
+            if (tooltip) {
+              const x = e.clientX;
+              const y = e.clientY;
+              tooltip.style.left = `${x + 10}px`;
+              tooltip.style.top = `${y - 10}px`;
+            }
+          };
+
+          const handleCopy = async (e) => {
+            const element = e.currentTarget;
+            await handleCopyContent(content);
+            element.classList.add('copied');
+            const label = document.createElement('span');
+            label.className = 'copy-label';
+            label.textContent = '📋';
+            element.appendChild(label);
+            setTimeout(() => {
+              element.classList.remove('copied');
+              element.removeChild(label);
+            }, 500);
+          };
+
+          return (
+            <div 
+              className="cell-content-wrapper"
+            >
+              <div 
+                className="cell-content"
+                onClick={handleCopy}
+                onMouseMove={handleMouseMove}
+              >
+                <span className="cell-text">{content}</span>
+                <span className="cell-tooltip">{content}</span>
+              </div>
+            </div>
+          );
+        },
+      })),
+    ];
   }, [data]);
 
   const table = useReactTable({
@@ -168,6 +223,20 @@ function Main() {
     fetchTerms();
   }, [selectedPlant, selectedUnit]);
 
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (popupRef.current && !popupRef.current.contains(event.target)) {
+        setShowPopup(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handlePlantChange = (e) => {
     setSelectedPlant(e.target.value);
     setSelectedUnit('');
@@ -251,6 +320,13 @@ function Main() {
       await navigator.clipboard.writeText(content);
     } catch (err) {
       console.error('Failed to copy text:', err);
+    }
+  };
+
+  // Function to trigger file input click
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -396,6 +472,102 @@ function Main() {
                     )}
                   </table>
                 </div>
+                {/* Import Popup */}
+                {showPopup && (
+                  <div 
+                    className="import-popup"
+                    style={{ 
+                      position: 'absolute',
+                      left: `${popupPosition.x}px`,
+                      top: `${popupPosition.y}px`,
+                      width: '480px'
+                    }}
+                    ref={popupRef}
+                  >
+                    <div className="import-popup-header">Імпорт характеристик</div>
+                    
+                    {popupRowData && (
+                      <div className="import-popup-element-name">
+                        <div className="element-name-container">
+                          <div className="element-name">
+                            {popupRowData.NAME || popupRowData.name || 'Елемент'}
+                          </div>
+                          {(popupRowData.PTYPE_TXT || popupRowData.ptype_txt || popupRowData.Ptype_Txt) && (
+                            <div className="element-type">
+                              Тип: {popupRowData.PTYPE_TXT || popupRowData.ptype_txt || popupRowData.Ptype_Txt}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="import-popup-content">
+                      <label className="import-option">
+                        <input type="checkbox" /> 
+                        Завантажити для всіх елементів цього типу 
+                        {sameTypeCount > 0 && (
+                          <span className="type-count">(знайдено {sameTypeCount} шт.)</span>
+                        )}
+                      </label>
+                      <label className="import-option">
+                        <input type="checkbox" /> Перезаписати існуючі спектри
+                      </label>
+                      
+                      <div className="import-file-container">
+                        <div className="file-input-label">Файл Excel:</div>
+                        <div className="file-input-container">
+                          <div className="custom-file-input">
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              accept=".xlsx,.xls,.xlsm"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  setSelectedFile(e.target.files[0]);
+                                } else {
+                                  setSelectedFile(null);
+                                }
+                              }}
+                              className="hidden-file-input"
+                            />
+                            <button 
+                              type="button" 
+                              className="select-file-button"
+                              onClick={triggerFileInput}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                                <path d="M8.5 8.5V6.5h2a.5.5 0 0 1 0 1h-2v1.5h2a.5.5 0 0 1 0 1h-2v1.5H10a.5.5 0 0 1 0 1H8.5V14H10a.5.5 0 0 1 0 1H6a.5.5 0 0 1 0-1h1.5v-1.5H6a.5.5 0 0 1 0-1h1.5V10H6a.5.5 0 0 1 0-1h1.5V7.5H6a.5.5 0 0 1 0-1h2V5z"/>
+                              </svg>
+                              Вибрати файл
+                            </button>
+                            <div className="file-display">
+                              {selectedFile ? (
+                                <div className="selected-file">
+                                  <span className="file-name">{selectedFile.name}</span>
+                                  <button
+                                    type="button"
+                                    className="remove-file-button"
+                                    onClick={() => setSelectedFile(null)}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="no-file">
+                                  Файл не вибрано
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="import-popup-footer">
+                      <button className="import-confirm-button">Імпортувати</button>
+                    </div>
+                  </div>
+                )}
                 {table.getRowModel().rows.length > 0 && (
                   <div className="pagination">
                     <div className="pagination-controls">
