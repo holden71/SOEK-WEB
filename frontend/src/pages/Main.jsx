@@ -61,9 +61,15 @@ function Main() {
             console.log("Row data:", rowData); // Log to see what we have
             setPopupRowData(rowData);
             
-            // Count items with the same ptype_id
+            // Count items with the same ptype_id, plant, unit, building and room
             if (rowData && rowData.ptype_id) {
-              const sameTypeItems = data.filter(item => item.ptype_id === rowData.ptype_id);
+              const sameTypeItems = data.filter(item => 
+                item.ptype_id === rowData.ptype_id && 
+                item.PLANT_ID === rowData.PLANT_ID && 
+                item.UNIT_ID === rowData.UNIT_ID && 
+                item.BUILDING === rowData.BUILDING && 
+                item.ROOM === rowData.ROOM
+              );
               setSameTypeCount(sameTypeItems.length);
             } else {
               setSameTypeCount(0);
