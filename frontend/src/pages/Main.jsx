@@ -30,6 +30,10 @@ function Main() {
   const [popupRowData, setPopupRowData] = useState(null);
   const [sameTypeCount, setSameTypeCount] = useState(0);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [importForAllTypes, setImportForAllTypes] = useState(false);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [imported, setImported] = useState(false);
   const popupRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -323,7 +327,194 @@ function Main() {
     }
   };
 
-  // Function to trigger file input click
+  // Function to handle import
+  const handleImport = async () => {
+    if (!selectedFile) {
+      alert('Будь ласка, виберіть файл для імпорту');
+      return;
+    }
+    
+    setImportLoading(true);
+    
+    try {
+      // Step 1: Analyze the Excel file to get basic sheet info
+      const analyzeFormData = new FormData();
+      analyzeFormData.append('file', selectedFile);
+      
+      const analyzeResponse = await fetch('http://localhost:8000/api/analyze-excel', {
+        method: 'POST',
+        body: analyzeFormData,
+      });
+      
+      if (!analyzeResponse.ok) {
+        throw new Error('Помилка при аналізі Excel файлу');
+      }
+      
+      const analyzeData = await analyzeResponse.json();
+      
+      if (!analyzeData.sheets || analyzeData.sheets.length === 0) {
+        throw new Error('В Excel файлі не знайдено листів');
+      }
+      
+      // Get the first sheet only
+      const firstSheet = analyzeData.sheets[0];
+      
+      // Step 2: Extract data from the first sheet
+      const extractFormData = new FormData();
+      extractFormData.append('file', selectedFile);
+      extractFormData.append('sheet_name', firstSheet.name);
+      
+      const extractResponse = await fetch('http://localhost:8000/api/extract-sheet-data', {
+        method: 'POST',
+        body: extractFormData,
+      });
+      
+      if (!extractResponse.ok) {
+        throw new Error(`Помилка при вилученні даних з аркуша ${firstSheet.name}`);
+      }
+      
+      const sheetData = await extractResponse.json();
+      if (!sheetData) {
+        throw new Error('Не вдалося отримати дані з аркуша');
+      }
+      
+      // Step 3: Prepare data for saving to database
+      console.log("Row data for import:", popupRowData);
+      
+      // The backend expects data according to the AccelData model
+      const transformedData = {
+        // AccelData model fields
+        plant_id: selectedPlant,
+        unit_id: selectedUnit,
+        building: popupRowData.BUILDING || popupRowData.building || "",
+        room: popupRowData.ROOM || popupRowData.room || "",
+        lev: popupRowData.LEV || popupRowData.lev || null,
+        lev1: null,
+        lev2: null,
+        pga: null,
+        calc_type: "ДЕТЕРМІНИСТИЧНИЙ",
+        set_type: "ХАРАКТЕРИСТИКИ",
+        
+        // Sheets data - just one sheet
+        sheets: {}
+      };
+      
+      console.log("Transformed data for import:", transformedData);
+      
+      // Process the single sheet
+      const normalizedData = {};
+      let hasFrequencyColumn = false;
+      
+      Object.entries(sheetData).forEach(([colName, colValues]) => {
+        // Check for frequency column
+        if (colName.toLowerCase().includes('частота') || 
+            colName.toLowerCase().includes('frequency') || 
+            colName.toLowerCase().includes('freq') || 
+            colName.toLowerCase().includes('hz')) {
+          normalizedData[colName] = colValues;
+          hasFrequencyColumn = true;
+        } 
+        // Check for spectrum columns (МРЗ_x, МРЗ_y, etc.)
+        else if (colName.includes('_')) {
+          const [spectrumType, axis] = colName.split('_');
+          if (['МРЗ', 'ПЗ'].includes(spectrumType) && ['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axis)) {
+            // Normalize column name to ensure uppercase spectrum type and lowercase axis
+            const normalizedColName = `${spectrumType}_${axis.toLowerCase()}`;
+            normalizedData[normalizedColName] = colValues;
+          } else {
+            // Keep the column as is
+            normalizedData[colName] = colValues;
+          }
+        } else {
+          // Keep other columns as is
+          normalizedData[colName] = colValues;
+        }
+      });
+      
+      // Skip if no frequency column found
+      if (!hasFrequencyColumn) {
+        throw new Error('В аркуші не знайдено стовпчика з частотою');
+      }
+      
+      // Add sheet data to transformation with normalized column names
+      transformedData.sheets[firstSheet.name] = {
+        dempf: null,
+        data: normalizedData
+      };
+      
+      // Step 4: Send data to backend
+      console.log("Sending data to endpoint: /api/save-accel-data");
+      console.log("Request body:", JSON.stringify(transformedData, null, 2));
+      
+      const saveResponse = await fetch('http://localhost:8000/api/save-accel-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transformedData),
+      });
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        console.error("Server error response:", errorData);
+        
+        let errorMessage = 'Помилка при збереженні даних';
+        
+        // Try to extract detailed error message
+        if (errorData.detail) {
+          if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          } else if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => {
+              if (err.loc && err.msg) {
+                const fieldPath = err.loc.join('.');
+                return `Field ${fieldPath}: ${err.msg}`;
+              }
+              return JSON.stringify(err);
+            }).join('\n');
+          } else if (typeof errorData.detail === 'object') {
+            errorMessage = JSON.stringify(errorData.detail);
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      // Successfully imported
+      console.log('Import successful');
+      
+      // Reset selected file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Set imported state instead of showing alert
+      setImported(true);
+      setImportLoading(false);
+    } catch (error) {
+      console.error('Import error:', error);
+      
+      // Format error message for display
+      let errorMessage;
+      if (error.message && error.message.startsWith('[object Object]')) {
+        errorMessage = 'Помилка при імпорті: Неправильний формат даних';
+      } else {
+        errorMessage = `Помилка при імпорті: ${error.message}`;
+      }
+      
+      alert(errorMessage);
+      setImportLoading(false);
+    }
+  };
+
+  // Reset imported state when popup closes
+  useEffect(() => {
+    if (!showPopup) {
+      setImported(false);
+    }
+  }, [showPopup]);
+
+  // Modify the triggerFileInput function to match Import.jsx
   const triggerFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -503,14 +694,22 @@ function Main() {
                     
                     <div className="import-popup-content">
                       <label className="import-option">
-                        <input type="checkbox" /> 
+                        <input 
+                          type="checkbox" 
+                          checked={importForAllTypes}
+                          onChange={(e) => setImportForAllTypes(e.target.checked)}
+                        /> 
                         Завантажити для всіх елементів цього типу 
                         {sameTypeCount > 0 && (
                           <span className="type-count">(знайдено {sameTypeCount} шт.)</span>
                         )}
                       </label>
                       <label className="import-option">
-                        <input type="checkbox" /> Перезаписати існуючі спектри
+                        <input 
+                          type="checkbox" 
+                          checked={overwriteExisting}
+                          onChange={(e) => setOverwriteExisting(e.target.checked)}
+                        /> Перезаписати існуючі спектри
                       </label>
                       
                       <div className="import-file-container">
@@ -564,7 +763,19 @@ function Main() {
                       </div>
                     </div>
                     <div className="import-popup-footer">
-                      <button className="import-confirm-button">Імпортувати</button>
+                      <button 
+                        className={`import-confirm-button ${imported ? 'imported' : ''}`}
+                        onClick={handleImport}
+                        disabled={importLoading || !selectedFile || imported}
+                      >
+                        {importLoading ? (
+                          <span className="button-loading-indicator"></span>
+                        ) : imported ? (
+                          'Імпортовано'
+                        ) : (
+                          'Імпортувати'
+                        )}
+                      </button>
                     </div>
                   </div>
                 )}

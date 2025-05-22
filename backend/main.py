@@ -306,7 +306,7 @@ async def extract_sheet_data(
         raise HTTPException(status_code=500, detail=f"Error extracting sheet data: {str(e)}")
 
 class AccelDataItem(BaseModel):
-    dempf: float
+    dempf: float | None = None  # Make dempf nullable
     data: dict
 
 class AccelData(BaseModel):
@@ -314,10 +314,12 @@ class AccelData(BaseModel):
     unit_id: int
     building: str
     room: str = None
-    lev1: float = None
-    lev2: float = None
-    pga: float = None
+    lev: float | None = None   # Add LEV field
+    lev1: float | None = None  # Using more explicit Union type for None
+    lev2: float | None = None  # Using more explicit Union type for None
+    pga: float | None = None   # Using more explicit Union type for None
     calc_type: str
+    set_type: str = "ВИМОГИ"   # Default to "ВИМОГИ" but allow custom values
     sheets: dict[str, AccelDataItem]
 
 @app.post("/api/save-accel-data")
@@ -369,7 +371,7 @@ async def save_accel_data(
 
         # Process each sheet
         for sheet_name, sheet_data in data.sheets.items():
-            dempf = sheet_data.dempf
+            dempf = sheet_data.dempf  # This can now be None
             sheet_columns = sheet_data.data
 
             # Get frequency column
@@ -412,11 +414,11 @@ async def save_accel_data(
             for spectrum_type in spectrum_types:
                 # First create a set record in SRTN_ACCEL_SET
                 
-                # Middle level elevation (or null if both are null)
-                lev = None  # Always set LEV to null
+                # Use LEV from the data instead of hardcoding to null
+                lev = data.lev
                 
                 set_params = {
-                    "set_type": "ВИМОГИ",  # Always use "ВИМОГИ"
+                    "set_type": data.set_type,
                     "building": data.building,
                     "room": data.room,
                     "lev": lev,
@@ -445,11 +447,14 @@ async def save_accel_data(
                         WHERE PLANT_ID = :plant_id 
                         AND UNIT_ID = :unit_id 
                         AND BUILDING = :building
-                        AND DEMPF = :dempf
+                        AND ((:dempf IS NULL AND DEMPF IS NULL) OR DEMPF = :dempf)
                         AND SPECTR_EARTHQ_TYPE = :spectr_type
                         ORDER BY ACCEL_SET_ID DESC
                     ) WHERE ROWNUM = 1
                 """)
+                
+                # Debug the parameters to check NULL values
+                print(f"Query parameters: plant_id={data.plant_id}, unit_id={data.unit_id}, building={data.building}, dempf={dempf}, spectr_type={spectrum_type}")
                 
                 id_result = db.execute(id_query, {
                     "plant_id": data.plant_id,
@@ -462,7 +467,8 @@ async def save_accel_data(
                 set_id = id_result.scalar()
                 created_records["sets"].append(set_id)
                 
-                # If PGA value is provided, add it with a separate update statement
+                # Only update PGA if it's not None (for Import.jsx)
+                # For Main.jsx imports, data.pga will be null so this section will be skipped
                 if data.pga is not None:
                     try:
                         # Try updating with column name we discovered
