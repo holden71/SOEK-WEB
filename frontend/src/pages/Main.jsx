@@ -69,6 +69,12 @@ function Main() {
               setSameTypeCount(0);
             }
             
+            // Clear selected file when opening popup
+            setSelectedFile(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+            
             setShowPopup(true);
             setPopupRowId(row.id);
           };
@@ -404,6 +410,7 @@ function Main() {
       // Process the single sheet
       const normalizedData = {};
       let hasFrequencyColumn = false;
+      let hasMrzOrPzColumn = false;
       
       Object.entries(sheetData).forEach(([colName, colValues]) => {
         // Check for frequency column
@@ -421,6 +428,7 @@ function Main() {
             // Normalize column name to ensure uppercase spectrum type and lowercase axis
             const normalizedColName = `${spectrumType}_${axis.toLowerCase()}`;
             normalizedData[normalizedColName] = colValues;
+            hasMrzOrPzColumn = true;
           } else {
             // Keep the column as is
             normalizedData[colName] = colValues;
@@ -434,6 +442,11 @@ function Main() {
       // Skip if no frequency column found
       if (!hasFrequencyColumn) {
         throw new Error('В аркуші не знайдено стовпчика з частотою');
+      }
+      
+      // Skip if no MRZ or PZ columns found
+      if (!hasMrzOrPzColumn) {
+        throw new Error('В аркуші відсутні стовпчики МРЗ або ПЗ');
       }
       
       // Add sheet data to transformation with normalized column names
@@ -733,6 +746,7 @@ function Main() {
                               type="button" 
                               className="select-file-button"
                               onClick={triggerFileInput}
+                              onFocus={(e) => e.target.blur()}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
                                 <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
@@ -764,7 +778,7 @@ function Main() {
                     </div>
                     <div className="import-popup-footer">
                       <button 
-                        className={`import-confirm-button ${imported ? 'imported' : ''}`}
+                        className={`import-confirm-button ${imported ? 'imported' : ''} ${!selectedFile ? 'disabled' : ''}`}
                         onClick={handleImport}
                         disabled={importLoading || !selectedFile || imported}
                       >
