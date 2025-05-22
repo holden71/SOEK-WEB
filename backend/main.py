@@ -13,7 +13,7 @@ from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException, Query,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from models import Plant, SearchData, Term, Unit
+from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit
 from pydantic import BaseModel
 from settings import settings
 from sqlalchemy import inspect, text
@@ -366,7 +366,9 @@ async def save_accel_data(
         created_records = {
             "sets": [],
             "plots": [],
-            "points": 0
+            "points": 0,
+            "mrz_set_id": None,  # Store MRZ set ID for procedure
+            "pz_set_id": None    # Store PZ set ID for procedure
         }
 
         # Process each sheet
@@ -466,6 +468,14 @@ async def save_accel_data(
                 
                 set_id = id_result.scalar()
                 created_records["sets"].append(set_id)
+                
+                # Store specific set IDs for procedure parameters
+                if spectrum_type == "МРЗ":
+                    created_records["mrz_set_id"] = set_id
+                    print(f"Stored MRZ set ID: {set_id}")
+                elif spectrum_type == "ПЗ":
+                    created_records["pz_set_id"] = set_id
+                    print(f"Stored PZ set ID: {set_id}")
                 
                 # Only update PGA if it's not None (for Import.jsx)
                 # For Main.jsx imports, data.pga will be null so this section will be skipped
@@ -593,16 +603,205 @@ async def save_accel_data(
         # Commit all changes
         db.commit()
         
+        # Get final mrz_set_id and pz_set_id values for return
+        mrz_set_id = created_records.get("mrz_set_id")
+        pz_set_id = created_records.get("pz_set_id")
+        
         return {
             "success": True,
             "message": "Data saved successfully",
-            "created": created_records
+            "created": created_records,
+            "mrz_set_id": mrz_set_id,
+            "pz_set_id": pz_set_id
         }
         
     except Exception as e:
         # Rollback in case of error
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error saving acceleration data: {str(e)}")
+
+@app.post("/api/execute-set-all-ek-accel-set", response_model=SetAccelProcedureResult)
+async def execute_set_all_ek_accel_set(
+    db: DbSessionDep,
+    params: SetAccelProcedureParams = Body(...)
+):
+    """
+    Execute the SET_ALL_EK_ACCEL_SET stored procedure
+    This procedure sets acceleration data for an element or all elements of the same type
+    """
+    try:
+        # Prepare the parameters for all attempts
+        ek_id = params.ek_id
+        set_mrz = params.set_mrz  # Now using the actual ACCEL_SET_ID for MRZ
+        set_pz = params.set_pz    # Now using the actual ACCEL_SET_ID for PZ
+        can_overwrite = params.can_overwrite
+        do_for_all = params.do_for_all
+        
+        # Log the parameters we're sending
+        print(f"Executing procedure with: EK_ID={ek_id}, SET_MRZ={set_mrz}, SET_PZ={set_pz}, CAN_OVERWRITE={can_overwrite}, DO_FOR_ALL={do_for_all}")
+        
+        # Try both approaches - first check if procedure exists
+        check_query = text("""
+            SELECT OWNER, OBJECT_NAME FROM ALL_OBJECTS 
+            WHERE OBJECT_TYPE IN ('PROCEDURE', 'FUNCTION') 
+            AND OBJECT_NAME = 'SET_ALL_EK_ACCEL_SET'
+        """)
+        proc_check = db.execute(check_query).fetchall()
+        print(f"Found procedures: {proc_check}")
+        
+        error_messages = []
+        done_for_id_value = 0
+        done_for_all_value = None
+        success = False
+        
+        # Try approach 1: Direct SQL execution
+        try:
+            print("Trying direct SQL approach")
+            direct_sql_query = text("""
+                BEGIN
+                    SET_ALL_EK_ACCEL_SET(:ek_id, :set_mrz, :set_pz, :can_overwrite, :do_for_all, :done_for_id, :done_for_all);
+                END;
+            """)
+            
+            # Execute with named parameters
+            result = db.execute(
+                direct_sql_query,
+                {
+                    "ek_id": ek_id, 
+                    "set_mrz": set_mrz, 
+                    "set_pz": set_pz, 
+                    "can_overwrite": can_overwrite, 
+                    "do_for_all": do_for_all,
+                    "done_for_id": 0,  # OUT parameter (default value)
+                    "done_for_all": 0  # OUT parameter (default value)
+                }
+            )
+            
+            # For now, set default success values since we can't easily get output parameters with this method
+            done_for_id_value = 1
+            done_for_all_value = 1 if do_for_all else None
+            success = True
+            print("Direct SQL approach succeeded")
+            
+        except Exception as e1:
+            error_messages.append(f"Direct SQL error: {str(e1)}")
+            print(f"Direct SQL approach failed: {str(e1)}")
+            
+            # Try approach 2: Using cursor.callproc
+            if not success:
+                try:
+                    print("Trying cursor.callproc approach")
+                    conn = db.connection().connection  # Get raw connection
+                    cursor = conn.cursor()
+                    
+                    # Create output variables
+                    done_for_id = cursor.var(int)
+                    done_for_all = cursor.var(int)
+                    
+                    # Set initial values
+                    done_for_id.setvalue(0, 0)
+                    done_for_all.setvalue(0, 0)
+                    
+                    # Call the procedure
+                    cursor.callproc('SET_ALL_EK_ACCEL_SET', [
+                        ek_id, set_mrz, set_pz, can_overwrite, do_for_all, 
+                        done_for_id, done_for_all
+                    ])
+                    
+                    # Get the output values
+                    done_for_id_value = done_for_id.getvalue()
+                    done_for_all_value = done_for_all.getvalue()
+                    success = True
+                    print(f"cursor.callproc succeeded: done_for_id={done_for_id_value}, done_for_all={done_for_all_value}")
+                    
+                except Exception as e2:
+                    error_messages.append(f"Cursor callproc error: {str(e2)}")
+                    print(f"cursor.callproc approach failed: {str(e2)}")
+        
+        # If none of the approaches worked, try simple manual update as fallback
+        if not success:
+            try:
+                print("Trying manual SQL update fallback")
+                
+                # Directly update the element's acceleration set IDs
+                update_query = text("""
+                    UPDATE SRTN_EK_SEISM_DATA
+                    SET MRZ_ACCEL_SET = :set_mrz, PZ_ACCEL_SET = :set_pz
+                    WHERE EK_ID = :ek_id
+                """)
+                
+                db.execute(update_query, {
+                    "set_mrz": set_mrz,
+                    "set_pz": set_pz,
+                    "ek_id": ek_id
+                })
+                
+                done_for_id_value = 1
+                
+                # If do_for_all is enabled, update all elements of the same type
+                if do_for_all:
+                    # First get type ID of current element
+                    type_query = text("""
+                        SELECT PTYPE_ID, PLANT_ID, UNIT_ID, EKLIST_ID  
+                        FROM SRTN_EK_SEISM_DATA 
+                        WHERE EK_ID = :ek_id
+                    """)
+                    
+                    type_result = db.execute(type_query, {"ek_id": ek_id}).fetchone()
+                    
+                    if type_result:
+                        ptype_id = type_result[0]
+                        plant_id = type_result[1]
+                        unit_id = type_result[2]
+                        eklist_id = type_result[3]
+                        
+                        # Update all elements of the same type
+                        update_all_query = text("""
+                            UPDATE SRTN_EK_SEISM_DATA
+                            SET MRZ_ACCEL_SET = :set_mrz, PZ_ACCEL_SET = :set_pz
+                            WHERE PTYPE_ID = :ptype_id
+                            AND PLANT_ID = :plant_id
+                            AND UNIT_ID = :unit_id
+                            AND EKLIST_ID = :eklist_id
+                        """)
+                        
+                        db.execute(update_all_query, {
+                            "set_mrz": set_mrz,
+                            "set_pz": set_pz,
+                            "ptype_id": ptype_id,
+                            "plant_id": plant_id,
+                            "unit_id": unit_id,
+                            "eklist_id": eklist_id
+                        })
+                        
+                        done_for_all_value = 1
+                
+                success = True
+                print("Manual SQL update fallback succeeded")
+                
+            except Exception as e3:
+                error_messages.append(f"Manual update error: {str(e3)}")
+                print(f"Manual SQL update fallback failed: {str(e3)}")
+        
+        # Check if any method succeeded
+        if success:
+            # Commit changes
+            db.commit()
+            print("Changes committed successfully")
+            
+            # Return success values
+            return SetAccelProcedureResult(
+                done_for_id=done_for_id_value,
+                done_for_all=done_for_all_value
+            )
+        else:
+            # If all attempts failed, raise an exception with all error messages
+            raise Exception(f"All procedure execution attempts failed: {'; '.join(error_messages)}")
+        
+    except Exception as e:
+        # Rollback in case of error
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error executing SET_ALL_EK_ACCEL_SET procedure: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -34,6 +34,7 @@ function Main() {
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [imported, setImported] = useState(false);
+  const [importResults, setImportResults] = useState(null);
   const popupRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -61,15 +62,9 @@ function Main() {
             console.log("Row data:", rowData); // Log to see what we have
             setPopupRowData(rowData);
             
-            // Count items with the same ptype_id, plant, unit, building and room
+            // Count items with the same ptype_id
             if (rowData && rowData.ptype_id) {
-              const sameTypeItems = data.filter(item => 
-                item.ptype_id === rowData.ptype_id && 
-                item.PLANT_ID === rowData.PLANT_ID && 
-                item.UNIT_ID === rowData.UNIT_ID && 
-                item.BUILDING === rowData.BUILDING && 
-                item.ROOM === rowData.ROOM
-              );
+              const sameTypeItems = data.filter(item => item.ptype_id === rowData.ptype_id);
               setSameTypeCount(sameTypeItems.length);
             } else {
               setSameTypeCount(0);
@@ -80,6 +75,10 @@ function Main() {
             if (fileInputRef.current) {
               fileInputRef.current.value = '';
             }
+            
+            // Reset import state
+            setImported(false);
+            setImportResults(null);
             
             setShowPopup(true);
             setPopupRowId(row.id);
@@ -499,6 +498,76 @@ function Main() {
         throw new Error(errorMessage);
       }
       
+      // Get the response data including the created set IDs
+      const savedData = await saveResponse.json();
+      console.log('Save response:', savedData);
+      
+      // Step 5: Call the stored procedure to set data for all elements if needed
+      const ekId = popupRowData.EK_ID || popupRowData.ek_id;
+      
+      if (!ekId) {
+        throw new Error('Не вдалося отримати ID елемента');
+      }
+      
+      // Extract the MRZ and PZ set IDs from the response
+      const mrzSetId = savedData.mrz_set_id || 0;
+      const pzSetId = savedData.pz_set_id || 0;
+      
+      const procedureParams = {
+        ek_id: ekId,
+        set_mrz: mrzSetId,
+        set_pz: pzSetId,
+        can_overwrite: overwriteExisting ? 1 : 0,
+        do_for_all: importForAllTypes ? 1 : 0
+      };
+      
+      console.log("Calling stored procedure with params:", procedureParams);
+      
+      const procedureResponse = await fetch('http://localhost:8000/api/execute-set-all-ek-accel-set', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(procedureParams),
+      });
+      
+      if (!procedureResponse.ok) {
+        const procedureError = await procedureResponse.json();
+        console.error("Procedure error:", procedureError);
+        throw new Error('Помилка при виконанні процедури SET_ALL_EK_ACCEL_SET');
+      }
+      
+      // Get raw response and log it for debugging
+      const procedureResult = await procedureResponse.json();
+      console.log("Raw procedure result:", procedureResult);
+      console.log("Raw done_for_id:", procedureResult.done_for_id, "type:", typeof procedureResult.done_for_id);
+      console.log("Raw done_for_all:", procedureResult.done_for_all, "type:", typeof procedureResult.done_for_all);
+      
+      // IMPORTANT: Force all zero values to be recognized as failures
+      // The exact data type might be causing issues, so we'll do a string comparison
+      const doneForIdIsZero = String(procedureResult.done_for_id) === "0";
+      const doneForAllIsZero = String(procedureResult.done_for_all) === "0";
+      
+      console.log("doneForIdIsZero:", doneForIdIsZero);
+      console.log("doneForAllIsZero:", doneForAllIsZero);
+      
+      // Store results with explicit flags for zero values
+      setImportResults({
+        done_for_id: procedureResult.done_for_id,
+        done_for_all: procedureResult.done_for_all,
+        done_for_id_is_zero: doneForIdIsZero,
+        done_for_all_is_zero: doneForAllIsZero
+      });
+      
+      // Log warnings for non-success cases
+      if (procedureResult.done_for_id !== 1) {
+        console.warn('Помилка при встановленні даних для елемента');
+      }
+      
+      if (importForAllTypes && procedureResult.done_for_all !== 1) {
+        console.warn('Не всі елементи було оновлено успішно');
+      }
+      
       // Successfully imported
       console.log('Import successful');
       
@@ -507,7 +576,7 @@ function Main() {
         fileInputRef.current.value = '';
       }
       
-      // Set imported state instead of showing alert
+      // Set imported state
       setImported(true);
       setImportLoading(false);
     } catch (error) {
@@ -782,7 +851,25 @@ function Main() {
                         </div>
                       </div>
                     </div>
-                    <div className="import-popup-footer">
+                                        <div className="import-popup-footer">
+                      <div className="import-result-container">
+                        {imported && importResults && (
+                          <div className="import-results">
+                            <div className={`result-item ${importResults.done_for_id_is_zero ? 'fail' : 'success'}`}>
+                              Імпорт для елемента: {importResults.done_for_id_is_zero ? 'Помилка' : 'Успішно'} 
+                              {importResults.done_for_id !== undefined && ` (${importResults.done_for_id})`}
+                            </div>
+                            
+                            {importForAllTypes && importResults.done_for_all_is_zero && (
+                              <div className={`result-item ${importResults.done_for_all_is_zero ? 'fail' : 'success'}`}>
+                                Імпорт для всіх елементів: {importResults.done_for_all_is_zero ? 'Помилка' : 'Успішно'}
+                                {importResults.done_for_all !== undefined && ` (${importResults.done_for_all})`}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
                       <button 
                         className={`import-confirm-button ${imported ? 'imported' : ''} ${!selectedFile ? 'disabled' : ''}`}
                         onClick={handleImport}

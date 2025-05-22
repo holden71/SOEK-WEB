@@ -743,8 +743,38 @@ th {
 .main-page .import-popup-footer {
   padding: 8px 12px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   border-top: 1px solid #ddd;
+}
+
+.main-page .import-result-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.main-page .import-results {
+  font-size: 13px;
+  margin-right: 12px;
+}
+
+.main-page .result-item {
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.main-page .result-item.success {
+  color: #28a745;
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.main-page .result-item.fail {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
 }
 
 .main-page .import-confirm-button {
