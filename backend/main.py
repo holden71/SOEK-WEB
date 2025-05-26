@@ -630,177 +630,75 @@ async def execute_set_all_ek_accel_set(
     This procedure sets acceleration data for an element or all elements of the same type
     """
     try:
-        # Prepare the parameters for all attempts
+        # Prepare the parameters
         ek_id = params.ek_id
-        set_mrz = params.set_mrz  # Now using the actual ACCEL_SET_ID for MRZ
-        set_pz = params.set_pz    # Now using the actual ACCEL_SET_ID for PZ
+        set_mrz = params.set_mrz
+        set_pz = params.set_pz
         can_overwrite = params.can_overwrite
         do_for_all = params.do_for_all
+        clear_sets = params.clear_sets
         
-        # Log the parameters we're sending
-        print(f"Executing procedure with: EK_ID={ek_id}, SET_MRZ={set_mrz}, SET_PZ={set_pz}, CAN_OVERWRITE={can_overwrite}, DO_FOR_ALL={do_for_all}")
+        # Log input parameters
+        print(f"Executing procedure with: EK_ID={ek_id}, SET_MRZ={set_mrz}, SET_PZ={set_pz}, CAN_OVERWRITE={can_overwrite}, DO_FOR_ALL={do_for_all}, CLEAR_SETS={clear_sets}")
         
-        # Try both approaches - first check if procedure exists
-        check_query = text("""
-            SELECT OWNER, OBJECT_NAME FROM ALL_OBJECTS 
-            WHERE OBJECT_TYPE IN ('PROCEDURE', 'FUNCTION') 
-            AND OBJECT_NAME = 'SET_ALL_EK_ACCEL_SET'
-        """)
-        proc_check = db.execute(check_query).fetchall()
-        print(f"Found procedures: {proc_check}")
+        # Execute procedure using cursor.callproc (most reliable approach)
+        conn = db.connection().connection
+        cursor = conn.cursor()
         
-        error_messages = []
-        done_for_id_value = 0
-        done_for_all_value = None
-        success = False
+        # Create output variables for all 7 output parameters
+        done_for_id_mrz = cursor.var(int)
+        done_for_id_pz = cursor.var(int)
+        done_for_all_mrz = cursor.var(int)
+        done_for_all_pz = cursor.var(int)
+        total_ek = cursor.var(int)
+        processed_mrz = cursor.var(int)
+        processed_pz = cursor.var(int)
         
-        # Try approach 1: Direct SQL execution
-        try:
-            print("Trying direct SQL approach")
-            direct_sql_query = text("""
-                BEGIN
-                    SET_ALL_EK_ACCEL_SET(:ek_id, :set_mrz, :set_pz, :can_overwrite, :do_for_all, :done_for_id, :done_for_all);
-                END;
-            """)
-            
-            # Execute with named parameters
-            result = db.execute(
-                direct_sql_query,
-                {
-                    "ek_id": ek_id, 
-                    "set_mrz": set_mrz, 
-                    "set_pz": set_pz, 
-                    "can_overwrite": can_overwrite, 
-                    "do_for_all": do_for_all,
-                    "done_for_id": 0,  # OUT parameter (default value)
-                    "done_for_all": 0  # OUT parameter (default value)
-                }
-            )
-            
-            # For now, set default success values since we can't easily get output parameters with this method
-            done_for_id_value = 1
-            done_for_all_value = 1 if do_for_all else None
-            success = True
-            print("Direct SQL approach succeeded")
-            
-        except Exception as e1:
-            error_messages.append(f"Direct SQL error: {str(e1)}")
-            print(f"Direct SQL approach failed: {str(e1)}")
-            
-            # Try approach 2: Using cursor.callproc
-            if not success:
-                try:
-                    print("Trying cursor.callproc approach")
-                    conn = db.connection().connection  # Get raw connection
-                    cursor = conn.cursor()
-                    
-                    # Create output variables
-                    done_for_id = cursor.var(int)
-                    done_for_all = cursor.var(int)
-                    
-                    # Set initial values
-                    done_for_id.setvalue(0, 0)
-                    done_for_all.setvalue(0, 0)
-                    
-                    # Call the procedure
-                    cursor.callproc('SET_ALL_EK_ACCEL_SET', [
-                        ek_id, set_mrz, set_pz, can_overwrite, do_for_all, 
-                        done_for_id, done_for_all
-                    ])
-                    
-                    # Get the output values
-                    done_for_id_value = done_for_id.getvalue()
-                    done_for_all_value = done_for_all.getvalue()
-                    success = True
-                    print(f"cursor.callproc succeeded: done_for_id={done_for_id_value}, done_for_all={done_for_all_value}")
-                    
-                except Exception as e2:
-                    error_messages.append(f"Cursor callproc error: {str(e2)}")
-                    print(f"cursor.callproc approach failed: {str(e2)}")
+        # Call the procedure with updated signature
+        cursor.callproc('SET_ALL_EK_ACCEL_SET', [
+            ek_id, set_mrz, set_pz, can_overwrite, do_for_all, clear_sets,
+            done_for_id_mrz, done_for_id_pz, done_for_all_mrz, done_for_all_pz,
+            total_ek, processed_mrz, processed_pz
+        ])
         
-        # If none of the approaches worked, try simple manual update as fallback
-        if not success:
-            try:
-                print("Trying manual SQL update fallback")
-                
-                # Directly update the element's acceleration set IDs
-                update_query = text("""
-                    UPDATE SRTN_EK_SEISM_DATA
-                    SET MRZ_ACCEL_SET = :set_mrz, PZ_ACCEL_SET = :set_pz
-                    WHERE EK_ID = :ek_id
-                """)
-                
-                db.execute(update_query, {
-                    "set_mrz": set_mrz,
-                    "set_pz": set_pz,
-                    "ek_id": ek_id
-                })
-                
-                done_for_id_value = 1
-                
-                # If do_for_all is enabled, update all elements of the same type
-                if do_for_all:
-                    # First get type ID of current element
-                    type_query = text("""
-                        SELECT PTYPE_ID, PLANT_ID, UNIT_ID, EKLIST_ID  
-                        FROM SRTN_EK_SEISM_DATA 
-                        WHERE EK_ID = :ek_id
-                    """)
-                    
-                    type_result = db.execute(type_query, {"ek_id": ek_id}).fetchone()
-                    
-                    if type_result:
-                        ptype_id = type_result[0]
-                        plant_id = type_result[1]
-                        unit_id = type_result[2]
-                        eklist_id = type_result[3]
-                        
-                        # Update all elements of the same type
-                        update_all_query = text("""
-                            UPDATE SRTN_EK_SEISM_DATA
-                            SET MRZ_ACCEL_SET = :set_mrz, PZ_ACCEL_SET = :set_pz
-                            WHERE PTYPE_ID = :ptype_id
-                            AND PLANT_ID = :plant_id
-                            AND UNIT_ID = :unit_id
-                            AND EKLIST_ID = :eklist_id
-                        """)
-                        
-                        db.execute(update_all_query, {
-                            "set_mrz": set_mrz,
-                            "set_pz": set_pz,
-                            "ptype_id": ptype_id,
-                            "plant_id": plant_id,
-                            "unit_id": unit_id,
-                            "eklist_id": eklist_id
-                        })
-                        
-                        done_for_all_value = 1
-                
-                success = True
-                print("Manual SQL update fallback succeeded")
-                
-            except Exception as e3:
-                error_messages.append(f"Manual update error: {str(e3)}")
-                print(f"Manual SQL update fallback failed: {str(e3)}")
+        # Get the output values
+        done_for_id_mrz_value = done_for_id_mrz.getvalue()
+        done_for_id_pz_value = done_for_id_pz.getvalue()
+        done_for_all_mrz_value = done_for_all_mrz.getvalue() if do_for_all else None
+        done_for_all_pz_value = done_for_all_pz.getvalue() if do_for_all else None
+        total_ek_value = total_ek.getvalue()
+        processed_mrz_value = processed_mrz.getvalue()
+        processed_pz_value = processed_pz.getvalue()
         
-        # Check if any method succeeded
-        if success:
-            # Commit changes
-            db.commit()
-            print("Changes committed successfully")
-            
-            # Return success values
-            return SetAccelProcedureResult(
-                done_for_id=done_for_id_value,
-                done_for_all=done_for_all_value
-            )
-        else:
-            # If all attempts failed, raise an exception with all error messages
-            raise Exception(f"All procedure execution attempts failed: {'; '.join(error_messages)}")
+        # Log results
+        print(f"Procedure results:")
+        print(f"  done_for_id_mrz={done_for_id_mrz_value}, done_for_id_pz={done_for_id_pz_value}")
+        print(f"  done_for_all_mrz={done_for_all_mrz_value}, done_for_all_pz={done_for_all_pz_value}")
+        print(f"  total_ek={total_ek_value}, processed_mrz={processed_mrz_value}, processed_pz={processed_pz_value}")
+        print(f"Element MRZ update: {'Success' if done_for_id_mrz_value == 1 else 'Failed'}")
+        print(f"Element PZ update: {'Success' if done_for_id_pz_value == 1 else 'Failed'}")
+        if do_for_all:
+            print(f"All elements MRZ update: {'Success' if done_for_all_mrz_value == 1 else 'Failed'}")
+            print(f"All elements PZ update: {'Success' if done_for_all_pz_value == 1 else 'Failed'}")
+        
+        # Commit changes
+        db.commit()
+        
+        # Return values directly from procedure
+        return SetAccelProcedureResult(
+            done_for_id_mrz=done_for_id_mrz_value,
+            done_for_id_pz=done_for_id_pz_value,
+            done_for_all_mrz=done_for_all_mrz_value,
+            done_for_all_pz=done_for_all_pz_value,
+            total_ek=total_ek_value,
+            processed_mrz=processed_mrz_value,
+            processed_pz=processed_pz_value
+        )
         
     except Exception as e:
         # Rollback in case of error
         db.rollback()
+        print(f"Procedure execution failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error executing SET_ALL_EK_ACCEL_SET procedure: {str(e)}")
 
 if __name__ == "__main__":

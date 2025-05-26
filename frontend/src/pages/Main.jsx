@@ -32,6 +32,7 @@ function Main() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [importForAllTypes, setImportForAllTypes] = useState(false);
   const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [clearSets, setClearSets] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [imported, setImported] = useState(false);
   const [importResults, setImportResults] = useState(null);
@@ -79,6 +80,7 @@ function Main() {
             // Reset import state
             setImported(false);
             setImportResults(null);
+            setClearSets(false);
             
             setShowPopup(true);
             setPopupRowId(row.id);
@@ -518,7 +520,8 @@ function Main() {
         set_mrz: mrzSetId,
         set_pz: pzSetId,
         can_overwrite: overwriteExisting ? 1 : 0,
-        do_for_all: importForAllTypes ? 1 : 0
+        do_for_all: importForAllTypes ? 1 : 0,
+        clear_sets: clearSets ? 1 : 0
       };
       
       console.log("Calling stored procedure with params:", procedureParams);
@@ -540,32 +543,75 @@ function Main() {
       // Get raw response and log it for debugging
       const procedureResult = await procedureResponse.json();
       console.log("Raw procedure result:", procedureResult);
-      console.log("Raw done_for_id:", procedureResult.done_for_id, "type:", typeof procedureResult.done_for_id);
-      console.log("Raw done_for_all:", procedureResult.done_for_all, "type:", typeof procedureResult.done_for_all);
+      console.log("Raw done_for_id_mrz:", procedureResult.done_for_id_mrz, "type:", typeof procedureResult.done_for_id_mrz);
+      console.log("Raw done_for_id_pz:", procedureResult.done_for_id_pz, "type:", typeof procedureResult.done_for_id_pz);
+      console.log("Raw done_for_all_mrz:", procedureResult.done_for_all_mrz, "type:", typeof procedureResult.done_for_all_mrz);
+      console.log("Raw done_for_all_pz:", procedureResult.done_for_all_pz, "type:", typeof procedureResult.done_for_all_pz);
+      console.log("Raw total_ek:", procedureResult.total_ek, "type:", typeof procedureResult.total_ek);
+      console.log("Raw processed_mrz:", procedureResult.processed_mrz, "type:", typeof procedureResult.processed_mrz);
+      console.log("Raw processed_pz:", procedureResult.processed_pz, "type:", typeof procedureResult.processed_pz);
       
-      // IMPORTANT: Force all zero values to be recognized as failures
-      // The exact data type might be causing issues, so we'll do a string comparison
-      const doneForIdIsZero = String(procedureResult.done_for_id) === "0";
-      const doneForAllIsZero = String(procedureResult.done_for_all) === "0";
+      // Compare values directly to 1 (success) for element updates
+      const isElementMrzSuccess = procedureResult.done_for_id_mrz === 1;
+      const isElementPzSuccess = procedureResult.done_for_id_pz === 1;
+      const isElementUpdateSuccess = isElementMrzSuccess && isElementPzSuccess;
       
-      console.log("doneForIdIsZero:", doneForIdIsZero);
-      console.log("doneForAllIsZero:", doneForAllIsZero);
+      // For all elements updates (only relevant if importForAllTypes is true)
+      let isAllElementsMrzSuccess = null;
+      let isAllElementsPzSuccess = null;
+      let isAllElementsUpdateSuccess = null;
       
-      // Store results with explicit flags for zero values
+      if (importForAllTypes) {
+        isAllElementsMrzSuccess = procedureResult.done_for_all_mrz === 1;
+        isAllElementsPzSuccess = procedureResult.done_for_all_pz === 1;
+        isAllElementsUpdateSuccess = isAllElementsMrzSuccess && isAllElementsPzSuccess;
+      }
+      
+      console.log("Element MRZ update success:", isElementMrzSuccess);
+      console.log("Element PZ update success:", isElementPzSuccess);
+      console.log("Overall element update success:", isElementUpdateSuccess);
+      
+      if (importForAllTypes) {
+        console.log("All elements MRZ update success:", isAllElementsMrzSuccess);
+        console.log("All elements PZ update success:", isAllElementsPzSuccess);
+        console.log("Overall all elements update success:", isAllElementsUpdateSuccess);
+      }
+      
+      // Store results with detailed information
       setImportResults({
-        done_for_id: procedureResult.done_for_id,
-        done_for_all: procedureResult.done_for_all,
-        done_for_id_is_zero: doneForIdIsZero,
-        done_for_all_is_zero: doneForAllIsZero
+        // Raw procedure results
+        done_for_id_mrz: procedureResult.done_for_id_mrz,
+        done_for_id_pz: procedureResult.done_for_id_pz,
+        done_for_all_mrz: procedureResult.done_for_all_mrz,
+        done_for_all_pz: procedureResult.done_for_all_pz,
+        total_ek: procedureResult.total_ek,
+        processed_mrz: procedureResult.processed_mrz,
+        processed_pz: procedureResult.processed_pz,
+        
+        // Computed success flags
+        isElementMrzSuccess,
+        isElementPzSuccess,
+        isElementUpdateSuccess,
+        isAllElementsMrzSuccess,
+        isAllElementsPzSuccess,
+        isAllElementsUpdateSuccess
       });
       
       // Log warnings for non-success cases
-      if (procedureResult.done_for_id !== 1) {
-        console.warn('Помилка при встановленні даних для елемента');
+      if (!isElementMrzSuccess) {
+        console.warn('Помилка при встановленні МРЗ даних для елемента');
+      }
+      if (!isElementPzSuccess) {
+        console.warn('Помилка при встановленні ПЗ даних для елемента');
       }
       
-      if (importForAllTypes && procedureResult.done_for_all !== 1) {
-        console.warn('Не всі елементи було оновлено успішно');
+      if (importForAllTypes) {
+        if (!isAllElementsMrzSuccess) {
+          console.warn('Не всі елементи МРЗ було оновлено успішно');
+        }
+        if (!isAllElementsPzSuccess) {
+          console.warn('Не всі елементи ПЗ було оновлено успішно');
+        }
       }
       
       // Successfully imported
@@ -579,6 +625,10 @@ function Main() {
       // Set imported state
       setImported(true);
       setImportLoading(false);
+      
+      // Refresh the main table to show updated data
+      console.log('Refreshing table data after import...');
+      await handleSearch();
     } catch (error) {
       console.error('Import error:', error);
       
@@ -785,7 +835,12 @@ function Main() {
                         <input 
                           type="checkbox" 
                           checked={importForAllTypes}
-                          onChange={(e) => setImportForAllTypes(e.target.checked)}
+                          onChange={(e) => {
+                            setImportForAllTypes(e.target.checked);
+                            // Reset import status when changing options
+                            setImported(false);
+                            setImportResults(null);
+                          }}
                         /> 
                         Завантажити для всіх елементів цього типу 
                         {sameTypeCount > 0 && (
@@ -796,8 +851,25 @@ function Main() {
                         <input 
                           type="checkbox" 
                           checked={overwriteExisting}
-                          onChange={(e) => setOverwriteExisting(e.target.checked)}
+                          onChange={(e) => {
+                            setOverwriteExisting(e.target.checked);
+                            // Reset import status when changing options
+                            setImported(false);
+                            setImportResults(null);
+                          }}
                         /> Перезаписати існуючі спектри
+                      </label>
+                      <label className="import-option">
+                        <input 
+                          type="checkbox" 
+                          checked={clearSets}
+                          onChange={(e) => {
+                            setClearSets(e.target.checked);
+                            // Reset import status when changing options
+                            setImported(false);
+                            setImportResults(null);
+                          }}
+                        /> Очиститка спектрів у випадку порожніх даних
                       </label>
                       
                       <div className="import-file-container">
@@ -811,6 +883,9 @@ function Main() {
                               onChange={(e) => {
                                 if (e.target.files && e.target.files.length > 0) {
                                   setSelectedFile(e.target.files[0]);
+                                  // Reset imported state when new file is selected
+                                  setImported(false);
+                                  setImportResults(null);
                                 } else {
                                   setSelectedFile(null);
                                 }
@@ -855,17 +930,48 @@ function Main() {
                       <div className="import-result-container">
                         {imported && importResults && (
                           <div className="import-results">
-                            <div className={`result-item ${importResults.done_for_id_is_zero ? 'fail' : 'success'}`}>
-                              Імпорт для елемента: {importResults.done_for_id_is_zero ? 'Помилка' : 'Успішно'} 
-                              {importResults.done_for_id !== undefined && ` (${importResults.done_for_id})`}
-                            </div>
-                            
-                            {importForAllTypes && importResults.done_for_all_is_zero && (
-                              <div className={`result-item ${importResults.done_for_all_is_zero ? 'fail' : 'success'}`}>
-                                Імпорт для всіх елементів: {importResults.done_for_all_is_zero ? 'Помилка' : 'Успішно'}
-                                {importResults.done_for_all !== undefined && ` (${importResults.done_for_all})`}
+                            {/* Unified import statistics */}
+                            <div className="result-section">
+                              <div className="result-section-title">Статистика імпорту</div>
+                              
+                              {/* Element results */}
+                              <div className={`result-item ${importResults.isElementMrzSuccess ? 'success' : 'fail'}`}>
+                                МРЗ: {importResults.isElementMrzSuccess ? 'Успішно' : 'Вже існує'}
                               </div>
-                            )}
+                              <div className={`result-item ${importResults.isElementPzSuccess ? 'success' : 'fail'}`}>
+                                ПЗ: {importResults.isElementPzSuccess ? 'Успішно' : 'Вже існує'}
+                              </div>
+                              
+                              {/* Statistics - always show */}
+                              <div className="result-stats">
+                                <div className="stat-item">
+                                  <span className="stat-label">Загалом знайдено:</span>
+                                  <span className="stat-value">
+                                    {importForAllTypes ? (importResults.total_ek || 0) : 1} елементів
+                                  </span>
+                                </div>
+                                <div className="stat-item">
+                                  <span className="stat-label">МРЗ оновлено:</span>
+                                  <span className="stat-value">
+                                    {importResults.processed_mrz || 0} з {importForAllTypes ? (importResults.total_ek || 0) : 1}
+                                  </span>
+                                </div>
+                                <div className="stat-item">
+                                  <span className="stat-label">ПЗ оновлено:</span>
+                                  <span className="stat-value">
+                                    {importResults.processed_pz || 0} з {importForAllTypes ? (importResults.total_ek || 0) : 1}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Warning for partial failures - only if processing multiple elements */}
+                              {importForAllTypes && (importResults.processed_mrz < importResults.total_ek || 
+                                importResults.processed_pz < importResults.total_ek) && (
+                                <div className="result-warning">
+                                  ⚠ Деякі елементи не було оновлено
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

@@ -24,7 +24,13 @@ class SetAccelProcedureParams(BaseModel):
     set_pz: int
     can_overwrite: int
     do_for_all: int
+    clear_sets: int = 0
 
 class SetAccelProcedureResult(BaseModel):
-    done_for_id: int
-    done_for_all: Optional[int] = None 
+    done_for_id_mrz: int
+    done_for_id_pz: int
+    done_for_all_mrz: Optional[int] = None
+    done_for_all_pz: Optional[int] = None
+    total_ek: int
+    processed_mrz: int
+    processed_pz: int 
