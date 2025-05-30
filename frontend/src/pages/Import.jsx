@@ -166,16 +166,25 @@ function Import() {
   };
 
   const handleRoomBlur = async () => {
-    if (!room || !building || !selectedPlant || !selectedUnit) {
+    if (!room) {
+      // If room is empty, just clear the status and allow it to be null
       setRoomStatus(null);
       setRoomMessage('');
       return;
     }
+    
+    if (!building || !selectedPlant || !selectedUnit) {
+      setRoomStatus(null);
+      setRoomMessage('');
+      return;
+    }
+    
     if (buildingStatus !== 'success') {
       setRoomStatus('warning');
       setRoomMessage('Будівля не знайдена або не підтверджена');
       return;
     }
+    
     try {
       const response = await fetch('http://localhost:8000/api/check-location', {
         method: 'POST',
@@ -239,16 +248,12 @@ function Import() {
       
       const data = await response.json();
       
-      if (data.sheets && data.sheets.length === 0) {
-        setError('В Excel файлі не знайдено листів з іменами у форматі відсотків (наприклад: 4%, 0.2%, 1,2%)');
-        setFile(null);
-        const fileInput = document.getElementById('file');
-        if (fileInput) {
-          fileInput.value = '';
-        }
-      } else {
-        setSheetInfo(data.sheets);
+      if (!data.sheets || !Array.isArray(data.sheets) || data.sheets.length === 0) {
+        throw new Error('В Excel файлі не знайдено листів з іменами у форматі відсотків (наприклад: 4%, 0.2%, 1,2%)');
       }
+      
+      setSheetInfo(data.sheets);
+      setAnalyzingFile(false);
     } catch (err) {
       setError('Error analyzing Excel file: ' + err.message);
       console.error('Error analyzing Excel file:', err);
@@ -303,7 +308,7 @@ function Import() {
 
   // Function to extract data from all sheets
   const extractAllSheetsData = async () => {
-    if (!file || !sheetInfo || sheetInfo.length === 0) {
+    if (!file || !sheetInfo || !Array.isArray(sheetInfo) || sheetInfo.length === 0) {
       return;
     }
     
@@ -392,7 +397,7 @@ function Import() {
 
   // Function to check for existing data for each DEMPF
   const checkForExistingDataByDempf = async () => {
-    if (!selectedPlant || !selectedUnit || !building || !sheetInfo) {
+    if (!selectedPlant || !selectedUnit || !building || !sheetInfo || !Array.isArray(sheetInfo)) {
       return [];
     }
 
@@ -420,7 +425,7 @@ function Import() {
           plant_id: selectedPlant,
           unit_id: selectedUnit,
           building: building,
-          room: room || null,
+          room: room || '',  // Send empty string instead of null for backend validation
           lev1: level1 ? level1.toString() : null,
           lev2: level2 ? level2.toString() : null,
           earthq_type: null, // Will default to 'МРЗ' in procedure
@@ -500,7 +505,7 @@ function Import() {
         
         const data = await response.json();
         
-        if (data.sheets && data.sheets.length === 0) {
+        if (!data.sheets || !Array.isArray(data.sheets) || data.sheets.length === 0) {
           throw new Error('В Excel файлі не знайдено листів з іменами у форматі відсотків (наприклад: 4%, 0.2%, 1,2%)');
         }
         
@@ -661,7 +666,7 @@ function Import() {
         plant_id: selectedPlant,
         unit_id: selectedUnit,
         building: building,
-        room: room || null,
+        room: room || '',  // Send empty string instead of null for backend validation
         lev1: level1,
         lev2: level2,
         pga: pga ? parseFloat(pga) : null,
@@ -681,6 +686,9 @@ function Import() {
         };
       });
 
+      // Log the data being sent for debugging
+      console.log('Sending data to save-accel-data:', JSON.stringify(transformedData, null, 2));
+
       // Send data to backend
       const response = await fetch('http://localhost:8000/api/save-accel-data', {
         method: 'POST',
@@ -691,8 +699,30 @@ function Import() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to save data');
+        let errorMessage = 'Failed to save data';
+        try {
+          const errorData = await response.json();
+          console.error('Detailed error from save-accel-data:', errorData);
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+          
+          // If it's a validation error, try to extract more specific information
+          if (response.status === 422 && errorData.detail) {
+            if (Array.isArray(errorData.detail)) {
+              // FastAPI validation errors format
+              const validationErrors = errorData.detail.map(err => 
+                `${err.loc ? err.loc.join('.') + ': ' : ''}${err.msg}`
+              ).join(', ');
+              errorMessage = `Validation error: ${validationErrors}`;
+            } else if (typeof errorData.detail === 'string') {
+              errorMessage = errorData.detail;
+            }
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, use the status text
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          console.error('Failed to parse error response:', parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -709,6 +739,11 @@ function Import() {
       // Extract data from all sheets
       setImportPhase('extracting');
       const allData = {};
+      
+      // Add safety check for sheetInfo
+      if (!sheetInfo || !Array.isArray(sheetInfo) || sheetInfo.length === 0) {
+        throw new Error('No sheet information available for import');
+      }
       
       for (const sheet of sheetInfo) {
         const formData = new FormData();
@@ -846,7 +881,7 @@ function Import() {
                     htmlFor="room"
                     className={!building ? "label-inactive" : ""}
                   >
-                    Приміщення:
+                    Приміщення (опціонально):
                   </label>
                   {roomStatus === 'success' && (
                     <span className="status-text success">Знайдено</span>
@@ -862,7 +897,7 @@ function Import() {
                   onChange={handleRoomChange}
                   onBlur={handleRoomBlur}
                   onKeyDown={handleRoomKeyDown}
-                  placeholder={!selectedPlant ? 'Необхідно обрати станцію' : (!selectedUnit ? 'Необхідно обрати енергоблок' : (!building ? 'Необхідно ввести будівлю' : 'Введіть приміщення'))}
+                  placeholder={!selectedPlant ? 'Необхідно обрати станцію' : (!selectedUnit ? 'Необхідно обрати енергоблок' : (!building ? 'Необхідно ввести будівлю' : 'Введіть приміщення (опціонально)'))}
                   className={roomStatus ? `border-${roomStatus}` : ''}
                   disabled={!selectedPlant || !selectedUnit || !building}
                 />
