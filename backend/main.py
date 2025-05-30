@@ -934,6 +934,117 @@ async def get_spectral_data(
         print(f"Error getting spectral data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving spectral data: {str(e)}")
 
+@app.get("/api/seism-requirements", response_model=SpectralDataResult)
+async def get_seism_requirements(
+    db: DbSessionDep,
+    ek_id: int = Query(..., description="ID of the element"),
+    dempf: float = Query(..., description="Damping factor"),
+    spectr_earthq_type: str = Query("МРЗ", description="Spectrum earthquake type"),
+    calc_type: str = Query("ДЕТЕРМІНИСТИЧНИЙ", description="Calculation type")
+):
+    """
+    Get seismic requirements data using the GET_SEISM_REQUIREMENTS procedure.
+    
+    This endpoint:
+    1. Calls GET_SEISM_REQUIREMENTS procedure to get SET_ID
+    2. If SET_ID is found, retrieves spectral data for requirements
+    3. Returns frequency and acceleration data for X, Y, Z axes
+    """
+    try:
+        # Execute GET_SEISM_REQUIREMENTS procedure
+        conn = db.connection().connection
+        cursor = conn.cursor()
+        
+        # Create output variable for SET_ID
+        set_id_out = cursor.var(int)
+        
+        # Call the procedure
+        cursor.callproc('GET_SEISM_REQUIREMENTS', [
+            ek_id, dempf, spectr_earthq_type, calc_type, set_id_out
+        ])
+        
+        # Get the output SET_ID
+        set_id = set_id_out.getvalue()
+        
+        print(f"GET_SEISM_REQUIREMENTS results: SET_ID={set_id}")
+        
+        if not set_id:
+            # Return empty data structure if no requirements found
+            return SpectralDataResult(frequency=[])
+        
+        # Get acceleration set data
+        set_query = text("""
+            SELECT ACCEL_SET_ID, X_PLOT_ID, Y_PLOT_ID, Z_PLOT_ID
+            FROM SRTN_ACCEL_SET
+            WHERE ACCEL_SET_ID = :set_id
+        """)
+        
+        set_result = db.execute(set_query, {"set_id": set_id})
+        set_row = set_result.fetchone()
+        
+        if not set_row:
+            return SpectralDataResult(frequency=[])
+        
+        x_plot_id = set_row[1]
+        y_plot_id = set_row[2]
+        z_plot_id = set_row[3]
+        
+        # Helper function to get plot data
+        def get_plot_data(plot_id):
+            if not plot_id:
+                return [], []
+            
+            point_query = text("""
+                SELECT FREQ, ACCEL
+                FROM SRTN_ACCEL_POINT
+                WHERE PLOT_ID = :plot_id
+                ORDER BY FREQ
+            """)
+            
+            point_result = db.execute(point_query, {"plot_id": plot_id})
+            points = point_result.fetchall()
+            
+            frequencies = []
+            accelerations = []
+            
+            for point in points:
+                freq = float(point[0]) if point[0] is not None else 0.0
+                accel = float(point[1]) if point[1] is not None else 0.0
+                frequencies.append(freq)
+                accelerations.append(accel)
+            
+            return frequencies, accelerations
+        
+        # Get data for each axis
+        x_freq, x_accel = get_plot_data(x_plot_id)
+        y_freq, y_accel = get_plot_data(y_plot_id)
+        z_freq, z_accel = get_plot_data(z_plot_id)
+        
+        # Use the longest frequency array as the base
+        all_frequencies = [x_freq, y_freq, z_freq]
+        base_freq = max(all_frequencies, key=len) if any(all_frequencies) else []
+        
+        # Build response
+        response_data = {
+            "frequency": base_freq
+        }
+        
+        # Add acceleration data based on spectrum type
+        if spectr_earthq_type == "МРЗ":
+            response_data["mrz_x"] = x_accel if x_accel else None
+            response_data["mrz_y"] = y_accel if y_accel else None
+            response_data["mrz_z"] = z_accel if z_accel else None
+        elif spectr_earthq_type == "ПЗ":
+            response_data["pz_x"] = x_accel if x_accel else None
+            response_data["pz_y"] = y_accel if y_accel else None
+            response_data["pz_z"] = z_accel if z_accel else None
+        
+        return SpectralDataResult(**response_data)
+        
+    except Exception as e:
+        print(f"Error getting seism requirements: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving seism requirements: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     

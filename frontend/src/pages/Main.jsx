@@ -46,32 +46,32 @@ function Main() {
   const [analysisElementData, setAnalysisElementData] = useState(null);
 
   const calculatePopupPosition = (rect) => {
-    const popupWidth = 480;
+            const popupWidth = 480;
     const popupHeight = 400;
-    const margin = 10;
-    
-    let x = rect.left - 200;
-    let y = rect.bottom + 5;
-    
+            const margin = 10;
+            
+            let x = rect.left - 200;
+            let y = rect.bottom + 5;
+            
     // Check right boundary
-    if (x + popupWidth > window.innerWidth - margin) {
-      x = window.innerWidth - popupWidth - margin;
-    }
-    
+            if (x + popupWidth > window.innerWidth - margin) {
+              x = window.innerWidth - popupWidth - margin;
+            }
+            
     // Check left boundary
-    if (x < margin) {
-      x = margin;
-    }
-    
+            if (x < margin) {
+              x = margin;
+            }
+            
     // Check bottom boundary
-    if (y + popupHeight > window.innerHeight - margin) {
-      y = rect.top - popupHeight - 5;
-      
-      if (y < margin) {
-        y = (window.innerHeight - popupHeight) / 2;
-      }
-    }
-    
+            if (y + popupHeight > window.innerHeight - margin) {
+              y = rect.top - popupHeight - 5;
+              
+              if (y < margin) {
+                y = (window.innerHeight - popupHeight) / 2;
+              }
+            }
+            
     return { x, y };
   };
 
@@ -81,18 +81,18 @@ function Main() {
     
     setImportPopupPosition(position);
     
-    const rowData = row.original;
+            const rowData = row.original;
     console.log("Row data:", rowData);
     setImportPopupRowData(rowData);
-    
-    // Count items with the same ptype_id
-    if (rowData && rowData.ptype_id) {
-      const sameTypeItems = data.filter(item => item.ptype_id === rowData.ptype_id);
-      setSameTypeCount(sameTypeItems.length);
-    } else {
-      setSameTypeCount(0);
-    }
-    
+            
+            // Count items with the same ptype_id
+            if (rowData && rowData.ptype_id) {
+              const sameTypeItems = data.filter(item => item.ptype_id === rowData.ptype_id);
+              setSameTypeCount(sameTypeItems.length);
+            } else {
+              setSameTypeCount(0);
+            }
+            
     setShowImportPopup(true);
   };
 
@@ -104,8 +104,8 @@ function Main() {
   };
 
   const handleSearchRefresh = async () => {
-    console.log('Refreshing table data after import...');
-    await handleSearch();
+      console.log('Refreshing table data after import...');
+      await handleSearch();
     // Clear global filter to show updated data
     setGlobalFilter('');
   };
@@ -159,9 +159,9 @@ function Main() {
               ? "Виберіть параметри та натисніть \"Пошук\" для відображення даних"
               : "Пошук не дав результатів"
             }
-          </div>
-        )}
-
+                      </div>
+                    )}
+                    
         <ImportPopup
           showPopup={showImportPopup}
           setShowPopup={setShowImportPopup}

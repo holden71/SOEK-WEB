@@ -1,0 +1,597 @@
+.import-page {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .import-content {
+    width: 100%;
+    height: 100%;
+    padding: 0 20px 20px 20px;
+  }
+  
+  .import-form {
+    width: 100%;
+  }
+  
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+  }
+  
+  .filter-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    width: 100%;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .filter-group-row {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  
+  .label-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  
+  .label-row label {
+    margin-bottom: 0;
+    line-height: 1.2;
+    display: inline-block;
+  }
+  
+  .filter-group label {
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  
+  .filter-group select,
+  .filter-group input[type="text"],
+  .filter-group input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    height: 40px;
+    box-sizing: border-box;
+  }
+  
+  .filter-group input[type="file"] {
+    padding: 6px;
+  }
+  
+  /* File import specific styles */
+  .file-import-row {
+    width: 100%;
+    margin-top: 10px;
+    max-width: 800px;
+  }
+  
+  .file-input-group {
+    width: 100%;
+  }
+  
+  .file-input-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  /* Custom file input styles */
+  .hidden-file-input {
+    display: none;
+  }
+  
+  .custom-file-input {
+    display: flex;
+    flex: 1;
+    gap: 10px;
+    align-items: center;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0;
+    transition: border-color 0.2s;
+    overflow: hidden;
+    max-width: 600px;
+  }
+  
+  .custom-file-input:hover:not(:disabled) {
+    border-color: #adb5bd;
+  }
+  
+  .select-file-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  
+  .select-file-button:hover:not(:disabled) {
+    background-color: #0056b3;
+  }
+  
+  .select-file-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .file-icon {
+    font-size: 16px;
+  }
+  
+  .file-display {
+    flex: 1;
+    padding: 0 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+  
+  .selected-file {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .file-name {
+    font-weight: 500;
+    color: #212529;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .no-file {
+    color: #6c757d;
+    font-style: italic;
+  }
+  
+  .remove-file-button {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+  }
+  
+  .remove-file-button:hover {
+    color: #c82333;
+  }
+  /* End of custom file input styles */
+  
+  .import-button {
+    min-width: 150px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+  }
+  
+  .import-button:hover:not(:disabled) {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .import-button:active:not(:disabled) {
+    background-color: #004494;
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+  
+  .import-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  /* Excel sheet selection styles */
+  .analyzing-message {
+    padding: 10px;
+    background-color: #e6f7ff;
+    border: 1px solid #91d5ff;
+    border-radius: 4px;
+    color: #1890ff;
+    text-align: center;
+    margin-top: 10px;
+  }
+  
+  .analyzing-file {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-style: italic;
+    height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .error-message {
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #ffebee;
+    border: 1px solid #ffcdd2;
+    border-radius: 4px;
+    color: #c62828;
+  }
+  
+  /* Data extraction styles */
+  .extract-data-button-container {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-start;
+  }
+  
+  .extract-data-button {
+    padding: 8px 16px;
+    background-color: #1890ff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .extract-data-button:hover:not(:disabled) {
+    background-color: #096dd9;
+  }
+  
+  .extract-data-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .extracted-data-container {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #fafafa;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+  }
+  
+  .extracted-data-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 18px;
+  }
+  
+  .sheets-data-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .sheet-data-summary {
+    padding: 12px;
+    background-color: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+  }
+  
+  .sheet-data-summary h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #1890ff;
+    font-size: 16px;
+  }
+  
+  .sheet-data-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .sheet-data-info p {
+    margin: 0 0 10px 0;
+    color: #666;
+  }
+  
+  .column-summary {
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .column-summary strong {
+    margin-right: 5px;
+  }
+  
+  .column-details {
+    margin-bottom: 10px;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    background-color: #fafafa;
+    transition: background-color 0.2s;
+  }
+  
+  .column-header:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .column-header strong {
+    font-weight: 500;
+  }
+  
+  .expand-icon {
+    font-size: 0.8rem;
+    color: #1890ff;
+    transition: transform 0.2s;
+  }
+  
+  .column-values {
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease-out;
+  }
+  
+  .column-values.expanded {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    background-color: white;
+  }
+  
+  .column-values ul {
+    margin: 0;
+    padding-left: 20px;
+    list-style-type: disc;
+  }
+  
+  .column-values li {
+    margin-bottom: 5px;
+    color: #444;
+  }
+  
+  .show-more {
+    color: #1890ff;
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    text-align: center;
+    background-color: #f9f9f9;
+    border-top: 1px solid #f0f0f0;
+  }
+  
+  .show-more:hover {
+    text-decoration: underline;
+    background-color: #f0f0f0;
+  }
+  
+  .sheet-info-message {
+    padding: 10px;
+    background-color: #e6f7ff;
+    border: 1px solid #91d5ff;
+    border-radius: 4px;
+    color: #1890ff;
+    text-align: center;
+    margin-top: 10px;
+  }
+  /* End of Data extraction styles */
+  
+  /* End of Excel sheet selection styles */
+  
+  /* End of file import specific styles */
+  
+  .check-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .status-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.2;
+    margin: 0;
+    padding-bottom: 1px;
+  }
+  
+  .status-text.success {
+    color: #4CAF50;
+  }
+  
+  .status-text.warning {
+    color: #FFC107;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+    display: inline-block;
+    margin-left: 0;
+    line-height: 1.2;
+    vertical-align: baseline;
+  }
+  
+  .status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+  }
+  
+  .status-indicator.success {
+    background-color: #4CAF50;  /* Green */
+  }
+  
+  .status-indicator.warning {
+    background-color: #FFC107;  /* Yellow */
+  }
+  
+  .check-button button {
+    height: 40px;
+    padding: 0 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    line-height: 40px;
+  }
+  
+  .check-button button:hover:not(:disabled) {
+    background-color: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .check-button button:active:not(:disabled) {
+    background-color: #1e7e34;
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+  
+  .check-button button:disabled,
+  .check-button button.disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .check-button button:disabled:hover,
+  .check-button button.disabled:hover {
+    background-color: #cccccc;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  /* Removing the old submit button styles as we now have an inline button */
+  .submit-button {
+    display: none;
+  }
+  
+  .border-success,
+  .border-warning {
+    border: none !important;
+    border-width: 2px !important;
+    border-style: solid !important;
+    box-sizing: border-box;
+  }
+  
+  .border-success {
+    border-color: #4CAF50 !important;
+  }
+  
+  .border-warning {
+    border-color: #FFC107 !important;
+  }
+  
+  .label-inactive {
+    color: #b0b0b0;
+    cursor: not-allowed;
+  }
+  
+  @media (max-width: 768px) {
+    .import-content {
+      padding: 0 10px 10px 10px;
+    }
+  
+    .filter-row {
+      grid-template-columns: 1fr;
+    }
+  
+    .check-button {
+      margin-top: 10px;
+    }
+    
+    .file-input-container {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+    
+    .import-button {
+      width: 100%;
+    }
+    
+    .custom-file-input {
+      height: 40px;
+    }
+  }
+  
+  .level-inputs {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+  }
+  
+  .level-input {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .level-input label {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  
+  .level-input input {
+    width: 120px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    height: 40px;
+    box-sizing: border-box;
+  }
+  
+  .level-input input:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+  } 
