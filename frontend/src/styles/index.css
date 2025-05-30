@@ -1,0 +1,531 @@
+/* Main CSS file that imports all modules */
+
+/* Layout and base styles */
+@import './Layout.css';
+@import './PageHeader.css';
+
+/* Component-specific styles */
+@import './FilterSection.css';
+@import './DataTable.css';
+@import './Pagination.css';
+@import './TableActions.css';
+@import './AnalysisModal.css';
+
+/* Global utilities and remaining styles from Main.css */
+
+/* AG Grid theme overrides */
+.results.ag-theme-alpine {
+  --ag-header-background-color: #f8f9fa;
+  --ag-odd-row-background-color: #ffffff;
+  --ag-row-hover-color: #f8f9fa;
+  --ag-header-foreground-color: #495057;
+  --ag-foreground-color: #212529;
+  --ag-border-color: #dee2e6;
+  --ag-row-border-color: #dee2e6;
+  --ag-font-size: 14px;
+  --ag-font-family: inherit;
+  --ag-header-height: 40px;
+  --ag-row-height: 40px;
+  --ag-cell-horizontal-padding: 16px;
+}
+
+.ag-theme-alpine .ag-header {
+  border-bottom: 2px solid #dee2e6;
+}
+
+.ag-theme-alpine .ag-header-cell {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ag-theme-alpine .ag-paging-panel {
+  border-top: 1px solid #dee2e6;
+  padding: 12px;
+  background-color: #f8f9fa;
+}
+
+.ag-theme-alpine .ag-paging-button {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ag-theme-alpine .ag-paging-button:hover:not(:disabled) {
+  background: #e9ecef;
+}
+
+.ag-theme-alpine .ag-paging-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ag-theme-alpine .ag-paging-page-summary-panel {
+  margin: 0 12px;
+}
+
+.ag-theme-alpine .ag-paging-page-size {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+/* Table horizontal scroll (legacy support) */
+.table-horizontal-scroll {
+  display: none;
+}
+
+.table-horizontal-scroll-content {
+  height: 1px;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Additional table container styles for shadows */
+.table-container {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Remove table cell positioning rules that are no longer needed */
+.cell-content:last-child .cell-tooltip,
+.cell-content:first-child .cell-tooltip {
+  left: auto;
+  right: auto;
+}
+
+.cell-content:first-child .cell-tooltip::after {
+  left: 50%;
+  right: auto;
+}
+
+/* Responsive AG Grid styles */
+@media (max-width: 768px) {
+  .results.ag-theme-alpine {
+    --ag-cell-horizontal-padding: 8px;
+    --ag-font-size: 12px;
+  }
+}
+
+/* Import button styles */
+.main-page .import-button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.main-page .tiny-import-button {
+  background: none;
+  border: 1px solid #ddd;
+  font-size: 12px;
+  color: #999;
+  padding: 0;
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.main-page .tiny-import-button:hover {
+  color: #666;
+  border-color: #bbb;
+}
+
+.main-page .tiny-import-button:active {
+  transform: scale(0.92);
+  background-color: #f5f5f5;
+}
+
+/* Import popup styles */
+.main-page .import-popup {
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  min-width: 450px;
+  max-width: 500px;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.main-page .import-popup-header {
+  background-color: #f0f0f0;
+  padding: 10px 12px;
+  font-weight: bold;
+  font-size: 16px;
+  border-bottom: 1px solid #ddd;
+}
+
+.main-page .import-popup-element-name {
+  padding: 10px 12px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #444;
+  border-bottom: 1px solid #eee;
+  background-color: #f9f9f9;
+  line-height: 1.4;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.main-page .import-popup-content {
+  padding: 6px 0;
+}
+
+.main-page .import-popup-footer {
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #ddd;
+}
+
+.main-page .import-result-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.main-page .import-results {
+  font-size: 13px;
+  margin-right: 12px;
+}
+
+.main-page .result-item {
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.main-page .result-item.success {
+  color: #28a745;
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.main-page .result-item.fail {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.main-page .result-section {
+  margin-bottom: 8px;
+}
+
+.main-page .result-section-title {
+  font-weight: 600;
+  color: #495057;
+  font-size: 13px;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
+.main-page .result-stats {
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.main-page .stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.main-page .stat-item:last-child {
+  margin-bottom: 0;
+}
+
+.main-page .stat-label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.main-page .stat-value {
+  color: #495057;
+  font-weight: 600;
+}
+
+.main-page .result-code {
+  font-size: 11px;
+  color: #6c757d;
+  font-weight: normal;
+}
+
+.main-page .result-progress {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 2px;
+  font-weight: normal;
+}
+
+.main-page .result-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-top: 8px;
+  border: 1px solid #ffeaa7;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.main-page .import-confirm-button {
+  padding: 8px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  min-width: 110px;
+}
+
+.main-page .import-confirm-button.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.main-page .import-confirm-button:hover {
+  background-color: #0069d9;
+}
+
+.main-page .import-confirm-button.imported {
+  background-color: #28a745;
+  cursor: default;
+}
+
+.main-page .button-loading-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  margin: 0 auto;
+}
+
+.main-page .import-option {
+  display: flex;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.main-page .import-option:hover {
+  background-color: #f5f5f5;
+}
+
+.main-page .import-option input[type="checkbox"] {
+  margin-right: 8px;
+  min-width: 14px;
+  min-height: 14px;
+  flex-shrink: 0;
+}
+
+.main-page .type-count {
+  margin-left: 4px;
+  color: #777;
+  font-size: 12px;
+}
+
+/* File input styling from Import.jsx */
+.main-page .import-file-container {
+  padding: 10px 12px;
+  margin-top: 4px;
+  border-top: 1px solid #eee;
+}
+
+.main-page .file-input-label {
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #333;
+  font-size: 13px;
+}
+
+.main-page .file-input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Custom file input styles */
+.main-page .hidden-file-input {
+  display: none;
+}
+
+.main-page .custom-file-input {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0;
+  transition: border-color 0.2s;
+  overflow: hidden;
+  height: 32px;
+}
+
+.main-page .custom-file-input:hover:not(:disabled) {
+  border-color: #adb5bd;
+}
+
+.main-page .select-file-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  height: 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  font-size: 13px;
+  outline: none;
+  box-shadow: none;
+}
+
+.main-page .select-file-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.main-page .select-file-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.main-page .file-display {
+  flex: 1;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.main-page .selected-file {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.main-page .file-name {
+  font-weight: 500;
+  color: #212529;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.main-page .no-file {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.main-page .remove-file-button {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.main-page .remove-file-button:hover {
+  color: #c82333;
+}
+
+.main-page .element-ptype-name {
+  font-weight: normal;
+  color: #666;
+}
+
+.main-page .element-name-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.main-page .element-name {
+  font-weight: 500;
+  color: #444;
+  line-height: 1.4;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.main-page .element-type {
+  font-weight: normal;
+  color: #666;
+  margin-left: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} 

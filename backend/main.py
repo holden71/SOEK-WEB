@@ -13,7 +13,7 @@ from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException, Query,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult
+from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult, SpectralDataResult
 from pydantic import BaseModel
 from settings import settings
 from sqlalchemy import inspect, text
@@ -800,6 +800,139 @@ async def clear_accel_set_arrays(
         db.rollback()
         print(f"CLEAR_ACCEL_CET_ARRAYS execution failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error executing CLEAR_ACCEL_CET_ARRAYS procedure: {str(e)}")
+
+@app.get("/api/spectral-data", response_model=SpectralDataResult)
+async def get_spectral_data(
+    db: DbSessionDep,
+    ek_id: int = Query(..., description="ID of the element"),
+    calc_type: str = Query(..., description="Calculation type (ДЕТЕРМІНИСТИЧНИЙ/ІМОВІРНІСНИЙ)"),
+    spectrum_type: str = Query(..., description="Spectrum type (МРЗ/ПЗ)")
+):
+    """
+    Get spectral data for a specific element.
+    
+    This endpoint:
+    1. Finds the element in SRTN_EK_SEISM_DATA
+    2. Looks for corresponding acceleration sets in SRTN_ACCEL_SET
+    3. Retrieves plot data from SRTN_ACCEL_PLOT and SRTN_ACCEL_POINT
+    4. Returns frequency and acceleration data for X, Y, Z axes
+    """
+    try:
+        # Step 1: Get element data to find building, room, and other parameters
+        element_query = text("""
+            SELECT BUILDING, ROOM, LEV, PLANT_ID, UNIT_ID
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        element_result = db.execute(element_query, {"ek_id": ek_id})
+        element_row = element_result.fetchone()
+        
+        if not element_row:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
+        
+        building = element_row[0]
+        room = element_row[1]
+        lev = element_row[2]
+        plant_id = element_row[3]
+        unit_id = element_row[4]
+        
+        # Step 2: Find acceleration set matching the criteria
+        set_query = text("""
+            SELECT ACCEL_SET_ID, X_PLOT_ID, Y_PLOT_ID, Z_PLOT_ID
+            FROM SRTN_ACCEL_SET
+            WHERE PLANT_ID = :plant_id
+            AND UNIT_ID = :unit_id
+            AND BUILDING = :building
+            AND (ROOM = :room OR (ROOM IS NULL AND :room IS NULL))
+            AND (LEV = :lev OR (LEV IS NULL AND :lev IS NULL))
+            AND SPECTR_EARTHQ_TYPE = :spectrum_type
+            AND CALC_TYPE = :calc_type
+            AND SET_TYPE = 'ХАРАКТЕРИСТИКИ'
+            ORDER BY ACCEL_SET_ID DESC
+        """)
+        
+        set_result = db.execute(set_query, {
+            "plant_id": plant_id,
+            "unit_id": unit_id,
+            "building": building,
+            "room": room,
+            "lev": lev,
+            "spectrum_type": spectrum_type,
+            "calc_type": calc_type
+        })
+        
+        set_row = set_result.fetchone()
+        
+        if not set_row:
+            # Return empty data structure if no set found
+            return SpectralDataResult(frequency=[])
+        
+        accel_set_id = set_row[0]
+        x_plot_id = set_row[1]
+        y_plot_id = set_row[2]
+        z_plot_id = set_row[3]
+        
+        # Step 3: Get spectral data for each axis
+        result_data = {"frequency": []}
+        
+        # Helper function to get plot data
+        def get_plot_data(plot_id, axis_name):
+            if not plot_id:
+                return []
+            
+            point_query = text("""
+                SELECT FREQ, ACCEL
+                FROM SRTN_ACCEL_POINT
+                WHERE PLOT_ID = :plot_id
+                ORDER BY FREQ
+            """)
+            
+            point_result = db.execute(point_query, {"plot_id": plot_id})
+            points = point_result.fetchall()
+            
+            frequencies = []
+            accelerations = []
+            
+            for point in points:
+                freq = float(point[0]) if point[0] is not None else 0.0
+                accel = float(point[1]) if point[1] is not None else 0.0
+                frequencies.append(freq)
+                accelerations.append(accel)
+            
+            return frequencies, accelerations
+        
+        # Get data for each axis
+        x_freq, x_accel = get_plot_data(x_plot_id, 'x')
+        y_freq, y_accel = get_plot_data(y_plot_id, 'y')
+        z_freq, z_accel = get_plot_data(z_plot_id, 'z')
+        
+        # Use the longest frequency array as the base
+        all_frequencies = [x_freq, y_freq, z_freq]
+        base_freq = max(all_frequencies, key=len) if any(all_frequencies) else []
+        
+        # Build response
+        response_data = {
+            "frequency": base_freq
+        }
+        
+        # Add acceleration data based on spectrum type
+        if spectrum_type == "МРЗ":
+            response_data["mrz_x"] = x_accel if x_accel else None
+            response_data["mrz_y"] = y_accel if y_accel else None
+            response_data["mrz_z"] = z_accel if z_accel else None
+        elif spectrum_type == "ПЗ":
+            response_data["pz_x"] = x_accel if x_accel else None
+            response_data["pz_y"] = y_accel if y_accel else None
+            response_data["pz_z"] = z_accel if z_accel else None
+        
+        return SpectralDataResult(**response_data)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting spectral data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving spectral data: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

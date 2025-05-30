@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from pydantic import BaseModel
 
@@ -55,4 +55,13 @@ class ClearAccelSetParams(BaseModel):
     set_id: int
 
 class ClearAccelSetResult(BaseModel):
-    clear_result: str 
+    clear_result: str
+
+class SpectralDataResult(BaseModel):
+    frequency: List[float]
+    mrz_x: Optional[List[float]] = None
+    mrz_y: Optional[List[float]] = None
+    mrz_z: Optional[List[float]] = None
+    pz_x: Optional[List[float]] = None
+    pz_y: Optional[List[float]] = None
+    pz_z: Optional[List[float]] = None 
