@@ -33,4 +33,26 @@ class SetAccelProcedureResult(BaseModel):
     done_for_all_pz: Optional[int] = None
     total_ek: int
     processed_mrz: int
-    processed_pz: int 
+    processed_pz: int
+
+class FindReqAccelSetParams(BaseModel):
+    plant_id: int
+    unit_id: int
+    building: str
+    room: Optional[str] = None
+    lev1: Optional[str] = None
+    lev2: Optional[str] = None
+    earthq_type: Optional[str] = None
+    calc_type: str
+    set_type: Optional[str] = None
+    dempf: Optional[str] = None
+
+class FindReqAccelSetResult(BaseModel):
+    set_id: Optional[int] = None
+    found_ek: int
+
+class ClearAccelSetParams(BaseModel):
+    set_id: int
+
+class ClearAccelSetResult(BaseModel):
+    clear_result: str 

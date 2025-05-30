@@ -93,6 +93,29 @@
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Стилизация вертикального скроллбара для области результатов */
+.results::-webkit-scrollbar {
+  width: 12px;
+}
+
+.results::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+.results::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.results::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
  
 /* Custom styles for react-data-table-component */
@@ -236,11 +259,73 @@
 
 .table-container {
   width: 100%;
-  overflow-x: auto;
-  margin-top: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
   background: white;
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 250px);
+}
+
+/* Контейнер для таблицы с прокруткой */
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin; /* Firefox */
+}
+
+/* Стилизация скроллбаров для table-scroll-container */
+.table-scroll-container::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Фиксированная горизонтальная прокрутка - теперь скрыта, так как используем встроенные скроллбары */
+.table-horizontal-scroll {
+  display: none;
+}
+
+.table-horizontal-scroll-content {
+  height: 1px;
+  /* Ширина будет задана динамически через JavaScript */
+}
+
+/* Стилизация фиксированного горизонтального скроллбара */
+.table-horizontal-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 table {
@@ -259,9 +344,10 @@ th {
   border-bottom: 2px solid #dee2e6;
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 10;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 th:hover {
@@ -289,6 +375,12 @@ tr:last-child td {
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  border-top: 2px solid #e9ecef;
+  height: 60px; /* Фиксированная высота для расчета отступа */
+  box-sizing: border-box;
 }
 
 .pagination-controls {
@@ -386,11 +478,29 @@ tr:last-child td {
   .table-container {
     margin: 0 -16px;
     border-radius: 0;
+    max-height: calc(100vh - 200px);
+  }
+  
+  .table-scroll-container::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
   }
   
   .pagination {
     margin: 0 -16px;
     border-radius: 0;
+    position: sticky;
+    bottom: 0;
+    height: auto; /* Автоматическая высота для мобильной версии */
+    min-height: 60px;
+  }
+  
+  .results {
+    max-height: calc(100vh - 200px);
+  }
+  
+  .results::-webkit-scrollbar {
+    width: 16px;
   }
 }
 
@@ -709,11 +819,12 @@ th {
 .main-page .import-popup {
   background-color: white;
   border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   min-width: 450px;
   max-width: 500px;
   z-index: 1000;
   overflow: hidden;
+  border: 1px solid #ddd;
 }
 
 .main-page .import-popup-header {

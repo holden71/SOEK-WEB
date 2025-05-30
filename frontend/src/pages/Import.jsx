@@ -39,6 +39,15 @@ function Import() {
   const [savingData, setSavingData] = useState(false); // Add state for saving progress
   const [importStatus, setImportStatus] = useState(null); // 'success', 'error', or null
   const [dataImported, setDataImported] = useState(false); // Track if data was successfully imported
+  
+  // Replace multiple import states with a single phase tracker
+  const [importPhase, setImportPhase] = useState(null); // null, 'checking', 'clearing', 'extracting', 'saving'
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationData, setConfirmationData] = useState(null);
+  const [checkingExistingData, setCheckingExistingData] = useState(false);
+  const [clearingData, setClearingData] = useState(false);
+  const [detailedConfirmationData, setDetailedConfirmationData] = useState(null);
+  const [showDetailedConfirmation, setShowDetailedConfirmation] = useState(false);
 
   // Fetch plants from backend on component mount
   useEffect(() => {
@@ -381,10 +390,10 @@ function Import() {
     setType(e.target.value);
   };
 
-  // Function to save imported data to database
-  const saveImportedDataToDatabase = async (data) => {
-    if (!data || !selectedPlant || !selectedUnit || !building) {
-      return { success: false, message: 'Missing required data' };
+  // Function to check for existing data for each DEMPF
+  const checkForExistingDataByDempf = async () => {
+    if (!selectedPlant || !selectedUnit || !building || !sheetInfo) {
+      return [];
     }
 
     // Check if at least one of LEV1 or LEV2 is provided
@@ -393,61 +402,65 @@ function Import() {
     
     // Auto-fill logic for levels
     if (level1 !== null && level2 === null) {
-      // If only LEV1 provided, set LEV2 = LEV1 + 200
       level2 = level1 + 200;
     } else if (level1 === null && level2 !== null) {
-      // If only LEV2 provided, set LEV1 = LEV2 - 200
       level1 = level2 - 200;
     }
 
-    setSavingData(true);
+    setImportPhase('checking');
+    const results = [];
+    
     try {
-      // Transform the imported data into the format expected by the backend
-      const transformedData = {
-        plant_id: selectedPlant,
-        unit_id: selectedUnit,
-        building: building,
-        room: room || null,
-        lev1: level1,
-        lev2: level2,
-        pga: pga ? parseFloat(pga) : null,
-        calc_type: type,
-        sheets: {}
-      };
-
-      // For each sheet (representing a DEMPF value)
-      Object.entries(data).forEach(([sheetName, sheetData]) => {
+      // Check for each sheet (DEMPF value)
+      for (const sheet of sheetInfo) {
         // Convert sheet name to DEMPF value (e.g., "5%" -> 5)
-        const dempf = parseFloat(sheetName.replace('%', '').replace(',', '.'));
+        const dempf = parseFloat(sheet.name.replace('%', '').replace(',', '.'));
         
-        // Add sheet data to transformation
-        transformedData.sheets[sheetName] = {
-          dempf: dempf,
-          data: sheetData
+        const checkParams = {
+          plant_id: selectedPlant,
+          unit_id: selectedUnit,
+          building: building,
+          room: room || null,
+          lev1: level1 ? level1.toString() : null,
+          lev2: level2 ? level2.toString() : null,
+          earthq_type: null, // Will default to 'МРЗ' in procedure
+          calc_type: type,
+          set_type: null, // Will default to 'ВИМОГИ' in procedure
+          dempf: dempf.toString()
         };
-      });
 
-      // Send data to backend
-      const response = await fetch('http://localhost:8000/api/save-accel-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(transformedData),
-      });
+        console.log(`Checking for DEMPF ${dempf}%:`, checkParams);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to save data');
+        const response = await fetch('http://localhost:8000/api/find-req-accel-set', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(checkParams),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to check for existing data for DEMPF ${dempf}%`);
+        }
+
+        const result = await response.json();
+        results.push({
+          dempf: dempf,
+          sheetName: sheet.name,
+          setId: result.set_id,
+          foundEk: result.found_ek,
+          hasExistingData: result.set_id !== null
+        });
+        
+        console.log(`DEMPF ${dempf}% result:`, result);
       }
-
-      const result = await response.json();
-      return { success: true, data: result };
+      
+      return results;
     } catch (err) {
-      console.error('Error saving data to database:', err);
-      return { success: false, message: err.message };
+      console.error('Error checking for existing data:', err);
+      throw err;
     } finally {
-      setSavingData(false);
+      setImportPhase(null);
     }
   };
 
@@ -495,8 +508,206 @@ function Import() {
         setAnalyzingFile(false);
       }
 
-      // Then extract data from all sheets
-      setExtractingData(true);
+      // TEMPORARY: Check for existing data for each DEMPF
+      console.log('=== DEBUGGING: Checking existing data for each DEMPF ===');
+      const existingDataResults = await checkForExistingDataByDempf();
+      
+      console.log('All DEMPF check results:', existingDataResults);
+      
+      // Find which DEMPFs have existing data
+      const existingDempfs = existingDataResults.filter(result => result.hasExistingData);
+      
+      if (existingDempfs.length > 0) {
+        // Show detailed results in popup
+        setDetailedConfirmationData({
+          existingDempfs: existingDempfs,
+          totalSheets: existingDataResults.length,
+          allResults: existingDataResults
+        });
+        setShowDetailedConfirmation(true);
+        return;
+      } else {
+        // No existing data found, proceed with normal import
+        console.log('No existing data found, proceeding with import');
+        await performImport();
+      }
+
+    } catch (err) {
+      setError(err.message || 'Помилка при імпорті даних');
+      setImportStatus('error');
+      console.error('Error during import:', err);
+      alert(`ПОМИЛКА: ${err.message}`);
+    } finally {
+      setAnalyzingFile(false);
+    }
+  };
+
+  // Function to clear existing data for a single set
+  const clearExistingData = async (setId) => {
+    if (!setId) return { success: false, message: 'No set ID provided' };
+
+    try {
+      const clearParams = {
+        set_id: setId
+      };
+
+      const response = await fetch('http://localhost:8000/api/clear-accel-set-arrays', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clearParams),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to clear set ${setId}`);
+      }
+
+      const result = await response.json();
+      return { 
+        success: result.clear_result === '1', 
+        message: result.clear_result,
+        setId: setId
+      };
+    } catch (err) {
+      console.error(`Error clearing set ${setId}:`, err);
+      return { success: false, message: err.message, setId: setId };
+    }
+  };
+
+  // Function to handle detailed confirmation response
+  const handleDetailedConfirmation = async (shouldOverwrite) => {
+    setShowDetailedConfirmation(false);
+    
+    if (!shouldOverwrite) {
+      console.log('User cancelled import');
+      setDetailedConfirmationData(null);
+      return;
+    }
+    
+    try {
+      // Get all set IDs that need to be cleared
+      const setIds = detailedConfirmationData.existingDempfs
+        .map(result => result.setId)
+        .filter(id => id !== null);
+      
+      console.log('User confirmed overwrite for set IDs:', setIds);
+      
+      if (setIds.length === 0) {
+        throw new Error('No valid set IDs found to clear');
+      }
+
+      // Start clearing process
+      setImportPhase('clearing');
+      
+      // Clear each set individually
+      const clearResults = [];
+      for (const setId of setIds) {
+        console.log(`Clearing set ID: ${setId}`);
+        const clearResult = await clearExistingData(setId);
+        clearResults.push(clearResult);
+        
+        if (!clearResult.success) {
+          console.error(`Failed to clear set ${setId}:`, clearResult.message);
+        } else {
+          console.log(`Successfully cleared set ${setId}`);
+        }
+      }
+      
+      // Check if all clears were successful
+      const failedClears = clearResults.filter(result => !result.success);
+      if (failedClears.length > 0) {
+        const failedIds = failedClears.map(result => result.setId).join(', ');
+        throw new Error(`Failed to clear sets: ${failedIds}`);
+      }
+      
+      console.log('All sets cleared successfully, proceeding with import');
+      
+      // Now proceed with the actual import
+      await performImport();
+      
+    } catch (err) {
+      setError(err.message || 'Помилка при очищенні даних');
+      console.error('Error during clearing:', err);
+      alert(`ПОМИЛКА ПРИ ОЧИЩЕННІ: ${err.message}`);
+    } finally {
+      setImportPhase(null);
+      setDetailedConfirmationData(null);
+    }
+  };
+
+  // Function to save imported data to database
+  const saveImportedDataToDatabase = async (data) => {
+    if (!data || !selectedPlant || !selectedUnit || !building) {
+      return { success: false, message: 'Missing required data' };
+    }
+
+    // Check if at least one of LEV1 or LEV2 is provided
+    let level1 = lev1 ? parseFloat(lev1) : null;
+    let level2 = lev2 ? parseFloat(lev2) : null;
+    
+    // Auto-fill logic for levels
+    if (level1 !== null && level2 === null) {
+      // If only LEV1 provided, set LEV2 = LEV1 + 200
+      level2 = level1 + 200;
+    } else if (level1 === null && level2 !== null) {
+      // If only LEV2 provided, set LEV1 = LEV2 - 200
+      level1 = level2 - 200;
+    }
+
+    try {
+      // Transform the imported data into the format expected by the backend
+      const transformedData = {
+        plant_id: selectedPlant,
+        unit_id: selectedUnit,
+        building: building,
+        room: room || null,
+        lev1: level1,
+        lev2: level2,
+        pga: pga ? parseFloat(pga) : null,
+        calc_type: type,
+        sheets: {}
+      };
+
+      // For each sheet (representing a DEMPF value)
+      Object.entries(data).forEach(([sheetName, sheetData]) => {
+        // Convert sheet name to DEMPF value (e.g., "5%" -> 5)
+        const dempf = parseFloat(sheetName.replace('%', '').replace(',', '.'));
+        
+        // Add sheet data to transformation
+        transformedData.sheets[sheetName] = {
+          dempf: dempf,
+          data: sheetData
+        };
+      });
+
+      // Send data to backend
+      const response = await fetch('http://localhost:8000/api/save-accel-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transformedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to save data');
+      }
+
+      const result = await response.json();
+      return { success: true, data: result };
+    } catch (err) {
+      console.error('Error saving data to database:', err);
+      return { success: false, message: err.message };
+    }
+  };
+
+  // Function to perform the actual import
+  const performImport = async () => {
+    try {
+      // Extract data from all sheets
+      setImportPhase('extracting');
       const allData = {};
       
       for (const sheet of sheetInfo) {
@@ -520,7 +731,6 @@ function Import() {
       }
       
       setSheetsData(allData);
-      setExtractingData(false);
 
       // Prepare data for table: convert columns to array of objects
       const importedTableData = {};
@@ -541,26 +751,25 @@ function Import() {
       setSelectedSheet(Object.keys(importedTableData)[0] || null);
 
       // Save the data to the database
-      setSavingData(true);
+      setImportPhase('saving');
       const saveResult = await saveImportedDataToDatabase(allData);
       if (!saveResult.success) {
         throw new Error(`Помилка при збереженні даних: ${saveResult.message}`);
       }
+      
       setImportStatus('success');
       setDataImported(true);
 
-      // Only reset the file input
+      // Reset the file input
       const fileInput = document.getElementById('file');
       if (fileInput) {
         fileInput.value = '';
       }
-    } catch (err) {
-      setError(err.message || 'Помилка при імпорті даних');
-      setImportStatus('error');
+      
+      console.log('Import completed successfully');
+      
     } finally {
-      setAnalyzingFile(false);
-      setExtractingData(false);
-      setSavingData(false);
+      setImportPhase(null);
     }
   };
 
@@ -766,49 +975,62 @@ function Import() {
                   
                   <button 
                     type="button" 
-                    className={`import-button ${(analyzingFile || extractingData || savingData) ? 'pulsing-button' : ''}`}
+                    className={`import-button ${importPhase ? 'pulsing-button' : ''}`}
                     onClick={handleImport}
-                    disabled={!file || !selectedPlant || !selectedUnit || !building || analyzingFile || extractingData || savingData || dataImported}
+                    disabled={!file || !selectedPlant || !selectedUnit || !building || importPhase || dataImported}
                   >
-                    {analyzingFile ? 'Аналіз файлу...' : extractingData ? 'Отримання даних...' : savingData ? 'Імпорт даних...' : 'Імпортувати'}
+                    {importPhase === 'checking' ? 'Перевірка даних...' : 
+                     importPhase === 'clearing' ? 'Очищення...' : 
+                     importPhase === 'extracting' ? 'Отримання даних...' : 
+                     importPhase === 'saving' ? 'Імпорт даних...' : 
+                     'Імпортувати'}
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* File analysis message */}
-            {file && analyzingFile && (
+            {/* Show message while checking existing data */}
+            {file && importPhase === 'checking' && (
               <div className="file-import-row">
                 <div className="analyzing-message">
-                  Аналіз Excel файлу, будь ласка зачекайте...
+                  Перевірка існуючих даних...
+                </div>
+              </div>
+            )}
+
+            {/* Show message while clearing data */}
+            {file && importPhase === 'clearing' && (
+              <div className="file-import-row">
+                <div className="analyzing-message">
+                  Очищення...
                 </div>
               </div>
             )}
 
             {/* Show message while extracting data */}
-            {file && extractingData && (
+            {file && importPhase === 'extracting' && (
               <div className="file-import-row">
                 <div className="analyzing-message">
-                  Отримання даних з файлу, будь ласка зачекайте...
+                  Отримання даних...
+                </div>
+              </div>
+            )}
+
+            {/* Show message while saving data */}
+            {file && importPhase === 'saving' && (
+              <div className="file-import-row">
+                <div className="analyzing-message">
+                  Імпорт даних...
                 </div>
               </div>
             )}
 
             {/* Sheet information */}
             {sheetInfo && sheetInfo.length > 0 && !sheetsData && !dataImported && 
-             !analyzingFile && !extractingData && !savingData && (
+             !analyzingFile && !importPhase && (
               <div className="file-import-row">
                 <div className="sheet-info-message">
                   Знайдено {sheetInfo.length} аркушів Excel. Натисніть кнопку "Імпортувати".
-                </div>
-              </div>
-            )}
-
-            {/* Show message while saving data */}
-            {file && savingData && (
-              <div className="file-import-row">
-                <div className="analyzing-message">
-                  Дані імпортуються в базу...
                 </div>
               </div>
             )}
@@ -865,6 +1087,96 @@ function Import() {
           </div>
         )}
       </div>
+
+      {/* Detailed Confirmation Dialog */}
+      {showDetailedConfirmation && detailedConfirmationData && (
+        <div className="confirmation-overlay">
+          <div className="detailed-confirmation-dialog">
+            <div className="confirmation-header">
+              <h3>Знайдено існуючі дані</h3>
+            </div>
+            <div className="confirmation-body">
+              <p className="summary-text">
+                Знайдено існуючі дані для <strong>{detailedConfirmationData.existingDempfs.length}</strong> з <strong>{detailedConfirmationData.totalSheets}</strong> коефіцієнтів DEMPF:
+              </p>
+              
+              <div className="existing-data-list">
+                {detailedConfirmationData.existingDempfs.map((result, index) => (
+                  <div key={index} className="existing-data-item">
+                    <div className="dempf-header">
+                      <span className="dempf-name">{result.sheetName}</span>
+                      <span className="dempf-value">DEMPF: {result.dempf}%</span>
+                    </div>
+                    <div className="data-details">
+                      <div className="detail-item">
+                        <span className="detail-label">ID набору:</span>
+                        <span className="detail-value">{result.setId}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="warning-text">
+                <strong>Увага:</strong> Перезапис видалить існуючі дані безповоротно!
+              </div>
+            </div>
+            <div className="confirmation-actions">
+              <button 
+                className="btn-cancel"
+                onClick={() => handleDetailedConfirmation(false)}
+                disabled={importPhase === 'clearing'}
+              >
+                Скасувати
+              </button>
+              <button 
+                className="btn-overwrite"
+                onClick={() => handleDetailedConfirmation(true)}
+                disabled={importPhase === 'clearing'}
+              >
+                {importPhase === 'clearing' ? 'Очищення...' : 'Перезаписати дані'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {showConfirmation && (
+        <div className="confirmation-overlay">
+          <div className="confirmation-dialog">
+            <div className="confirmation-header">
+              <h3>Знайдено існуючі дані</h3>
+            </div>
+            <div className="confirmation-body">
+              <p>
+                В базі даних знайдено дані з такими же параметрами.
+                Знайдено елементів: {confirmationData?.foundEk}
+              </p>
+              <p>
+                Бажаєте перезаписати існуючі дані?
+              </p>
+            </div>
+            <div className="confirmation-actions">
+              <button 
+                className="btn-cancel"
+                onClick={() => handleConfirmedImport(false)}
+                disabled={importPhase === 'clearing'}
+              >
+                Скасувати
+              </button>
+              <button 
+                className="btn-overwrite"
+                onClick={() => handleConfirmedImport(true)}
+                disabled={importPhase === 'clearing'}
+              >
+                {importPhase === 'clearing' ? 'Очищення...' : 'Перезаписати'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         .imported-table-container {
           padding: 24px 20px 28px 20px;
@@ -1028,6 +1340,176 @@ function Import() {
           border: 1px solid #f0f0f0;
           border-radius: 4px;
           overflow: hidden;
+        }
+        .confirmation-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+        .confirmation-dialog {
+          background: white;
+          border-radius: 8px;
+          padding: 0;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+          max-width: 500px;
+          width: 90%;
+          max-height: 80vh;
+          overflow: hidden;
+        }
+        .confirmation-header {
+          padding: 20px 24px 16px 24px;
+          border-bottom: 1px solid #e9ecef;
+          background-color: #f8f9fa;
+        }
+        .confirmation-header h3 {
+          margin: 0;
+          color: #495057;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+        .confirmation-body {
+          padding: 24px;
+          color: #495057;
+          line-height: 1.5;
+        }
+        .confirmation-body p {
+          margin: 0 0 16px 0;
+        }
+        .confirmation-body p:last-child {
+          margin-bottom: 0;
+        }
+        .confirmation-actions {
+          padding: 16px 24px 24px 24px;
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+        }
+        .btn-cancel {
+          padding: 10px 20px;
+          border: 1px solid #6c757d;
+          border-radius: 6px;
+          background-color: #fff;
+          color: #6c757d;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-cancel:hover:not(:disabled) {
+          background-color: #6c757d;
+          color: white;
+        }
+        .btn-cancel:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .btn-overwrite {
+          padding: 10px 20px;
+          border: 1px solid #dc3545;
+          border-radius: 6px;
+          background-color: #dc3545;
+          color: white;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-overwrite:hover:not(:disabled) {
+          background-color: #c82333;
+          border-color: #bd2130;
+        }
+        .btn-overwrite:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .detailed-confirmation-dialog {
+          background: white;
+          border-radius: 12px;
+          padding: 0;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+          max-width: 700px;
+          width: 95%;
+          max-height: 85vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        .summary-text {
+          font-size: 1.1rem;
+          margin-bottom: 20px;
+          color: #495057;
+        }
+        .existing-data-list {
+          max-height: 300px;
+          overflow-y: auto;
+          margin-bottom: 20px;
+          border: 1px solid #e9ecef;
+          border-radius: 8px;
+          background: #f8f9fa;
+        }
+        .existing-data-item {
+          padding: 16px;
+          border-bottom: 1px solid #e9ecef;
+          background: white;
+          margin: 8px;
+          border-radius: 6px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .existing-data-item:last-child {
+          border-bottom: none;
+        }
+        .dempf-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #e9ecef;
+        }
+        .dempf-name {
+          font-weight: 600;
+          font-size: 1.1rem;
+          color: #2c5aa0;
+        }
+        .dempf-value {
+          background: #e3f2fd;
+          color: #1565c0;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.9rem;
+          font-weight: 500;
+        }
+        .data-details {
+          display: flex;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        .detail-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .detail-label {
+          font-size: 0.85rem;
+          color: #6c757d;
+          font-weight: 500;
+        }
+        .detail-value {
+          font-weight: 600;
+          color: #495057;
+        }
+        .warning-text {
+          background: #fff3cd;
+          border: 1px solid #ffeaa7;
+          color: #856404;
+          padding: 12px;
+          border-radius: 6px;
+          margin-bottom: 0;
         }
       `}</style>
     </div>

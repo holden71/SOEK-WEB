@@ -53,10 +53,37 @@ function Main() {
           const handleImportClick = (e) => {
             e.stopPropagation();
             const rect = e.currentTarget.getBoundingClientRect();
-            setPopupPosition({ 
-              x: Math.max(rect.left - 200, 10), 
-              y: rect.bottom 
-            });
+            
+            // Рассчитываем позицию с учетом размеров экрана
+            const popupWidth = 480;
+            const popupHeight = 400; // Примерная высота popup
+            const margin = 10;
+            
+            let x = rect.left - 200;
+            let y = rect.bottom + 5;
+            
+            // Проверяем, не выходит ли popup за правую границу экрана
+            if (x + popupWidth > window.innerWidth - margin) {
+              x = window.innerWidth - popupWidth - margin;
+            }
+            
+            // Проверяем, не выходит ли popup за левую границу экрана
+            if (x < margin) {
+              x = margin;
+            }
+            
+            // Проверяем, не выходит ли popup за нижнюю границу экрана
+            if (y + popupHeight > window.innerHeight - margin) {
+              // Показываем popup сверху от кнопки
+              y = rect.top - popupHeight - 5;
+              
+              // Если и сверху не помещается, показываем в центре экрана по вертикали
+              if (y < margin) {
+                y = (window.innerHeight - popupHeight) / 2;
+              }
+            }
+            
+            setPopupPosition({ x, y });
             
             // Get current row data
             const rowData = row.original;
@@ -243,16 +270,31 @@ function Main() {
   // Close popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (popupRef.current && !popupRef.current.contains(event.target)) {
+      if (showPopup && popupRef.current && !popupRef.current.contains(event.target)) {
+        // Проверяем что клик не по кнопке импорта
+        const importButton = event.target.closest('.tiny-import-button');
+        if (!importButton) {
+          setShowPopup(false);
+        }
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showPopup) {
         setShowPopup(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    if (showPopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [showPopup]);
 
   const handlePlantChange = (e) => {
     setSelectedPlant(e.target.value);
@@ -652,6 +694,8 @@ function Main() {
     }
   }, [showPopup]);
 
+  // Удалена синхронизация горизонтальной прокрутки - теперь используем встроенные скроллбары
+
   // Modify the triggerFileInput function to match Import.jsx
   const triggerFileInput = () => {
     if (fileInputRef.current) {
@@ -757,7 +801,8 @@ function Main() {
 
               <div className="results">
                 <div className="table-container">
-                  <table>
+                  <div className="table-scroll-container" id="table-scroll-container">
+                    <table>
                     <thead>
                       {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
@@ -800,16 +845,25 @@ function Main() {
                       </tbody>
                     )}
                   </table>
+                  </div>
                 </div>
+                
+                {/* Фиксированная горизонтальная прокрутка - перенесена на уровень results */}
+                {table.getRowModel().rows.length > 0 && (
+                  <div className="table-horizontal-scroll" id="table-horizontal-scroll">
+                    <div className="table-horizontal-scroll-content" id="table-horizontal-scroll-content"></div>
+                  </div>
+                )}
                 {/* Import Popup */}
                 {showPopup && (
                   <div 
                     className="import-popup"
                     style={{ 
-                      position: 'absolute',
+                      position: 'fixed',
                       left: `${popupPosition.x}px`,
                       top: `${popupPosition.y}px`,
-                      width: '480px'
+                      width: '480px',
+                      zIndex: 1000
                     }}
                     ref={popupRef}
                   >
@@ -1035,13 +1089,41 @@ function Main() {
                       <div className="pagination-right">
                         <input
                           type="number"
+                          min="1"
+                          max={table.getPageCount()}
                           defaultValue={table.getState().pagination.pageIndex + 1}
                           onChange={e => {
-                            const page = e.target.value ? Number(e.target.value) - 1 : 0
-                            table.setPageIndex(page)
+                            const inputValue = Number(e.target.value);
+                            const totalPages = table.getPageCount();
+                            
+                            // Ограничиваем ввод диапазоном от 1 до общего количества страниц
+                            if (inputValue >= 1 && inputValue <= totalPages) {
+                              table.setPageIndex(inputValue - 1);
+                            } else if (inputValue > totalPages) {
+                              // Если ввели больше максимума, устанавливаем последнюю страницу
+                              e.target.value = totalPages;
+                              table.setPageIndex(totalPages - 1);
+                            } else if (inputValue < 1 && e.target.value !== '') {
+                              // Если ввели меньше 1, устанавливаем первую страницу
+                              e.target.value = 1;
+                              table.setPageIndex(0);
+                            }
+                          }}
+                          onBlur={e => {
+                            // При потере фокуса проверяем и корректируем значение
+                            const inputValue = Number(e.target.value);
+                            const totalPages = table.getPageCount();
+                            
+                            if (!e.target.value || inputValue < 1) {
+                              e.target.value = 1;
+                              table.setPageIndex(0);
+                            } else if (inputValue > totalPages) {
+                              e.target.value = totalPages;
+                              table.setPageIndex(totalPages - 1);
+                            }
                           }}
                           className="page-input"
-                          title="Go to page"
+                          title={`Перейти на страницу (1-${table.getPageCount()})`}
                         />
                         <select
                           value={table.getState().pagination.pageSize}

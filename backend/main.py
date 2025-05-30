@@ -13,7 +13,7 @@ from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException, Query,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit
+from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult
 from pydantic import BaseModel
 from settings import settings
 from sqlalchemy import inspect, text
@@ -700,6 +700,106 @@ async def execute_set_all_ek_accel_set(
         db.rollback()
         print(f"Procedure execution failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error executing SET_ALL_EK_ACCEL_SET procedure: {str(e)}")
+
+@app.post("/api/find-req-accel-set", response_model=FindReqAccelSetResult)
+async def find_req_accel_set(
+    db: DbSessionDep,
+    params: FindReqAccelSetParams = Body(...)
+):
+    """
+    Execute the FIND_REQ_ACCEL_SET stored procedure to check for existing acceleration data
+    """
+    try:
+        # Prepare the parameters
+        plant_id = params.plant_id
+        unit_id = params.unit_id
+        building = params.building
+        room = params.room
+        lev1 = params.lev1
+        lev2 = params.lev2
+        earthq_type = params.earthq_type
+        calc_type = params.calc_type
+        set_type = params.set_type
+        dempf = params.dempf
+        
+        # Log input parameters
+        print(f"Executing FIND_REQ_ACCEL_SET with: PLANT_ID={plant_id}, UNIT_ID={unit_id}, BUILDING={building}, ROOM={room}, LEV1={lev1}, LEV2={lev2}, EARTHQ_TYPE={earthq_type}, CALC_TYPE={calc_type}, SET_TYPE={set_type}, DEMPF={dempf}")
+        
+        # Execute procedure using cursor.callproc
+        conn = db.connection().connection
+        cursor = conn.cursor()
+        
+        # Create output variables
+        set_id_out = cursor.var(int)
+        found_ek_out = cursor.var(int)
+        
+        # Call the procedure
+        cursor.callproc('FIND_REQ_ACCEL_SET', [
+            plant_id, unit_id, building, room, lev1, lev2, earthq_type, calc_type, set_type, dempf,
+            set_id_out, found_ek_out
+        ])
+        
+        # Get the output values
+        set_id_value = set_id_out.getvalue()
+        found_ek_value = found_ek_out.getvalue()
+        
+        # Log results
+        print(f"FIND_REQ_ACCEL_SET results: set_id={set_id_value}, found_ek={found_ek_value}")
+        
+        return FindReqAccelSetResult(
+            set_id=set_id_value,
+            found_ek=found_ek_value
+        )
+        
+    except Exception as e:
+        print(f"FIND_REQ_ACCEL_SET execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error executing FIND_REQ_ACCEL_SET procedure: {str(e)}")
+
+@app.post("/api/clear-accel-set-arrays", response_model=ClearAccelSetResult)
+async def clear_accel_set_arrays(
+    db: DbSessionDep,
+    params: ClearAccelSetParams = Body(...)
+):
+    """
+    Execute the CLEAR_ACCEL_CET_ARRAYS stored procedure to clear existing acceleration data
+    """
+    try:
+        # Prepare the parameters
+        set_id = params.set_id
+        
+        # Log input parameters
+        print(f"Executing CLEAR_ACCEL_CET_ARRAYS with: SET_ID={set_id}")
+        
+        # Execute procedure using cursor.callproc
+        conn = db.connection().connection
+        cursor = conn.cursor()
+        
+        # Create output variable
+        clear_result_out = cursor.var(str)
+        
+        # Call the procedure
+        cursor.callproc('CLEAR_ACCEL_CET_ARRAYS', [
+            set_id, clear_result_out
+        ])
+        
+        # Get the output value
+        clear_result_value = clear_result_out.getvalue()
+        
+        # Log results
+        print(f"CLEAR_ACCEL_CET_ARRAYS results: clear_result={clear_result_value}")
+        
+        # Commit the changes
+        db.commit()
+        
+        return ClearAccelSetResult(
+            clear_result=clear_result_value
+        )
+        
+    except Exception as e:
+        # Rollback in case of error
+        db.rollback()
+        print(f"CLEAR_ACCEL_CET_ARRAYS execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error executing CLEAR_ACCEL_CET_ARRAYS procedure: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
