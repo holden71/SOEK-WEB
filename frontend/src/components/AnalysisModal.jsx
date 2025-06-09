@@ -1,6 +1,102 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Plotly from 'plotly.js-dist-min';
+import CalculationAnalysisTab from './CalculationAnalysisTab';
 import '../styles/AnalysisModal.css';
+
+const linearInterpolate = (x, x0, y0, x1, y1) => {
+  if (x1 === x0) {
+    return y0;
+  }
+  return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
+};
+
+const interpolateData = (targetFrequencies, sourceFrequencies, sourceValues) => {
+  // Ensure sourceFrequencies are sorted
+  const sortedSource = [...sourceFrequencies].map((freq, i) => ({ freq, val: sourceValues[i] }))
+                                            .sort((a, b) => a.freq - b.freq);
+  const sF = sortedSource.map(d => d.freq);
+  const sV = sortedSource.map(d => d.val);
+
+  return targetFrequencies.map(freq => {
+    const upperIndex = sF.findIndex(f => f >= freq);
+
+    if (sF[upperIndex] === freq) {
+      return sV[upperIndex];
+    }
+
+    if (upperIndex === -1) {
+      if (sF.length > 1) {
+        return linearInterpolate(freq, sF[sF.length-2], sV[sF.length-2], sF[sF.length-1], sV[sF.length-1]);
+      }
+      return sF.length === 1 ? sV[0] : 0;
+    }
+    if (upperIndex === 0) {
+      if (sF.length > 1) {
+        return linearInterpolate(freq, sF[0], sV[0], sF[1], sV[1]);
+      }
+      return sF.length === 1 ? sV[0] : 0;
+    }
+    
+    const lowerIndex = upperIndex - 1;
+    const x0 = sF[lowerIndex];
+    const y0 = sV[lowerIndex];
+    const x1 = sF[upperIndex];
+    const y1 = sV[upperIndex];
+
+    return linearInterpolate(freq, x0, y0, x1, y1);
+  });
+};
+
+const calculateAnalysis = (requirements, characteristics) => {
+  if (!requirements || !characteristics || !requirements.frequency || !characteristics.frequency || 
+      requirements.frequency.length === 0 || characteristics.frequency.length === 0) {
+    return null;
+  }
+
+  const result = {};
+
+  for (const axis of ['x', 'y', 'z']) {
+    const reqF = requirements.frequency;
+    const reqV = requirements[`mrz_${axis}`];
+    const charF = characteristics.frequency;
+    const charV = characteristics[`mrz_${axis}`];
+
+    if (!reqV || !charV || reqV.length === 0 || charV.length === 0) {
+      result[`m_${axis}_max`] = 0; // Set to 0 if data for an axis is missing
+      continue;
+    }
+
+    const allFrequencies = [...new Set([...reqF, ...charF])].sort((a, b) => a - b);
+    
+    const interpolatedReqV = interpolateData(allFrequencies, reqF, reqV);
+    const interpolatedCharV = interpolateData(allFrequencies, charF, charV);
+
+    const ratios = interpolatedReqV.map((reqValue, i) => {
+      const charValue = interpolatedCharV[i];
+      if (charValue === 0) {
+        return reqValue > 0 ? Infinity : 0;
+      }
+      return reqValue / charValue;
+    });
+
+    const maxRatio = Math.max(...ratios.filter(r => isFinite(r)));
+    result[`m_${axis}_max`] = isFinite(maxRatio) ? maxRatio : 0;
+    if (ratios.includes(Infinity)) {
+      result[`m_${axis}_max`] = Infinity;
+    }
+  }
+
+  const { m_x_max, m_y_max, m_z_max } = result;
+
+  result.m1 = Math.max(m_x_max, m_y_max, m_z_max);
+  result.m2 = Math.sqrt(m_x_max**2 + m_y_max**2 + m_z_max**2);
+  result.numberOfPoints = Math.max(...Object.values(result).map(v => Array.isArray(v) ? v.length : 0).filter(v => v > 0));
+
+  const allFrequencies = [...new Set([...(requirements.frequency || []), ...(characteristics.frequency || [])])];
+  result.numberOfPoints = allFrequencies.length;
+
+  return result;
+};
 
 const AnalysisModal = ({
   isOpen,
@@ -17,6 +113,8 @@ const AnalysisModal = ({
   const [selectedAxis, setSelectedAxis] = useState('x'); // New state for axis selection
   const [dampingFactor, setDampingFactor] = useState(0.5); // New state for damping factor
   const [dampingInputValue, setDampingInputValue] = useState('0.5'); // Local state for input display
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [plotData, setPlotData] = useState(null);
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
   const dampingTimerRef = useRef(null); // Timer ref for debouncing
@@ -77,6 +175,27 @@ const AnalysisModal = ({
     }
   }, [spectralData, activeTab, selectedAxis, requirementsData]); // Added requirementsData dependency
 
+  useEffect(() => {
+    if (requirementsData && spectralData) {
+      const result = calculateAnalysis(requirementsData, spectralData);
+      setAnalysisResult(result);
+
+      if (requirementsData.frequency && spectralData.frequency) {
+        const interpolated = {};
+        const allFrequencies = [...new Set([...requirementsData.frequency, ...spectralData.frequency])].sort((a, b) => a - b);
+        interpolated.frequency = allFrequencies;
+    
+        for (const axis of ['x', 'y', 'z']) {
+            if (requirementsData[`mrz_${axis}`] && spectralData[`mrz_${axis}`]) {
+                interpolated[`req_${axis}`] = interpolateData(allFrequencies, requirementsData.frequency, requirementsData[`mrz_${axis}`]);
+                interpolated[`char_${axis}`] = interpolateData(allFrequencies, spectralData.frequency, spectralData[`mrz_${axis}`]);
+            }
+        }
+        setPlotData(interpolated);
+      }
+    }
+  }, [requirementsData, spectralData]);
+
   // Reset charts when modal opens with new data
   useEffect(() => {
     if (isOpen) {
@@ -109,23 +228,27 @@ const AnalysisModal = ({
   }, [dampingFactor]);
 
   const createPlotlyChart = () => {
-    if (!spectralData || !spectralData.frequency) return;
-    
-    const frequency = spectralData.frequency;
+    if (!plotData && (!spectralData || !spectralData.frequency)) return;
+
+    const dataToPlot = plotData || spectralData;
+    const frequency = dataToPlot.frequency;
     
     // Get data for selected axis
-    let yData, axisName;
+    let yData, axisName, requirementsYData;
     switch (selectedAxis) {
       case 'x':
-        yData = spectralData.mrz_x;
+        yData = dataToPlot.char_x || dataToPlot.mrz_x;
+        requirementsYData = dataToPlot.req_x;
         axisName = 'МРЗ X';
         break;
       case 'y':
-        yData = spectralData.mrz_y;
+        yData = dataToPlot.char_y || dataToPlot.mrz_y;
+        requirementsYData = dataToPlot.req_y;
         axisName = 'МРЗ Y';
         break;
       case 'z':
-        yData = spectralData.mrz_z;
+        yData = dataToPlot.char_z || dataToPlot.mrz_z;
+        requirementsYData = dataToPlot.req_z;
         axisName = 'МРЗ Z';
         break;
       default:
@@ -230,37 +353,20 @@ const AnalysisModal = ({
     }];
 
     // Add requirements data if available
-    if (requirementsData && requirementsData.frequency && requirementsData.frequency.length > 0) {
-      let requirementsYData;
-      switch (selectedAxis) {
-        case 'x':
-          requirementsYData = requirementsData.mrz_x;
-          break;
-        case 'y':
-          requirementsYData = requirementsData.mrz_y;
-          break;
-        case 'z':
-          requirementsYData = requirementsData.mrz_z;
-          break;
-        default:
-          requirementsYData = null;
-      }
-
-      if (requirementsYData && requirementsYData.length > 0) {
-        data.push({
-          x: requirementsData.frequency,
-          y: requirementsYData,
-          type: 'scatter',
-          mode: 'lines',
-          line: { 
-            color: '#e74c3c', 
-            width: 2.5,
-            shape: 'linear'
-          },
-          name: 'Вимоги',
-          hovertemplate: 'Частота: %{x:.3f} Гц<br>Прискорення: %{y:.6f} м/с²<extra></extra>'
-        });
-      }
+    if (requirementsYData && requirementsYData.length > 0) {
+      data.push({
+        x: frequency,
+        y: requirementsYData,
+        type: 'scatter',
+        mode: 'lines',
+        line: {
+          color: '#e74c3c', // A contrasting color for requirements
+          width: 2.5,
+          dash: 'dash' // Dashed line for distinction
+        },
+        name: 'Вимоги',
+        hovertemplate: 'Частота: %{x:.3f} Гц<br>Прискорення: %{y:.6f} м/с²<extra></extra>'
+      });
     }
 
     const element = document.getElementById('main-spectrum-chart');
@@ -269,11 +375,13 @@ const AnalysisModal = ({
         // Always purge first to ensure clean state
         Plotly.purge('main-spectrum-chart');
         // Then create new plot
-        Plotly.newPlot('main-spectrum-chart', data, layout, config);
-        // Force resize to ensure proper display
-        setTimeout(() => {
-          Plotly.Plots.resize('main-spectrum-chart');
-        }, 100);
+        Plotly.newPlot('main-spectrum-chart', data, layout, config)
+          .then(() => {
+            // Force resize to ensure proper display
+            setTimeout(() => {
+              Plotly.Plots.resize('main-spectrum-chart');
+            }, 100);
+          });
       } catch (error) {
         console.warn('Error creating chart:', error);
       }
@@ -281,9 +389,11 @@ const AnalysisModal = ({
   };
 
   const fetchSpectralData = async () => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) return;
     setLoading(true);
     setError(null);
-    
+    setPlotData(null); // Reset plot data on new fetch
+
     try {
       const ekId = elementData.EK_ID || elementData.ek_id;
       if (!ekId) {
@@ -327,6 +437,10 @@ const AnalysisModal = ({
   };
 
   const fetchRequirementsData = async (ekId) => {
+    setLoading(true);
+    setError(null);
+    setPlotData(null); // Reset plot data on new fetch
+
     try {
       console.log('=== ДЕБАГ GET_SEISM_REQUIREMENTS ===');
       console.log('Входные параметры:');
@@ -550,12 +664,8 @@ const AnalysisModal = ({
     switch (activeTab) {
       case 'spectra':
         return renderSpectraTab();
-      case 'statistics':
-        return (
-          <div className="statistics-container">
-            <p>Статистичний аналіз (в розробці)</p>
-          </div>
-        );
+      case 'calculation':
+        return <CalculationAnalysisTab analysisResult={analysisResult} />;
       case 'comparison':
         return (
           <div className="comparison-container">
@@ -563,7 +673,7 @@ const AnalysisModal = ({
           </div>
         );
       default:
-        return renderSpectraTab();
+        return null;
     }
   };
 
@@ -613,10 +723,10 @@ const AnalysisModal = ({
             Спектри МРЗ
           </button>
           <button 
-            className={`tab-button ${activeTab === 'statistics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('statistics')}
+            className={`tab-button ${activeTab === 'calculation' ? 'active' : ''}`}
+            onClick={() => setActiveTab('calculation')}
           >
-            Статистика
+            Розрахунковий аналіз
           </button>
           <button 
             className={`tab-button ${activeTab === 'comparison' ? 'active' : ''}`}
