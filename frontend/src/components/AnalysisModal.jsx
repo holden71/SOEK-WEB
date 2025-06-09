@@ -11,32 +11,45 @@ const linearInterpolate = (x, x0, y0, x1, y1) => {
 };
 
 const interpolateData = (targetFrequencies, sourceFrequencies, sourceValues) => {
+  if (!sourceFrequencies || sourceFrequencies.length === 0) {
+    return targetFrequencies.map(() => 0);
+  }
+
   // Ensure sourceFrequencies are sorted
-  const sortedSource = [...sourceFrequencies].map((freq, i) => ({ freq, val: sourceValues[i] }))
-                                            .sort((a, b) => a.freq - b.freq);
+  const sortedSource = [...sourceFrequencies]
+    .map((freq, i) => ({ freq, val: sourceValues[i] }))
+    .sort((a, b) => a.freq - b.freq);
+    
   const sF = sortedSource.map(d => d.freq);
   const sV = sortedSource.map(d => d.val);
 
+  if (sF.length === 1) {
+    return targetFrequencies.map(() => sV[0]);
+  }
+
+  const minFreq = sF[0];
+  const maxFreq = sF[sF.length - 1];
+  const minVal = sV[0];
+  const maxVal = sV[sV.length - 1];
+
   return targetFrequencies.map(freq => {
+    // Plateau for points outside the source range
+    if (freq < minFreq) {
+      return minVal;
+    }
+    if (freq > maxFreq) {
+      return maxVal;
+    }
+
+    // Find an exact match or an interval for interpolation
     const upperIndex = sF.findIndex(f => f >= freq);
 
+    // Exact match
     if (sF[upperIndex] === freq) {
       return sV[upperIndex];
     }
-
-    if (upperIndex === -1) {
-      if (sF.length > 1) {
-        return linearInterpolate(freq, sF[sF.length-2], sV[sF.length-2], sF[sF.length-1], sV[sF.length-1]);
-      }
-      return sF.length === 1 ? sV[0] : 0;
-    }
-    if (upperIndex === 0) {
-      if (sF.length > 1) {
-        return linearInterpolate(freq, sF[0], sV[0], sF[1], sV[1]);
-      }
-      return sF.length === 1 ? sV[0] : 0;
-    }
     
+    // Interpolation for internal points
     const lowerIndex = upperIndex - 1;
     const x0 = sF[lowerIndex];
     const y0 = sV[lowerIndex];
