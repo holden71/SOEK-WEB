@@ -13,7 +13,7 @@ from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException, Query,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult, SpectralDataResult
+from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult, SpectralDataResult, SaveAnalysisResultParams, SaveAnalysisResultResponse
 from pydantic import BaseModel
 from settings import settings
 from sqlalchemy import inspect, text
@@ -1044,6 +1044,94 @@ async def get_seism_requirements(
     except Exception as e:
         print(f"Error getting seism requirements: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving seism requirements: {str(e)}")
+
+@app.post("/api/save-analysis-result", response_model=SaveAnalysisResultResponse)
+async def save_analysis_result(
+    db: DbSessionDep,
+    params: SaveAnalysisResultParams = Body(...)
+):
+    """
+    Save analysis results (m1, m2) to SRTN_EK_SEISM_DATA table.
+    
+    This endpoint:
+    1. Updates the SRTN_EK_SEISM_DATA table with calculated m1 and m2 values
+    2. Uses different column names based on spectrum type:
+       - МРЗ: M1_MRZ, M2_MRZ
+       - ПЗ: M1_PZ, M2_PZ
+    """
+    try:
+        # Validate spectrum type
+        if params.spectrum_type not in ["МРЗ", "ПЗ"]:
+            raise HTTPException(status_code=400, detail="Invalid spectrum type. Must be МРЗ or ПЗ")
+        
+        # Determine column names based on spectrum type
+        if params.spectrum_type == "МРЗ":
+            m1_column = "M1_MRZ"
+            m2_column = "M2_MRZ"
+        else:  # ПЗ
+            m1_column = "M1_PZ"
+            m2_column = "M2_PZ"
+        
+        # Build update query dynamically based on which values are provided
+        update_fields = []
+        update_params = {"ek_id": params.ek_id}
+        
+        if params.m1 is not None:
+            update_fields.append(f"{m1_column} = :m1")
+            update_params["m1"] = params.m1
+        
+        if params.m2 is not None:
+            update_fields.append(f"{m2_column} = :m2")
+            update_params["m2"] = params.m2
+        
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="At least one of m1 or m2 must be provided")
+        
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": params.ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {params.ek_id} not found")
+        
+        # Perform the update
+        update_query = text(f"""
+            UPDATE SRTN_EK_SEISM_DATA 
+            SET {', '.join(update_fields)}
+            WHERE EK_ID = :ek_id
+        """)
+        
+        print(f"Executing update query: {update_query}")
+        print(f"Parameters: {update_params}")
+        
+        result = db.execute(update_query, update_params)
+        
+        # Check if the update was successful
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"No rows updated for EK_ID {params.ek_id}")
+        
+        # Commit the transaction
+        db.commit()
+        
+        # Prepare response
+        updated_fields = {}
+        if params.m1 is not None:
+            updated_fields[m1_column] = params.m1
+        if params.m2 is not None:
+            updated_fields[m2_column] = params.m2
+        
+        return SaveAnalysisResultResponse(
+            success=True,
+            message=f"Successfully updated analysis results for EK_ID {params.ek_id} ({params.spectrum_type})",
+            updated_fields=updated_fields
+        )
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving analysis result: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error saving analysis result: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

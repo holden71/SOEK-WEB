@@ -64,4 +64,15 @@ class SpectralDataResult(BaseModel):
     mrz_z: Optional[List[float]] = None
     pz_x: Optional[List[float]] = None
     pz_y: Optional[List[float]] = None
-    pz_z: Optional[List[float]] = None 
+    pz_z: Optional[List[float]] = None
+
+class SaveAnalysisResultParams(BaseModel):
+    ek_id: int
+    spectrum_type: str  # МРЗ or ПЗ
+    m1: Optional[float] = None
+    m2: Optional[float] = None
+
+class SaveAnalysisResultResponse(BaseModel):
+    success: bool
+    message: str
+    updated_fields: Dict[str, Any] 

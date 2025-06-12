@@ -200,6 +200,11 @@ const AnalysisModal = ({
       const result = calculateAnalysis(requirementsData, spectralData);
       setAnalysisResult(result);
 
+      // Automatically save analysis results to database
+      if (result && result.m1 !== undefined && result.m2 !== undefined && elementData) {
+        saveAnalysisResults(result.m1, result.m2);
+      }
+
       if (requirementsData.frequency && spectralData.frequency) {
         const interpolated = {};
         const allFrequencies = [...new Set([...requirementsData.frequency, ...spectralData.frequency])].sort((a, b) => a - b);
@@ -478,6 +483,48 @@ const AnalysisModal = ({
       console.error('Error fetching spectral data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveAnalysisResults = async (m1, m2) => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot save analysis results: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+      console.log('=== Збереження результатів аналізу ===');
+      console.log('EK_ID:', ekId);
+      console.log('Spectrum Type:', spectrumType);
+      console.log('M1:', m1);
+      console.log('M2:', m2);
+
+      const response = await fetch('http://localhost:8000/api/save-analysis-result', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ek_id: ekId,
+          spectrum_type: spectrumType,
+          m1: isFinite(m1) ? m1 : null,
+          m2: isFinite(m2) ? m2 : null
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error saving analysis results:', errorData);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('✓ Результати аналізу збережено:', result);
+      
+    } catch (err) {
+      console.error('Error saving analysis results:', err);
     }
   };
 
