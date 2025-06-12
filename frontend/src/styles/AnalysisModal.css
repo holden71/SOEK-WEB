@@ -211,20 +211,70 @@
   padding: 8px 0;
 }
 
-/* Axis Selector */
+/* Unified Selector Container */
+.spectrum-type-selector {
+  margin-bottom: 16px;
+}
+
 .axis-selector {
-  display: flex;
-  justify-content: center;
   margin-bottom: 12px;
+}
+
+.unified-selector {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.spectrum-type-buttons {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
+
+.spectrum-type-button {
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Arial', sans-serif;
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.spectrum-type-button:hover {
+  color: #495057;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.spectrum-type-button.active {
+  background: #007bff;
+  color: white;
+  box-shadow: 0 2px 6px rgba(0, 123, 255, 0.25);
+  font-weight: 600;
 }
 
 .axis-buttons {
   display: flex;
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 4px;
-  border: 1px solid #e0e0e0;
   gap: 2px;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  padding: 2px;
 }
 
 .axis-button {
@@ -550,12 +600,31 @@
     gap: 12px;
   }
   
+  .unified-selector {
+    max-width: none;
+    margin: 0;
+  }
+
+  .spectrum-type-buttons {
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .spectrum-type-button {
+    padding: 10px 16px;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+  }
+  
   .axis-buttons {
     justify-content: center;
+    flex-wrap: wrap;
   }
   
   .axis-button {
-    min-width: 80px;
+    min-width: 70px;
+    padding: 8px 12px;
+    font-size: 13px;
   }
   
   .element-inline-details {

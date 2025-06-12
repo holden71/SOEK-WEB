@@ -70,9 +70,15 @@ const calculateAnalysis = (requirements, characteristics) => {
 
   for (const axis of ['x', 'y', 'z']) {
     const reqF = requirements.frequency;
-    const reqV = requirements[`mrz_${axis}`];
     const charF = characteristics.frequency;
-    const charV = characteristics[`mrz_${axis}`];
+    
+    // Handle both MRZ and PZ field naming patterns
+    const getFieldValue = (data, prefix, axis) => {
+      return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+    };
+    
+    const reqV = getFieldValue(requirements, 'mrz', axis) || getFieldValue(requirements, 'pz', axis);
+    const charV = getFieldValue(characteristics, 'mrz', axis) || getFieldValue(characteristics, 'pz', axis);
 
     if (!reqV || !charV || reqV.length === 0 || charV.length === 0) {
       result[`m_${axis}_max`] = 0; // Set to 0 if data for an axis is missing
@@ -124,6 +130,7 @@ const AnalysisModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedAxis, setSelectedAxis] = useState('x'); // New state for axis selection
+  const [spectrumType, setSpectrumType] = useState('МРЗ'); // New state for spectrum type
   const [dampingFactor, setDampingFactor] = useState(0.5); // New state for damping factor
   const [dampingInputValue, setDampingInputValue] = useState('0.5'); // Local state for input display
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -132,12 +139,12 @@ const AnalysisModal = ({
   const chartsCreated = useRef(false); // Track if charts have been created
   const dampingTimerRef = useRef(null); // Timer ref for debouncing
 
-  // Fetch spectral data when modal opens
+  // Fetch spectral data when modal opens or spectrum type changes
   useEffect(() => {
     if (isOpen && elementData) {
       fetchSpectralData();
     }
-  }, [isOpen, elementData]);
+  }, [isOpen, elementData, spectrumType]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -186,7 +193,7 @@ const AnalysisModal = ({
         }
       }, 100);
     }
-  }, [spectralData, activeTab, selectedAxis, requirementsData]); // Added requirementsData dependency
+  }, [spectralData, activeTab, selectedAxis, requirementsData, spectrumType]); // Added spectrumType dependency
 
   useEffect(() => {
     if (requirementsData && spectralData) {
@@ -198,16 +205,24 @@ const AnalysisModal = ({
         const allFrequencies = [...new Set([...requirementsData.frequency, ...spectralData.frequency])].sort((a, b) => a - b);
         interpolated.frequency = allFrequencies;
     
+        // Helper function to get field value with fallback patterns
+        const getFieldValue = (data, prefix, axis) => {
+          return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+        };
+        
         for (const axis of ['x', 'y', 'z']) {
-            if (requirementsData[`mrz_${axis}`] && spectralData[`mrz_${axis}`]) {
-                interpolated[`req_${axis}`] = interpolateData(allFrequencies, requirementsData.frequency, requirementsData[`mrz_${axis}`]);
-                interpolated[`char_${axis}`] = interpolateData(allFrequencies, spectralData.frequency, spectralData[`mrz_${axis}`]);
-            }
+          const reqData = getFieldValue(requirementsData, spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz', axis);
+          const charData = getFieldValue(spectralData, spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz', axis);
+          
+          if (reqData && charData) {
+            interpolated[`req_${axis}`] = interpolateData(allFrequencies, requirementsData.frequency, reqData);
+            interpolated[`char_${axis}`] = interpolateData(allFrequencies, spectralData.frequency, charData);
+          }
         }
         setPlotData(interpolated);
       }
     }
-  }, [requirementsData, spectralData]);
+  }, [requirementsData, spectralData, spectrumType]);
 
   // Reset charts when modal opens with new data
   useEffect(() => {
@@ -228,12 +243,12 @@ const AnalysisModal = ({
     };
   }, []);
 
-  // Update requirements data when damping factor changes
+  // Update requirements data when damping factor or spectrum type changes
   useEffect(() => {
     if (elementData && (elementData.EK_ID || elementData.ek_id)) {
       fetchRequirementsData(elementData.EK_ID || elementData.ek_id);
     }
-  }, [dampingFactor]);
+  }, [dampingFactor, spectrumType]);
 
   // Update input value when damping factor changes externally
   useEffect(() => {
@@ -246,23 +261,31 @@ const AnalysisModal = ({
     const dataToPlot = plotData || spectralData;
     const frequency = dataToPlot.frequency;
     
-    // Get data for selected axis
+    // Helper function to get field value with fallback patterns
+    const getFieldValue = (data, prefix, axis) => {
+      return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+    };
+    
+    // Get data for selected axis based on spectrum type
     let yData, axisName, requirementsYData;
+    const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
+    const displayPrefix = spectrumType.toUpperCase();
+    
     switch (selectedAxis) {
       case 'x':
-        yData = dataToPlot.char_x || dataToPlot.mrz_x;
-        requirementsYData = dataToPlot.req_x;
-        axisName = 'МРЗ X';
+        yData = getFieldValue(dataToPlot, `char`, 'x') || getFieldValue(dataToPlot, spectrumPrefix, 'x');
+        requirementsYData = getFieldValue(dataToPlot, 'req', 'x');
+        axisName = `${displayPrefix} X`;
         break;
       case 'y':
-        yData = dataToPlot.char_y || dataToPlot.mrz_y;
-        requirementsYData = dataToPlot.req_y;
-        axisName = 'МРЗ Y';
+        yData = getFieldValue(dataToPlot, `char`, 'y') || getFieldValue(dataToPlot, spectrumPrefix, 'y');
+        requirementsYData = getFieldValue(dataToPlot, 'req', 'y');
+        axisName = `${displayPrefix} Y`;
         break;
       case 'z':
-        yData = dataToPlot.char_z || dataToPlot.mrz_z;
-        requirementsYData = dataToPlot.req_z;
-        axisName = 'МРЗ Z';
+        yData = getFieldValue(dataToPlot, `char`, 'z') || getFieldValue(dataToPlot, spectrumPrefix, 'z');
+        requirementsYData = getFieldValue(dataToPlot, 'req', 'z');
+        axisName = `${displayPrefix} Z`;
         break;
       default:
         return;
@@ -292,7 +315,7 @@ const AnalysisModal = ({
       },
       yaxis: { 
         title: {
-          text: 'Прискорення, м/с²',
+          text: spectrumType === 'МРЗ' ? 'Прискорення, м/с²' : 'Переміщення, м',
           font: { size: 14, color: '#2c3e50', family: 'Arial, sans-serif' }
         },
         type: 'linear',
@@ -344,13 +367,15 @@ const AnalysisModal = ({
       ],
       toImageButtonOptions: {
         format: 'png',
-        filename: `spectrum_chart_${selectedAxis}`,
+        filename: `spectrum_chart_${spectrumType.toLowerCase()}_${selectedAxis}`,
         height: 600,
         width: 800,
         scale: 2
       }
     };
 
+    const unitLabel = spectrumType === 'МРЗ' ? 'м/с²' : 'м';
+    
     const data = [{
       x: frequency,
       y: yData,
@@ -362,7 +387,7 @@ const AnalysisModal = ({
         shape: 'linear'
       },
       name: 'Властивості',
-      hovertemplate: 'Частота: %{x:.3f} Гц<br>Прискорення: %{y:.6f} м/с²<extra></extra>'
+      hovertemplate: `Частота: %{x:.3f} Гц<br>${spectrumType === 'МРЗ' ? 'Прискорення' : 'Переміщення'}: %{y:.6f} ${unitLabel}<extra></extra>`
     }];
 
     // Add requirements data if available
@@ -378,7 +403,7 @@ const AnalysisModal = ({
           dash: 'dash' // Dashed line for distinction
         },
         name: 'Вимоги',
-        hovertemplate: 'Частота: %{x:.3f} Гц<br>Прискорення: %{y:.6f} м/с²<extra></extra>'
+        hovertemplate: `Частота: %{x:.3f} Гц<br>${spectrumType === 'МРЗ' ? 'Прискорення' : 'Переміщення'}: %{y:.6f} ${unitLabel}<extra></extra>`
       });
     }
 
@@ -416,9 +441,9 @@ const AnalysisModal = ({
       // Get calculation type from element data or use default
       const calcType = elementData.CALC_TYPE || elementData.calc_type || 'ДЕТЕРМІНИСТИЧНИЙ';
 
-      // Fetch MRZ spectral data for the specified calculation type
+      // Fetch spectral data for the specified calculation type and spectrum type
       const response = await fetch(
-        `http://localhost:8000/api/spectral-data?ek_id=${ekId}&calc_type=${encodeURIComponent(calcType)}&spectrum_type=МРЗ`
+        `http://localhost:8000/api/spectral-data?ek_id=${ekId}&calc_type=${encodeURIComponent(calcType)}&spectrum_type=${encodeURIComponent(spectrumType)}`
       );
 
       if (!response.ok) {
@@ -428,13 +453,20 @@ const AnalysisModal = ({
       const data = await response.json();
       setSpectralData(data);
       
-      // Auto-select first available axis
+      // Helper function to get field value with fallback patterns
+      const getFieldValue = (data, prefix, axis) => {
+        return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+      };
+      
+      // Auto-select first available axis based on spectrum type
       if (data) {
-        if (data.mrz_x && data.mrz_x.length > 0) {
+        const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
+        
+        if (getFieldValue(data, spectrumPrefix, 'x') && getFieldValue(data, spectrumPrefix, 'x').length > 0) {
           setSelectedAxis('x');
-        } else if (data.mrz_y && data.mrz_y.length > 0) {
+        } else if (getFieldValue(data, spectrumPrefix, 'y') && getFieldValue(data, spectrumPrefix, 'y').length > 0) {
           setSelectedAxis('y');
-        } else if (data.mrz_z && data.mrz_z.length > 0) {
+        } else if (getFieldValue(data, spectrumPrefix, 'z') && getFieldValue(data, spectrumPrefix, 'z').length > 0) {
           setSelectedAxis('z');
         }
       }
@@ -459,12 +491,12 @@ const AnalysisModal = ({
       console.log('Входные параметры:');
       console.log('  ek_id:', ekId);
       console.log('  dempf:', dampingFactor);
-      console.log('  spectr_earthq_type: МРЗ');
+      console.log('  spectr_earthq_type:', spectrumType);
       console.log('  calc_type: ДЕТЕРМІНИСТИЧНИЙ');
       
-      // Call the GET_SEISM_REQUIREMENTS procedure
+      // Call the GET_SEISM_REQUIREMENTS procedure with spectrum type
       const response = await fetch(
-        `http://localhost:8000/api/seism-requirements?ek_id=${ekId}&dempf=${dampingFactor}&spectr_earthq_type=МРЗ&calc_type=ДЕТЕРМІНИСТИЧНИЙ`
+        `http://localhost:8000/api/seism-requirements?ek_id=${ekId}&dempf=${dampingFactor}&spectr_earthq_type=${encodeURIComponent(spectrumType)}&calc_type=ДЕТЕРМІНИСТИЧНИЙ`
       );
 
       console.log('Статус ответа:', response.status, response.statusText);
@@ -481,33 +513,40 @@ const AnalysisModal = ({
       console.log('Выходные данные процедуры:');
       console.log('  data:', data);
       console.log('  frequency:', data?.frequency?.length || 0, 'точек');
-      console.log('  mrz_x:', data?.mrz_x?.length || 0, 'точек');
-      console.log('  mrz_y:', data?.mrz_y?.length || 0, 'точек');
-      console.log('  mrz_z:', data?.mrz_z?.length || 0, 'точек');
+      
+      // Helper function to get field value with fallback patterns
+      const getFieldValue = (data, prefix, axis) => {
+        return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+      };
+      
+      const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
+      console.log('  ' + spectrumPrefix + '_x:', getFieldValue(data, spectrumPrefix, 'x')?.length || 0, 'точек');
+      console.log('  ' + spectrumPrefix + '_y:', getFieldValue(data, spectrumPrefix, 'y')?.length || 0, 'точек');
+      console.log('  ' + spectrumPrefix + '_z:', getFieldValue(data, spectrumPrefix, 'z')?.length || 0, 'точек');
       
       // Check if we actually have frequency data
       if (!data || !data.frequency || data.frequency.length === 0) {
-        console.warn('Дані вимог відсутні для коефіцієнта демпфірування:', dampingFactor);
+        console.warn('Дані вимог відсутні для коефіцієнта демпфірування:', dampingFactor, 'та типу спектру:', spectrumType);
         console.log('=== КОНЕЦ ДЕБАГА (НЕТ FREQUENCY) ===');
         setRequirementsData(null);
         return;
       }
       
-      // Check if we have actual acceleration data for at least one axis
-      const hasRequirementsData = (data.mrz_x && data.mrz_x.length > 0) || 
-                                  (data.mrz_y && data.mrz_y.length > 0) || 
-                                  (data.mrz_z && data.mrz_z.length > 0);
+      // Check if we have actual data for at least one axis
+      const hasRequirementsData = getFieldValue(data, spectrumPrefix, 'x')?.length > 0 || 
+                                  getFieldValue(data, spectrumPrefix, 'y')?.length > 0 || 
+                                  getFieldValue(data, spectrumPrefix, 'z')?.length > 0;
       
-      console.log('Есть данные ускорения:', hasRequirementsData);
+      console.log('Есть данные:', hasRequirementsData);
       
       if (!hasRequirementsData) {
-        console.warn('Відсутні дані прискорення для вимог');
-        console.log('=== КОНЕЦ ДЕБАГА (НЕТ ДАННЫХ УСКОРЕНИЯ) ===');
+        console.warn('Відсутні дані для вимог типу спектру:', spectrumType);
+        console.log('=== КОНЕЦ ДЕБАГА (НЕТ ДАННЫХ) ===');
         setRequirementsData(null);
         return;
       }
       
-      console.log('✓ Данные требований успешно получены');
+      console.log('✓ Данные требований успешно получены для типа спектру:', spectrumType);
       console.log('=== КОНЕЦ ДЕБАГА (УСПЕХ) ===');
       setRequirementsData(data);
     } catch (err) {
@@ -595,21 +634,42 @@ const AnalysisModal = ({
       );
     }
 
-    // Check which axes have data
-    const hasXData = spectralData.mrz_x && spectralData.mrz_x.length > 0;
-    const hasYData = spectralData.mrz_y && spectralData.mrz_y.length > 0;
-    const hasZData = spectralData.mrz_z && spectralData.mrz_z.length > 0;
+    // Helper function to get field value with fallback patterns
+    const getFieldValue = (data, prefix, axis) => {
+      return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+    };
+    
+    // Check which axes have data based on spectrum type
+    const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
+    const hasXData = getFieldValue(spectralData, spectrumPrefix, 'x')?.length > 0;
+    const hasYData = getFieldValue(spectralData, spectrumPrefix, 'y')?.length > 0;
+    const hasZData = getFieldValue(spectralData, spectrumPrefix, 'z')?.length > 0;
 
     return (
       <div className="spectra-container">
-        <div className="axis-selector">
+        <div className="unified-selector">
+          <div className="spectrum-type-buttons">
+            <button 
+              className={`spectrum-type-button ${spectrumType === 'МРЗ' ? 'active' : ''}`}
+              onClick={() => setSpectrumType('МРЗ')}
+            >
+              МРЗ
+            </button>
+            <button 
+              className={`spectrum-type-button ${spectrumType === 'ПЗ' ? 'active' : ''}`}
+              onClick={() => setSpectrumType('ПЗ')}
+            >
+              ПЗ
+            </button>
+          </div>
+          
           <div className="axis-buttons">
             {hasXData && (
               <button 
                 className={`axis-button ${selectedAxis === 'x' ? 'active' : ''}`}
                 onClick={() => setSelectedAxis('x')}
               >
-                МРЗ X
+                {spectrumType} X
               </button>
             )}
             {hasYData && (
@@ -617,7 +677,7 @@ const AnalysisModal = ({
                 className={`axis-button ${selectedAxis === 'y' ? 'active' : ''}`}
                 onClick={() => setSelectedAxis('y')}
               >
-                МРЗ Y
+                {spectrumType} Y
               </button>
             )}
             {hasZData && (
@@ -625,7 +685,7 @@ const AnalysisModal = ({
                 className={`axis-button ${selectedAxis === 'z' ? 'active' : ''}`}
                 onClick={() => setSelectedAxis('z')}
               >
-                МРЗ Z
+                {spectrumType} Z
               </button>
             )}
           </div>
@@ -653,6 +713,10 @@ const AnalysisModal = ({
         
         <div className="spectral-info">
           <div className="info-item">
+            <span className="info-label">Тип спектру:</span>
+            <span className="info-value">{spectrumType}</span>
+          </div>
+          <div className="info-item">
             <span className="info-label">Кількість точок частоти:</span>
             <span className="info-value">{spectralData.frequency.length}</span>
           </div>
@@ -665,7 +729,7 @@ const AnalysisModal = ({
           <div className="info-item">
             <span className="info-label">Поточна вісь:</span>
             <span className="info-value">
-              {selectedAxis === 'x' ? 'МРЗ X' : selectedAxis === 'y' ? 'МРЗ Y' : 'МРЗ Z'}
+              {selectedAxis === 'x' ? `${spectrumType} X` : selectedAxis === 'y' ? `${spectrumType} Y` : `${spectrumType} Z`}
             </span>
           </div>
         </div>
@@ -697,7 +761,7 @@ const AnalysisModal = ({
       <div className="analysis-modal" ref={modalRef}>
         <div className="analysis-modal-header">
           <div className="modal-title-section">
-            <h2>Аналіз спектрів МРЗ</h2>
+            <h2>Аналіз спектрів {spectrumType}</h2>
             {elementData && (
               <div className="element-info">
                 <div className="element-main-info">
@@ -733,7 +797,7 @@ const AnalysisModal = ({
             className={`tab-button ${activeTab === 'spectra' ? 'active' : ''}`}
             onClick={() => setActiveTab('spectra')}
           >
-            Спектри МРЗ
+            Спектри {spectrumType}
           </button>
           <button 
             className={`tab-button ${activeTab === 'calculation' ? 'active' : ''}`}
