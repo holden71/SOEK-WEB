@@ -1034,6 +1034,8 @@ const AnalysisModal = ({
             setIsFrequencyEnabled={setIsFrequencyEnabled}
             naturalFrequency={naturalFrequency}
             setNaturalFrequency={setNaturalFrequency}
+            allSpectralData={allSpectralData}
+            allRequirementsData={allRequirementsData}
           />
         );
       case 'pressure':

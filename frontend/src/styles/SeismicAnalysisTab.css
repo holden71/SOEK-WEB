@@ -146,6 +146,53 @@
   transform: translateY(0);
 }
 
+.data-availability-section {
+  padding: 0;
+}
+
+.section-title {
+  font-size: 16px;
+  color: #2c3e50;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+}
+
+.availability-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.availability-item:last-child {
+  border-bottom: none;
+}
+
+.availability-label {
+  flex: 1;
+}
+
+.availability-status {
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+.status-text {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Arial', sans-serif;
+}
+
+.status-text.available {
+  color: #28a745;
+}
+
+.status-text.unavailable {
+  color: #6c757d;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .seismic-analysis-container {
