@@ -46,8 +46,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>m₁</strong>
                   <span className="parameter-description">max(m<sub>x</sub>, m<sub>y</sub>, m<sub>z</sub>)</span>
                 </td>
-                <td className="value-cell mrz-value">{formatValue(mrzResult?.m1)}</td>
-                <td className="value-cell pz-value">{formatValue(pzResult?.m1)}</td>
+                <td className="value-cell">{formatValue(mrzResult?.m1)}</td>
+                <td className="value-cell">{formatValue(pzResult?.m1)}</td>
               </tr>
               
               <tr className="main-criteria-row">
@@ -55,8 +55,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>m₂</strong>
                   <span className="parameter-description">√(m<sub>x</sub>² + m<sub>y</sub>² + m<sub>z</sub>²)</span>
                 </td>
-                <td className="value-cell mrz-value">{formatValue(mrzResult?.m2)}</td>
-                <td className="value-cell pz-value">{formatValue(pzResult?.m2)}</td>
+                <td className="value-cell">{formatValue(mrzResult?.m2)}</td>
+                <td className="value-cell">{formatValue(pzResult?.m2)}</td>
               </tr>
               
               <tr className="divider-row">
@@ -109,12 +109,16 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
         {/* Status indicators */}
         <div className="status-indicators">
           <div className="status-item">
-            <span className="status-dot mrz-dot"></span>
-            <span>МРЗ: {mrzResult ? 'Доступно' : 'Недоступно'}</span>
+            <span className={`status-dot ${mrzResult ? 'available' : 'unavailable'}`}></span>
+            <span className={mrzResult ? 'status-available' : 'status-unavailable'}>
+              МРЗ: {mrzResult ? 'Доступно' : 'Недоступно'}
+            </span>
           </div>
           <div className="status-item">
-            <span className="status-dot pz-dot"></span>
-            <span>ПЗ: {pzResult ? 'Доступно' : 'Недоступно'}</span>
+            <span className={`status-dot ${pzResult ? 'available' : 'unavailable'}`}></span>
+            <span className={pzResult ? 'status-available' : 'status-unavailable'}>
+              ПЗ: {pzResult ? 'Доступно' : 'Недоступно'}
+            </span>
           </div>
         </div>
 

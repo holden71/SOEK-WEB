@@ -125,6 +125,7 @@ const AnalysisModal = ({
   selectedUnit
 }) => {
   const [activeTab, setActiveTab] = useState('spectra');
+  const [activeSubTab, setActiveSubTab] = useState('seismic'); // New state for subtabs
   const [spectralData, setSpectralData] = useState(null);
   const [allSpectralData, setAllSpectralData] = useState({}); // New state for all spectrum types
   const [requirementsData, setRequirementsData] = useState(null);
@@ -848,12 +849,31 @@ const AnalysisModal = ({
     switch (activeTab) {
       case 'spectra':
         return renderSpectraTab();
+      case 'analysis':
+        return renderAnalysisTab();
       case 'calculation':
-        return <CalculationAnalysisTab analysisResult={analysisResult} allAnalysisResults={allAnalysisResults} />;
-      case 'comparison':
+        return renderCalculationTab();
+      default:
+        return null;
+    }
+  };
+
+  const renderAnalysisTab = () => {
+    return <CalculationAnalysisTab analysisResult={analysisResult} allAnalysisResults={allAnalysisResults} />;
+  };
+
+  const renderCalculationTab = () => {
+    switch (activeSubTab) {
+      case 'seismic':
         return (
-          <div className="comparison-container">
-            <p>Порівняння з іншими елементами (в розробці)</p>
+          <div className="seismic-analysis-container">
+            <p>Аналіз зміни сейсмічних вимог (в розробці)</p>
+          </div>
+        );
+      case 'pressure':
+        return (
+          <div className="pressure-analysis-container">
+            <p>Аналіз зміни параметрів тиску та температури (в розробці)</p>
           </div>
         );
       default:
@@ -868,7 +888,7 @@ const AnalysisModal = ({
       <div className="analysis-modal" ref={modalRef}>
         <div className="analysis-modal-header">
           <div className="modal-title-section">
-            <h2>Аналіз спектрів {spectrumType}</h2>
+            <h2>Аналіз спектрів</h2>
             {elementData && (
               <div className="element-info">
                 <div className="element-main-info">
@@ -904,7 +924,13 @@ const AnalysisModal = ({
             className={`tab-button ${activeTab === 'spectra' ? 'active' : ''}`}
             onClick={() => setActiveTab('spectra')}
           >
-            Спектри {spectrumType}
+            Спектри
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'analysis' ? 'active' : ''}`}
+            onClick={() => setActiveTab('analysis')}
+          >
+            Аналіз спектрів
           </button>
           <button 
             className={`tab-button ${activeTab === 'calculation' ? 'active' : ''}`}
@@ -912,13 +938,25 @@ const AnalysisModal = ({
           >
             Розрахунковий аналіз
           </button>
-          <button 
-            className={`tab-button ${activeTab === 'comparison' ? 'active' : ''}`}
-            onClick={() => setActiveTab('comparison')}
-          >
-            Порівняння
-          </button>
         </div>
+
+        {/* Subtabs for Розрахунковий аналіз */}
+        {activeTab === 'calculation' && (
+          <div className="analysis-modal-subtabs">
+            <button 
+              className={`subtab-button ${activeSubTab === 'seismic' ? 'active' : ''}`}
+              onClick={() => setActiveSubTab('seismic')}
+            >
+              Аналіз зміни сейсмічних вимог
+            </button>
+            <button 
+              className={`subtab-button ${activeSubTab === 'pressure' ? 'active' : ''}`}
+              onClick={() => setActiveSubTab('pressure')}
+            >
+              Аналіз зміни параметрів тиску та температури
+            </button>
+          </div>
+        )}
 
         <div className="analysis-modal-content">
           {renderTabContent()}
