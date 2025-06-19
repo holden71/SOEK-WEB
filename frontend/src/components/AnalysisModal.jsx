@@ -118,12 +118,19 @@ const calculateAnalysis = (requirements, characteristics) => {
   return result;
 };
 
-const calculateAnalysisWithFrequencyFilter = (requirements, characteristics, naturalFreq = null) => {
+const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, naturalFreq = null) => {
+  // Если собственная частота не задана, используем обычный расчет
+  if (!naturalFreq || isNaN(naturalFreq) || naturalFreq <= 0) {
+    return calculateAnalysis(requirements, characteristics);
+  }
+
   if (!requirements || !characteristics || !requirements.frequency || !characteristics.frequency || 
       requirements.frequency.length === 0 || characteristics.frequency.length === 0) {
     return null;
   }
 
+  console.log(`=== ЛОГИКА С ПЛАТО ДЛЯ ЧАСТОТЫ: ${naturalFreq} Гц ===`);
+  
   const result = {};
 
   for (const axis of ['x', 'y', 'z']) {
@@ -143,32 +150,26 @@ const calculateAnalysisWithFrequencyFilter = (requirements, characteristics, nat
       continue;
     }
 
-    let filteredReqF = reqF;
-    let filteredReqV = reqV;
-    let filteredCharF = charF;
-    let filteredCharV = charV;
-
-    // Filter frequencies if natural frequency is enabled
-    if (naturalFreq !== null && !isNaN(naturalFreq) && naturalFreq > 0) {
-      const reqIndices = reqF.map((freq, index) => freq >= naturalFreq ? index : -1).filter(i => i !== -1);
-      const charIndices = charF.map((freq, index) => freq >= naturalFreq ? index : -1).filter(i => i !== -1);
-      
-      if (reqIndices.length > 0) {
-        filteredReqF = reqIndices.map(i => reqF[i]);
-        filteredReqV = reqIndices.map(i => reqV[i]);
-      }
-      
-      if (charIndices.length > 0) {
-        filteredCharF = charIndices.map(i => charF[i]);
-        filteredCharV = charIndices.map(i => charV[i]);
-      }
-    }
-
-    const allFrequencies = [...new Set([...filteredReqF, ...filteredCharF])].sort((a, b) => a - b);
+    // Создаем общий массив частот, но только >= naturalFreq
+    const allFrequencies = [...new Set([...reqF, ...charF])]
+      .filter(f => f >= naturalFreq)
+      .sort((a, b) => a - b);
     
-    const interpolatedReqV = interpolateData(allFrequencies, filteredReqF, filteredReqV);
-    const interpolatedCharV = interpolateData(allFrequencies, filteredCharF, filteredCharV);
+    if (allFrequencies.length === 0) {
+      result[`m_${axis}_max`] = 0;
+      continue;
+    }
+    
+    console.log(`Ось ${axis}: частоты для расчета от ${allFrequencies[0]} до ${allFrequencies[allFrequencies.length-1]} Гц`);
+    
+    // Интерполируем данные на отфильтрованные частоты (с плато!)
+    const interpolatedReqV = interpolateData(allFrequencies, reqF, reqV);
+    const interpolatedCharV = interpolateData(allFrequencies, charF, charV);
 
+    console.log(`Ось ${axis}: примеры интерполированных требований:`, interpolatedReqV.slice(0, 3));
+    console.log(`Ось ${axis}: примеры интерполированных характеристик:`, interpolatedCharV.slice(0, 3));
+
+    // Вычисляем отношения
     const ratios = interpolatedReqV.map((reqValue, i) => {
       const charValue = interpolatedCharV[i];
       if (charValue === 0) {
@@ -177,21 +178,29 @@ const calculateAnalysisWithFrequencyFilter = (requirements, characteristics, nat
       return reqValue / charValue;
     });
 
+    console.log(`Ось ${axis}: примеры отношений req/char:`, ratios.slice(0, 3));
+
     const maxRatio = Math.max(...ratios.filter(r => isFinite(r)));
     result[`m_${axis}_max`] = isFinite(maxRatio) ? maxRatio : 0;
     if (ratios.includes(Infinity)) {
       result[`m_${axis}_max`] = Infinity;
     }
+    
+    console.log(`Ось ${axis}: максимальное отношение = ${result[`m_${axis}_max`]}`);
   }
 
   const { m_x_max, m_y_max, m_z_max } = result;
 
   result.m1 = Math.max(m_x_max, m_y_max, m_z_max);
   result.m2 = Math.sqrt(m_x_max**2 + m_y_max**2 + m_z_max**2);
+  
+  // Подсчитываем количество отфильтрованных точек
+  const allFilteredFrequencies = [...new Set([...requirements.frequency, ...characteristics.frequency])]
+    .filter(f => f >= naturalFreq);
+  result.numberOfPoints = allFilteredFrequencies.length;
 
-  const allFrequencies = [...new Set([...(requirements.frequency || []), ...(characteristics.frequency || [])])];
-  result.numberOfPoints = allFrequencies.length;
-
+  console.log('Итоговый результат:', result);
+  
   return result;
 };
 
@@ -226,6 +235,7 @@ const AnalysisModal = ({
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
   const dampingTimerRef = useRef(null); // Timer ref for debouncing
+  const frequencyTimerRef = useRef(null); // Timer ref for natural frequency debouncing
 
   // Fetch spectral data when modal opens
   useEffect(() => {
@@ -233,6 +243,33 @@ const AnalysisModal = ({
       fetchAllSpectralData();
     }
   }, [isOpen, elementData]);
+
+  // Auto-recalculate when natural frequency changes
+  useEffect(() => {
+    // Clear previous timer
+    if (frequencyTimerRef.current) {
+      clearTimeout(frequencyTimerRef.current);
+    }
+
+    // Only trigger recalculation if we have data and frequency is enabled
+    if (spectralData && requirementsData && isFrequencyEnabled) {
+      frequencyTimerRef.current = setTimeout(() => {
+        console.log('Auto-recalculating due to natural frequency change...');
+        setForceRecalculate(prev => prev + 1);
+      }, 500); // 500ms delay
+    } else if (!isFrequencyEnabled) {
+      // If frequency is disabled, also trigger recalculation to reset to normal calculation
+      console.log('Auto-recalculating due to frequency being disabled...');
+      setForceRecalculate(prev => prev + 1);
+    }
+
+    // Cleanup timer on unmount
+    return () => {
+      if (frequencyTimerRef.current) {
+        clearTimeout(frequencyTimerRef.current);
+      }
+    };
+  }, [naturalFrequency, isFrequencyEnabled, spectralData, requirementsData]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -299,9 +336,9 @@ const AnalysisModal = ({
       const specData = allSpectralData[type];
       
       if (reqData && specData) {
-        // Use frequency-filtered calculation if natural frequency is enabled
+        // Use natural frequency calculation if natural frequency is enabled
         const result = naturalFreq !== null 
-          ? calculateAnalysisWithFrequencyFilter(reqData, specData, naturalFreq)
+          ? calculateAnalysisWithNaturalFrequency(reqData, specData, naturalFreq)
           : calculateAnalysis(reqData, specData);
           
         if (result) {
@@ -997,10 +1034,6 @@ const AnalysisModal = ({
             setIsFrequencyEnabled={setIsFrequencyEnabled}
             naturalFrequency={naturalFrequency}
             setNaturalFrequency={setNaturalFrequency}
-            onCalculate={() => {
-              // Force recalculation by incrementing trigger
-              setForceRecalculate(prev => prev + 1);
-            }}
           />
         );
       case 'pressure':

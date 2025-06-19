@@ -5,8 +5,7 @@ const SeismicAnalysisTab = ({
   isFrequencyEnabled, 
   setIsFrequencyEnabled, 
   naturalFrequency, 
-  setNaturalFrequency, 
-  onCalculate 
+  setNaturalFrequency
 }) => {
   const handleFrequencyToggle = () => {
     setIsFrequencyEnabled(!isFrequencyEnabled);
@@ -23,15 +22,7 @@ const SeismicAnalysisTab = ({
     }
   };
 
-  const handleCalculate = () => {
-    console.log('Calculate button clicked');
-    console.log('Natural frequency enabled:', isFrequencyEnabled);
-    console.log('Natural frequency value:', naturalFrequency);
-    
-    if (onCalculate) {
-      onCalculate();
-    }
-  };
+
 
   return (
     <div className="seismic-analysis-container">
@@ -69,7 +60,10 @@ const SeismicAnalysisTab = ({
           <button 
             type="button" 
             className="calculate-button"
-            onClick={handleCalculate}
+            onClick={() => {
+              // Placeholder for future functionality
+              console.log('Button clicked - functionality to be added');
+            }}
           >
             Розрахувати
           </button>
