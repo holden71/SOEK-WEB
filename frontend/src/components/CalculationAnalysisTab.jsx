@@ -29,7 +29,7 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
   return (
     <div className="calculation-tab-content">
       <div className="summary-section">
-        <h3 className="summary-title">Результати сейсмічного аналізу</h3>
+        <h3 className="summary-title">Аналіз спектрів</h3>
         
         <div className="summary-table-container">
           <table className="summary-table">
