@@ -34,7 +34,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 9999;
   backdrop-filter: blur(2px);
 }
 
@@ -63,7 +63,7 @@
 .modal-title-section h2 {
   margin: 0 0 12px 0;
   color: #2c3e50;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
   font-family: 'Arial', sans-serif;
 }
@@ -77,7 +77,7 @@
 }
 
 .element-name {
-  font-size: 15px;
+  font-size: 16px;
   color: #2c3e50;
   margin-bottom: 6px;
   font-weight: 500;
@@ -93,7 +93,7 @@
 }
 
 .inline-detail {
-  font-size: 13px;
+  font-size: 14px;
   color: #495057;
   font-family: 'Arial', sans-serif;
   line-height: 1.4;
@@ -114,7 +114,7 @@
 .ek-id-label {
   font-weight: normal;
   color: #6c757d;
-  font-size: 13px;
+  font-size: 14px;
   font-family: 'Arial', sans-serif;
 }
 
@@ -132,7 +132,7 @@
 }
 
 .detail-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #6c757d;
   text-transform: uppercase;
@@ -140,7 +140,7 @@
 }
 
 .detail-value {
-  font-size: 14px;
+  font-size: 15px;
   color: #495057;
   font-weight: 500;
 }
@@ -148,7 +148,7 @@
 .modal-close-button {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 24px;
   color: #6c757d;
   cursor: pointer;
   padding: 6px 10px;
@@ -179,7 +179,7 @@
   border-bottom: 3px solid transparent;
   color: #6c757d;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 15px;
   font-family: 'Arial', sans-serif;
   transition: all 0.2s;
   position: relative;

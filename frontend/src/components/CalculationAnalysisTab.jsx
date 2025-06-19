@@ -44,7 +44,7 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
               <tr className="main-criteria-row">
                 <td className="parameter-name">
                   <strong>m₁</strong>
-                  <span className="parameter-description">max(mₓ, mᵧ, mz)</span>
+                  <span className="parameter-description">max(m<sub>x</sub>, m<sub>y</sub>, m<sub>z</sub>)</span>
                 </td>
                 <td className="value-cell mrz-value">{formatValue(mrzResult?.m1)}</td>
                 <td className="value-cell pz-value">{formatValue(pzResult?.m1)}</td>
@@ -53,7 +53,7 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
               <tr className="main-criteria-row">
                 <td className="parameter-name">
                   <strong>m₂</strong>
-                  <span className="parameter-description">√(mₓ² + mᵧ² + mz²)</span>
+                  <span className="parameter-description">√(m<sub>x</sub>² + m<sub>y</sub>² + m<sub>z</sub>²)</span>
                 </td>
                 <td className="value-cell mrz-value">{formatValue(mrzResult?.m2)}</td>
                 <td className="value-cell pz-value">{formatValue(pzResult?.m2)}</td>
@@ -65,7 +65,7 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
               
               <tr>
                 <td className="parameter-name">
-                  <strong>mₓ</strong>
+                  <strong>m<sub>x</sub></strong>
                   <span className="parameter-description">по осі X</span>
                 </td>
                 <td className="value-cell">{formatValue(mrzResult?.m_x_max)}</td>
@@ -74,7 +74,7 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
               
               <tr>
                 <td className="parameter-name">
-                  <strong>mᵧ</strong>
+                  <strong>m<sub>y</sub></strong>
                   <span className="parameter-description">по осі Y</span>
                 </td>
                 <td className="value-cell">{formatValue(mrzResult?.m_y_max)}</td>
@@ -83,7 +83,7 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
               
               <tr>
                 <td className="parameter-name">
-                  <strong>mz</strong>
+                  <strong>m<sub>z</sub></strong>
                   <span className="parameter-description">по осі Z</span>
                 </td>
                 <td className="value-cell">{formatValue(mrzResult?.m_z_max)}</td>
@@ -124,7 +124,7 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
           <ul>
             <li><strong>m₁</strong> — приріст вимог із сейсмостійкості (максимальний по осях)</li>
             <li><strong>m₂</strong> — приріст вимог із сейсмостійкості з квадратичним усередненням</li>
-            <li><strong>mₓ, mᵧ, mz</strong> — максимальні відношення по відповідних осях</li>
+            <li><strong>m<sub>x</sub>, m<sub>y</sub>, m<sub>z</sub></strong> — максимальні відношення по відповідних осях</li>
           </ul>
         </div>
       </div>

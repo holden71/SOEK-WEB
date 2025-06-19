@@ -642,20 +642,22 @@ th {
 }
 
 .cell-tooltip {
-  visibility: hidden;
-  position: fixed;
-  background: #2c3e50;
+  position: absolute;
+  top: auto;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  background-color: #2c3e50;
   color: white;
   padding: 8px 12px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 14px;
   white-space: normal;
   max-width: 300px;
   width: max-content;
   opacity: 0;
   transition: opacity 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: 8000;
   line-height: 1.4;
   word-wrap: break-word;
   text-align: left;
@@ -707,7 +709,7 @@ th {
   padding: 8px 32px 8px 12px;
   border: 1px solid #dee2e6;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   color: #495057;
   transition: all 0.2s ease;
@@ -736,7 +738,7 @@ th {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
   border-radius: 50%;
   transition: all 0.2s ease;
@@ -822,7 +824,7 @@ th {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   min-width: 450px;
   max-width: 500px;
-  z-index: 1000;
+  z-index: 5000;
   overflow: hidden;
   border: 1px solid #ddd;
 }
@@ -831,14 +833,14 @@ th {
   background-color: #f0f0f0;
   padding: 10px 12px;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 18px;
   border-bottom: 1px solid #ddd;
 }
 
 .main-page .import-popup-element-name {
   padding: 10px 12px;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 15px;
   color: #444;
   border-bottom: 1px solid #eee;
   background-color: #f9f9f9;
@@ -867,7 +869,7 @@ th {
 }
 
 .main-page .import-results {
-  font-size: 13px;
+  font-size: 14px;
   margin-right: 12px;
 }
 
@@ -895,7 +897,7 @@ th {
 .main-page .result-section-title {
   font-weight: 600;
   color: #495057;
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 6px;
   padding: 4px 8px;
   background-color: #f8f9fa;
@@ -916,7 +918,7 @@ th {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 4px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .main-page .stat-item:last-child {
@@ -934,13 +936,13 @@ th {
 }
 
 .main-page .result-code {
-  font-size: 11px;
+  font-size: 12px;
   color: #6c757d;
   font-weight: normal;
 }
 
 .main-page .result-progress {
-  font-size: 11px;
+  font-size: 12px;
   color: #6c757d;
   margin-top: 2px;
   font-weight: normal;
@@ -951,7 +953,7 @@ th {
   color: #856404;
   padding: 6px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 8px;
   border: 1px solid #ffeaa7;
   display: flex;
@@ -966,7 +968,7 @@ th {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   transition: background-color 0.2s;
   min-width: 110px;
@@ -1003,7 +1005,7 @@ th {
   padding: 6px 12px;
   cursor: pointer;
   transition: background-color 0.2s;
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

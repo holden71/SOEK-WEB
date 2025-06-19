@@ -9,7 +9,7 @@
     font-style: italic;
     text-align: center;
     padding: 40px 20px;
-    font-size: 1.1rem;
+    font-size: 16px;
 }
 
 .summary-section {
@@ -21,7 +21,7 @@
 }
 
 .summary-title {
-    font-size: 1.4rem;
+    font-size: 20px;
     color: #2c3e50;
     margin: 0;
     padding: 20px 25px;
@@ -39,7 +39,7 @@
 .summary-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 1rem;
+    font-size: 15px;
     margin: 0;
 }
 
@@ -60,7 +60,7 @@
 
 .spectrum-header {
     color: #2c3e50;
-    font-size: 1.1rem;
+    font-size: 16px;
     font-weight: 700;
     background-color: #e9ecef;
 }
@@ -79,13 +79,13 @@
 
 .parameter-name strong {
     display: block;
-    font-size: 1.1rem;
+    font-size: 18px;
     color: #2c3e50;
     margin-bottom: 3px;
 }
 
 .parameter-description {
-    font-size: 0.9rem;
+    font-size: 15px;
     color: #7f8c8d;
     font-style: italic;
 }
@@ -93,19 +93,19 @@
 .value-cell {
     font-family: 'Courier New', monospace;
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 16px;
     color: #2c3e50;
 }
 
 .main-criteria-row .value-cell {
-    font-size: 1.2rem;
+    font-size: 18px;
     font-weight: 700;
     color: #2980b9;
 }
 
 .info-value {
     color: #7f8c8d;
-    font-size: 1rem;
+    font-size: 15px;
 }
 
 .divider-row td {
@@ -142,7 +142,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.95rem;
+    font-size: 14px;
     color: #495057;
 }
 
@@ -163,7 +163,7 @@
 .legend p {
     margin: 0 0 10px 0;
     color: #2c3e50;
-    font-size: 1rem;
+    font-size: 15px;
 }
 
 .legend ul {
@@ -174,7 +174,7 @@
 
 .legend li {
     margin-bottom: 5px;
-    font-size: 0.9rem;
+    font-size: 14px;
     line-height: 1.4;
 }
 
@@ -189,12 +189,12 @@
     }
     
     .summary-title {
-        font-size: 1.2rem;
+        font-size: 18px;
         padding: 15px 20px;
     }
     
     .summary-table {
-        font-size: 1rem;
+        font-size: 14px;
     }
     
     .summary-table th,
