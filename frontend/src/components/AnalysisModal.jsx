@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import CalculationAnalysisTab from './CalculationAnalysisTab';
+import SeismicAnalysisTab from './SeismicAnalysisTab';
 import '../styles/AnalysisModal.css';
 
 const linearInterpolate = (x, x0, y0, x1, y1) => {
@@ -117,6 +118,83 @@ const calculateAnalysis = (requirements, characteristics) => {
   return result;
 };
 
+const calculateAnalysisWithFrequencyFilter = (requirements, characteristics, naturalFreq = null) => {
+  if (!requirements || !characteristics || !requirements.frequency || !characteristics.frequency || 
+      requirements.frequency.length === 0 || characteristics.frequency.length === 0) {
+    return null;
+  }
+
+  const result = {};
+
+  for (const axis of ['x', 'y', 'z']) {
+    const reqF = requirements.frequency;
+    const charF = characteristics.frequency;
+    
+    // Handle both MRZ and PZ field naming patterns
+    const getFieldValue = (data, prefix, axis) => {
+      return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+    };
+    
+    const reqV = getFieldValue(requirements, 'mrz', axis) || getFieldValue(requirements, 'pz', axis);
+    const charV = getFieldValue(characteristics, 'mrz', axis) || getFieldValue(characteristics, 'pz', axis);
+
+    if (!reqV || !charV || reqV.length === 0 || charV.length === 0) {
+      result[`m_${axis}_max`] = 0;
+      continue;
+    }
+
+    let filteredReqF = reqF;
+    let filteredReqV = reqV;
+    let filteredCharF = charF;
+    let filteredCharV = charV;
+
+    // Filter frequencies if natural frequency is enabled
+    if (naturalFreq !== null && !isNaN(naturalFreq) && naturalFreq > 0) {
+      const reqIndices = reqF.map((freq, index) => freq >= naturalFreq ? index : -1).filter(i => i !== -1);
+      const charIndices = charF.map((freq, index) => freq >= naturalFreq ? index : -1).filter(i => i !== -1);
+      
+      if (reqIndices.length > 0) {
+        filteredReqF = reqIndices.map(i => reqF[i]);
+        filteredReqV = reqIndices.map(i => reqV[i]);
+      }
+      
+      if (charIndices.length > 0) {
+        filteredCharF = charIndices.map(i => charF[i]);
+        filteredCharV = charIndices.map(i => charV[i]);
+      }
+    }
+
+    const allFrequencies = [...new Set([...filteredReqF, ...filteredCharF])].sort((a, b) => a - b);
+    
+    const interpolatedReqV = interpolateData(allFrequencies, filteredReqF, filteredReqV);
+    const interpolatedCharV = interpolateData(allFrequencies, filteredCharF, filteredCharV);
+
+    const ratios = interpolatedReqV.map((reqValue, i) => {
+      const charValue = interpolatedCharV[i];
+      if (charValue === 0) {
+        return reqValue > 0 ? Infinity : 0;
+      }
+      return reqValue / charValue;
+    });
+
+    const maxRatio = Math.max(...ratios.filter(r => isFinite(r)));
+    result[`m_${axis}_max`] = isFinite(maxRatio) ? maxRatio : 0;
+    if (ratios.includes(Infinity)) {
+      result[`m_${axis}_max`] = Infinity;
+    }
+  }
+
+  const { m_x_max, m_y_max, m_z_max } = result;
+
+  result.m1 = Math.max(m_x_max, m_y_max, m_z_max);
+  result.m2 = Math.sqrt(m_x_max**2 + m_y_max**2 + m_z_max**2);
+
+  const allFrequencies = [...new Set([...(requirements.frequency || []), ...(characteristics.frequency || [])])];
+  result.numberOfPoints = allFrequencies.length;
+
+  return result;
+};
+
 const AnalysisModal = ({
   isOpen,
   onClose,
@@ -139,6 +217,12 @@ const AnalysisModal = ({
   const [analysisResult, setAnalysisResult] = useState(null);
   const [allAnalysisResults, setAllAnalysisResults] = useState({}); // New state for all analysis results
   const [plotData, setPlotData] = useState(null);
+  
+  // Natural frequency states
+  const [isFrequencyEnabled, setIsFrequencyEnabled] = useState(false);
+  const [naturalFrequency, setNaturalFrequency] = useState('');
+  const [forceRecalculate, setForceRecalculate] = useState(0); // Force recalculation trigger
+  
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
   const dampingTimerRef = useRef(null); // Timer ref for debouncing
@@ -197,12 +281,17 @@ const AnalysisModal = ({
         }
       }, 100);
     }
-  }, [spectralData, activeTab, selectedAxis, requirementsData, spectrumType]); // Added spectrumType dependency
+  }, [spectralData, activeTab, selectedAxis, requirementsData, spectrumType, isFrequencyEnabled, naturalFrequency]); // Added natural frequency dependencies
 
   // Calculate analysis for all available data
   useEffect(() => {
     const newAnalysisResults = {};
     let hasAnyResults = false;
+
+    // Determine natural frequency value for calculations
+    const naturalFreq = isFrequencyEnabled && naturalFrequency && !isNaN(parseFloat(naturalFrequency)) 
+      ? parseFloat(naturalFrequency) 
+      : null;
 
     // Calculate for each spectrum type that has both requirements and spectral data
     for (const type of ['МРЗ', 'ПЗ']) {
@@ -210,7 +299,11 @@ const AnalysisModal = ({
       const specData = allSpectralData[type];
       
       if (reqData && specData) {
-        const result = calculateAnalysis(reqData, specData);
+        // Use frequency-filtered calculation if natural frequency is enabled
+        const result = naturalFreq !== null 
+          ? calculateAnalysisWithFrequencyFilter(reqData, specData, naturalFreq)
+          : calculateAnalysis(reqData, specData);
+          
         if (result) {
           newAnalysisResults[type] = result;
           hasAnyResults = true;
@@ -256,7 +349,7 @@ const AnalysisModal = ({
       }
       setPlotData(interpolated);
     }
-  }, [allRequirementsData, allSpectralData, spectrumType, elementData]);
+  }, [allRequirementsData, allSpectralData, spectrumType, elementData, isFrequencyEnabled, naturalFrequency, forceRecalculate]);
 
   // Reset charts when modal opens with new data
   useEffect(() => {
@@ -313,7 +406,7 @@ const AnalysisModal = ({
     const getFieldValue = (data, prefix, axis) => {
       return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
     };
-    
+
     // Get data for selected axis based on spectrum type
     let yData, axisName, requirementsYData;
     const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
@@ -405,6 +498,37 @@ const AnalysisModal = ({
       plot_bgcolor: '#ffffff',
       paper_bgcolor: '#ffffff'
     };
+
+    // Add green vertical line for natural frequency if enabled
+    if (isFrequencyEnabled && naturalFrequency && !isNaN(parseFloat(naturalFrequency))) {
+      const freq = parseFloat(naturalFrequency);
+      layout.shapes = [{
+        type: 'line',
+        x0: freq,
+        x1: freq,
+        y0: 0,
+        y1: 1,
+        yref: 'paper',
+        line: {
+          color: '#28a745',
+          width: 3,
+          dash: 'solid'
+        }
+      }];
+      
+      layout.annotations = [{
+        x: freq,
+        y: 0.95,
+        yref: 'paper',
+        text: `Власна частота: ${freq} Гц`,
+        showarrow: false,
+        bgcolor: '#28a745',
+        bordercolor: '#28a745',
+        font: { color: 'white', size: 12 },
+        borderwidth: 1,
+        borderpad: 4
+      }];
+    }
 
     const config = {
       responsive: true,
@@ -859,16 +983,25 @@ const AnalysisModal = ({
   };
 
   const renderAnalysisTab = () => {
-    return <CalculationAnalysisTab analysisResult={analysisResult} allAnalysisResults={allAnalysisResults} />;
+    // Use filtered analysis results if natural frequency is enabled
+    const currentResults = Object.keys(allAnalysisResults).length > 0 ? allAnalysisResults : { [spectrumType]: analysisResult };
+    return <CalculationAnalysisTab analysisResult={analysisResult} allAnalysisResults={currentResults} />;
   };
 
   const renderCalculationTab = () => {
     switch (activeSubTab) {
       case 'seismic':
         return (
-          <div className="seismic-analysis-container">
-            <p>Аналіз зміни сейсмічних вимог (в розробці)</p>
-          </div>
+          <SeismicAnalysisTab 
+            isFrequencyEnabled={isFrequencyEnabled}
+            setIsFrequencyEnabled={setIsFrequencyEnabled}
+            naturalFrequency={naturalFrequency}
+            setNaturalFrequency={setNaturalFrequency}
+            onCalculate={() => {
+              // Force recalculation by incrementing trigger
+              setForceRecalculate(prev => prev + 1);
+            }}
+          />
         );
       case 'pressure':
         return (

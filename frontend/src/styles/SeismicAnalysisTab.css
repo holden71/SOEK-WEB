@@ -1,0 +1,166 @@
+.seismic-analysis-container {
+  padding: 20px;
+  background-color: #f9f9f9;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.seismic-analysis-form {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.form-title {
+  font-size: 20px;
+  color: #2c3e50;
+  margin: 0 0 24px 0;
+  font-weight: 600;
+  text-align: center;
+  font-family: 'Arial', sans-serif;
+}
+
+.form-content {
+  margin-bottom: 32px;
+}
+
+.parameter-group {
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  background-color: #fafbfc;
+}
+
+.parameter-header {
+  margin-bottom: 12px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  color: #2c3e50;
+  font-family: 'Arial', sans-serif;
+}
+
+.checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #007bff;
+  border-radius: 4px;
+  margin-right: 12px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.checkbox-container input[type="checkbox"]:checked + .checkmark {
+  background-color: #007bff;
+}
+
+.checkbox-container input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.parameter-label {
+  user-select: none;
+}
+
+.parameter-input {
+  margin-left: 32px;
+}
+
+.frequency-input {
+  width: 100%;
+  max-width: 200px;
+  padding: 10px 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: 'Arial', sans-serif;
+  transition: all 0.2s;
+}
+
+.frequency-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.frequency-input.disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  border-color: #e9ecef;
+}
+
+.frequency-input::placeholder {
+  color: #adb5bd;
+  font-style: italic;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.calculate-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 150px;
+}
+
+.calculate-button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.calculate-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .seismic-analysis-container {
+    padding: 15px;
+  }
+  
+  .seismic-analysis-form {
+    padding: 20px;
+  }
+  
+  .form-title {
+    font-size: 18px;
+  }
+  
+  .frequency-input {
+    max-width: 100%;
+  }
+} 
