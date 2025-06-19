@@ -126,7 +126,9 @@ const AnalysisModal = ({
 }) => {
   const [activeTab, setActiveTab] = useState('spectra');
   const [spectralData, setSpectralData] = useState(null);
+  const [allSpectralData, setAllSpectralData] = useState({}); // New state for all spectrum types
   const [requirementsData, setRequirementsData] = useState(null);
+  const [allRequirementsData, setAllRequirementsData] = useState({}); // New state for all requirements
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedAxis, setSelectedAxis] = useState('x'); // New state for axis selection
@@ -134,17 +136,18 @@ const AnalysisModal = ({
   const [dampingFactor, setDampingFactor] = useState(0.5); // New state for damping factor
   const [dampingInputValue, setDampingInputValue] = useState('0.5'); // Local state for input display
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [allAnalysisResults, setAllAnalysisResults] = useState({}); // New state for all analysis results
   const [plotData, setPlotData] = useState(null);
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
   const dampingTimerRef = useRef(null); // Timer ref for debouncing
 
-  // Fetch spectral data when modal opens or spectrum type changes
+  // Fetch spectral data when modal opens
   useEffect(() => {
     if (isOpen && elementData) {
-      fetchSpectralData();
+      fetchAllSpectralData();
     }
-  }, [isOpen, elementData, spectrumType]);
+  }, [isOpen, elementData]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -195,39 +198,64 @@ const AnalysisModal = ({
     }
   }, [spectralData, activeTab, selectedAxis, requirementsData, spectrumType]); // Added spectrumType dependency
 
+  // Calculate analysis for all available data
   useEffect(() => {
-    if (requirementsData && spectralData) {
-      const result = calculateAnalysis(requirementsData, spectralData);
-      setAnalysisResult(result);
+    const newAnalysisResults = {};
+    let hasAnyResults = false;
 
-      // Automatically save analysis results to database
-      if (result && result.m1 !== undefined && result.m2 !== undefined && elementData) {
-        saveAnalysisResults(result.m1, result.m2);
-      }
-
-      if (requirementsData.frequency && spectralData.frequency) {
-        const interpolated = {};
-        const allFrequencies = [...new Set([...requirementsData.frequency, ...spectralData.frequency])].sort((a, b) => a - b);
-        interpolated.frequency = allFrequencies;
-    
-        // Helper function to get field value with fallback patterns
-        const getFieldValue = (data, prefix, axis) => {
-          return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
-        };
-        
-        for (const axis of ['x', 'y', 'z']) {
-          const reqData = getFieldValue(requirementsData, spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz', axis);
-          const charData = getFieldValue(spectralData, spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz', axis);
+    // Calculate for each spectrum type that has both requirements and spectral data
+    for (const type of ['МРЗ', 'ПЗ']) {
+      const reqData = allRequirementsData[type];
+      const specData = allSpectralData[type];
+      
+      if (reqData && specData) {
+        const result = calculateAnalysis(reqData, specData);
+        if (result) {
+          newAnalysisResults[type] = result;
+          hasAnyResults = true;
           
-          if (reqData && charData) {
-            interpolated[`req_${axis}`] = interpolateData(allFrequencies, requirementsData.frequency, reqData);
-            interpolated[`char_${axis}`] = interpolateData(allFrequencies, spectralData.frequency, charData);
+          // Save analysis results to database
+          if (result.m1 !== undefined && result.m2 !== undefined && elementData) {
+            saveAnalysisResults(result.m1, result.m2, type);
           }
         }
-        setPlotData(interpolated);
       }
     }
-  }, [requirementsData, spectralData, spectrumType]);
+
+    if (hasAnyResults) {
+      setAllAnalysisResults(newAnalysisResults);
+      // Set current analysis result for backward compatibility
+      if (newAnalysisResults[spectrumType]) {
+        setAnalysisResult(newAnalysisResults[spectrumType]);
+      }
+    }
+
+    // Update plot data for current spectrum type
+    const currentReqData = allRequirementsData[spectrumType];
+    const currentSpecData = allSpectralData[spectrumType];
+    
+    if (currentReqData && currentSpecData && currentReqData.frequency && currentSpecData.frequency) {
+      const interpolated = {};
+      const allFrequencies = [...new Set([...currentReqData.frequency, ...currentSpecData.frequency])].sort((a, b) => a - b);
+      interpolated.frequency = allFrequencies;
+  
+      // Helper function to get field value with fallback patterns
+      const getFieldValue = (data, prefix, axis) => {
+        return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+      };
+      
+      for (const axis of ['x', 'y', 'z']) {
+        const reqData = getFieldValue(currentReqData, spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz', axis);
+        const charData = getFieldValue(currentSpecData, spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz', axis);
+        
+        if (reqData && charData) {
+          interpolated[`req_${axis}`] = interpolateData(allFrequencies, currentReqData.frequency, reqData);
+          interpolated[`char_${axis}`] = interpolateData(allFrequencies, currentSpecData.frequency, charData);
+        }
+      }
+      setPlotData(interpolated);
+    }
+  }, [allRequirementsData, allSpectralData, spectrumType, elementData]);
 
   // Reset charts when modal opens with new data
   useEffect(() => {
@@ -248,17 +276,31 @@ const AnalysisModal = ({
     };
   }, []);
 
-  // Update requirements data when damping factor or spectrum type changes
+  // Update requirements data when damping factor changes
   useEffect(() => {
     if (elementData && (elementData.EK_ID || elementData.ek_id)) {
-      fetchRequirementsData(elementData.EK_ID || elementData.ek_id);
+      fetchAllRequirementsData(elementData.EK_ID || elementData.ek_id);
     }
-  }, [dampingFactor, spectrumType]);
+  }, [dampingFactor]);
 
   // Update input value when damping factor changes externally
   useEffect(() => {
     setDampingInputValue(dampingFactor.toString());
   }, [dampingFactor]);
+
+  // Update spectralData when spectrumType changes (for UI display)
+  useEffect(() => {
+    if (allSpectralData[spectrumType]) {
+      setSpectralData(allSpectralData[spectrumType]);
+    }
+  }, [spectrumType, allSpectralData]);
+
+  // Update requirementsData when spectrumType changes (for UI display)
+  useEffect(() => {
+    if (allRequirementsData[spectrumType]) {
+      setRequirementsData(allRequirementsData[spectrumType]);
+    }
+  }, [spectrumType, allRequirementsData]);
 
   const createPlotlyChart = () => {
     if (!plotData && (!spectralData || !spectralData.frequency)) return;
@@ -431,11 +473,11 @@ const AnalysisModal = ({
     }
   };
 
-  const fetchSpectralData = async () => {
+  const fetchAllSpectralData = async () => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) return;
     setLoading(true);
     setError(null);
-    setPlotData(null); // Reset plot data on new fetch
+    setPlotData(null);
 
     try {
       const ekId = elementData.EK_ID || elementData.ek_id;
@@ -443,41 +485,62 @@ const AnalysisModal = ({
         throw new Error('Не вдалося отримати ID елемента');
       }
 
-      // Get calculation type from element data or use default
       const calcType = elementData.CALC_TYPE || elementData.calc_type || 'ДЕТЕРМІНИСТИЧНИЙ';
+      const newAllSpectralData = {};
 
-      // Fetch spectral data for the specified calculation type and spectrum type
-      const response = await fetch(
-        `http://localhost:8000/api/spectral-data?ek_id=${ekId}&calc_type=${encodeURIComponent(calcType)}&spectrum_type=${encodeURIComponent(spectrumType)}`
-      );
+      // Fetch data for both spectrum types
+      for (const type of ['МРЗ', 'ПЗ']) {
+        try {
+          const response = await fetch(
+            `http://localhost:8000/api/spectral-data?ek_id=${ekId}&calc_type=${encodeURIComponent(calcType)}&spectrum_type=${encodeURIComponent(type)}`
+          );
 
-      if (!response.ok) {
-        throw new Error('Помилка при отриманні спектральних даних');
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.frequency && data.frequency.length > 0) {
+              newAllSpectralData[type] = data;
+            }
+          }
+        } catch (err) {
+          console.warn(`Error fetching spectral data for ${type}:`, err);
+        }
       }
 
-      const data = await response.json();
-      setSpectralData(data);
+      setAllSpectralData(newAllSpectralData);
       
-      // Helper function to get field value with fallback patterns
-      const getFieldValue = (data, prefix, axis) => {
-        return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
-      };
-      
+      // Set current spectral data for UI
+      if (newAllSpectralData[spectrumType]) {
+        setSpectralData(newAllSpectralData[spectrumType]);
+      } else {
+        // If current spectrum type is not available, switch to available one
+        const availableType = Object.keys(newAllSpectralData)[0];
+        if (availableType) {
+          setSpectrumType(availableType);
+          setSpectralData(newAllSpectralData[availableType]);
+        }
+      }
+
       // Auto-select first available axis based on spectrum type
-      if (data) {
-        const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
+      const currentData = newAllSpectralData[spectrumType] || newAllSpectralData[Object.keys(newAllSpectralData)[0]];
+      if (currentData) {
+        const currentSpectrumType = spectrumType in newAllSpectralData ? spectrumType : Object.keys(newAllSpectralData)[0];
+        const spectrumPrefix = currentSpectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
         
-        if (getFieldValue(data, spectrumPrefix, 'x') && getFieldValue(data, spectrumPrefix, 'x').length > 0) {
+        const getFieldValue = (data, prefix, axis) => {
+          return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+        };
+        
+        if (getFieldValue(currentData, spectrumPrefix, 'x') && getFieldValue(currentData, spectrumPrefix, 'x').length > 0) {
           setSelectedAxis('x');
-        } else if (getFieldValue(data, spectrumPrefix, 'y') && getFieldValue(data, spectrumPrefix, 'y').length > 0) {
+        } else if (getFieldValue(currentData, spectrumPrefix, 'y') && getFieldValue(currentData, spectrumPrefix, 'y').length > 0) {
           setSelectedAxis('y');
-        } else if (getFieldValue(data, spectrumPrefix, 'z') && getFieldValue(data, spectrumPrefix, 'z').length > 0) {
+        } else if (getFieldValue(currentData, spectrumPrefix, 'z') && getFieldValue(currentData, spectrumPrefix, 'z').length > 0) {
           setSelectedAxis('z');
         }
       }
 
-      // Fetch requirements data
-      await fetchRequirementsData(ekId);
+      // Fetch requirements data for all available spectrum types
+      await fetchAllRequirementsData(ekId);
     } catch (err) {
       setError(err.message);
       console.error('Error fetching spectral data:', err);
@@ -486,7 +549,7 @@ const AnalysisModal = ({
     }
   };
 
-  const saveAnalysisResults = async (m1, m2) => {
+  const saveAnalysisResults = async (m1, m2, spectrumTypeForSave = spectrumType) => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
       console.warn('Cannot save analysis results: missing element ID');
       return;
@@ -497,7 +560,7 @@ const AnalysisModal = ({
     try {
       console.log('=== Збереження результатів аналізу ===');
       console.log('EK_ID:', ekId);
-      console.log('Spectrum Type:', spectrumType);
+      console.log('Spectrum Type:', spectrumTypeForSave);
       console.log('M1:', m1);
       console.log('M2:', m2);
 
@@ -508,7 +571,7 @@ const AnalysisModal = ({
         },
         body: JSON.stringify({
           ek_id: ekId,
-          spectrum_type: spectrumType,
+          spectrum_type: spectrumTypeForSave,
           m1: isFinite(m1) ? m1 : null,
           m2: isFinite(m2) ? m2 : null
         })
@@ -528,79 +591,76 @@ const AnalysisModal = ({
     }
   };
 
-  const fetchRequirementsData = async (ekId) => {
-    setLoading(true);
-    setError(null);
-    setPlotData(null); // Reset plot data on new fetch
-
+  const fetchAllRequirementsData = async (ekId) => {
     try {
-      console.log('=== ДЕБАГ GET_SEISM_REQUIREMENTS ===');
-      console.log('Входные параметры:');
-      console.log('  ek_id:', ekId);
-      console.log('  dempf:', dampingFactor);
-      console.log('  spectr_earthq_type:', spectrumType);
-      console.log('  calc_type: ДЕТЕРМІНИСТИЧНИЙ');
-      
-      // Call the GET_SEISM_REQUIREMENTS procedure with spectrum type
-      const response = await fetch(
-        `http://localhost:8000/api/seism-requirements?ek_id=${ekId}&dempf=${dampingFactor}&spectr_earthq_type=${encodeURIComponent(spectrumType)}&calc_type=ДЕТЕРМІНИСТИЧНИЙ`
-      );
+      const newAllRequirementsData = {};
 
-      console.log('Статус ответа:', response.status, response.statusText);
+      // Fetch requirements for both spectrum types
+      for (const type of ['МРЗ', 'ПЗ']) {
+        try {
+          console.log(`=== ДЕБАГ GET_SEISM_REQUIREMENTS для ${type} ===`);
+          console.log('Входные параметры:');
+          console.log('  ek_id:', ekId);
+          console.log('  dempf:', dampingFactor);
+          console.log('  spectr_earthq_type:', type);
+          console.log('  calc_type: ДЕТЕРМІНИСТИЧНИЙ');
+          
+          const response = await fetch(
+            `http://localhost:8000/api/seism-requirements?ek_id=${ekId}&dempf=${dampingFactor}&spectr_earthq_type=${encodeURIComponent(type)}&calc_type=ДЕТЕРМІНИСТИЧНИЙ`
+          );
 
-      if (!response.ok) {
-        console.warn('Помилка при отриманні даних вимог');
-        console.log('=== КОНЕЦ ДЕБАГА (ОШИБКА) ===');
-        setRequirementsData(null);
-        return;
+          console.log(`Статус ответа для ${type}:`, response.status, response.statusText);
+
+          if (response.ok) {
+            const data = await response.json();
+            
+            console.log(`Выходные данные процедуры для ${type}:`, data);
+            console.log('  frequency:', data?.frequency?.length || 0, 'точек');
+            
+            const spectrumPrefix = type.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
+            const getFieldValue = (data, prefix, axis) => {
+              return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+            };
+            
+            console.log('  ' + spectrumPrefix + '_x:', getFieldValue(data, spectrumPrefix, 'x')?.length || 0, 'точек');
+            console.log('  ' + spectrumPrefix + '_y:', getFieldValue(data, spectrumPrefix, 'y')?.length || 0, 'точек');
+            console.log('  ' + spectrumPrefix + '_z:', getFieldValue(data, spectrumPrefix, 'z')?.length || 0, 'точек');
+            
+            // Check if we actually have frequency data
+            if (data && data.frequency && data.frequency.length > 0) {
+              // Check if we have actual data for at least one axis
+              const hasRequirementsData = getFieldValue(data, spectrumPrefix, 'x')?.length > 0 || 
+                                          getFieldValue(data, spectrumPrefix, 'y')?.length > 0 || 
+                                          getFieldValue(data, spectrumPrefix, 'z')?.length > 0;
+              
+              if (hasRequirementsData) {
+                newAllRequirementsData[type] = data;
+                console.log(`✓ Данные требований успешно получены для типа спектру: ${type}`);
+              } else {
+                console.warn(`Відсутні дані для вимог типу спектру: ${type}`);
+              }
+            } else {
+              console.warn(`Дані вимог відсутні для коефіцієнта демпфірування: ${dampingFactor} та типу спектру: ${type}`);
+            }
+          } else {
+            console.warn(`Помилка при отриманні даних вимог для ${type}`);
+          }
+          
+          console.log(`=== КОНЕЦ ДЕБАГА для ${type} ===`);
+        } catch (err) {
+          console.error(`=== ОШИБКА ПРОЦЕДУРЫ GET_SEISM_REQUIREMENTS для ${type} ===`);
+          console.error(`Error fetching requirements data for ${type}:`, err);
+        }
       }
 
-      const data = await response.json();
+      setAllRequirementsData(newAllRequirementsData);
       
-      console.log('Выходные данные процедуры:');
-      console.log('  data:', data);
-      console.log('  frequency:', data?.frequency?.length || 0, 'точек');
-      
-      // Helper function to get field value with fallback patterns
-      const getFieldValue = (data, prefix, axis) => {
-        return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
-      };
-      
-      const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
-      console.log('  ' + spectrumPrefix + '_x:', getFieldValue(data, spectrumPrefix, 'x')?.length || 0, 'точек');
-      console.log('  ' + spectrumPrefix + '_y:', getFieldValue(data, spectrumPrefix, 'y')?.length || 0, 'точек');
-      console.log('  ' + spectrumPrefix + '_z:', getFieldValue(data, spectrumPrefix, 'z')?.length || 0, 'точек');
-      
-      // Check if we actually have frequency data
-      if (!data || !data.frequency || data.frequency.length === 0) {
-        console.warn('Дані вимог відсутні для коефіцієнта демпфірування:', dampingFactor, 'та типу спектру:', spectrumType);
-        console.log('=== КОНЕЦ ДЕБАГА (НЕТ FREQUENCY) ===');
-        setRequirementsData(null);
-        return;
+      // Set current requirements data for UI
+      if (newAllRequirementsData[spectrumType]) {
+        setRequirementsData(newAllRequirementsData[spectrumType]);
       }
-      
-      // Check if we have actual data for at least one axis
-      const hasRequirementsData = getFieldValue(data, spectrumPrefix, 'x')?.length > 0 || 
-                                  getFieldValue(data, spectrumPrefix, 'y')?.length > 0 || 
-                                  getFieldValue(data, spectrumPrefix, 'z')?.length > 0;
-      
-      console.log('Есть данные:', hasRequirementsData);
-      
-      if (!hasRequirementsData) {
-        console.warn('Відсутні дані для вимог типу спектру:', spectrumType);
-        console.log('=== КОНЕЦ ДЕБАГА (НЕТ ДАННЫХ) ===');
-        setRequirementsData(null);
-        return;
-      }
-      
-      console.log('✓ Данные требований успешно получены для типа спектру:', spectrumType);
-      console.log('=== КОНЕЦ ДЕБАГА (УСПЕХ) ===');
-      setRequirementsData(data);
     } catch (err) {
-      console.error('=== ОШИБКА ПРОЦЕДУРЫ GET_SEISM_REQUIREMENTS ===');
-      console.error('Error fetching requirements data:', err);
-      console.log('=== КОНЕЦ ДЕБАГА (ИСКЛЮЧЕНИЕ) ===');
-      setRequirementsData(null);
+      console.error('Error fetching all requirements data:', err);
     }
   };
 
@@ -665,7 +725,7 @@ const AnalysisModal = ({
       return (
         <div className="analysis-error">
           <p>Помилка: {error}</p>
-          <button onClick={fetchSpectralData} className="retry-button">
+          <button onClick={fetchAllSpectralData} className="retry-button">
             Спробувати ще раз
           </button>
         </div>
@@ -789,7 +849,7 @@ const AnalysisModal = ({
       case 'spectra':
         return renderSpectraTab();
       case 'calculation':
-        return <CalculationAnalysisTab analysisResult={analysisResult} />;
+        return <CalculationAnalysisTab analysisResult={analysisResult} allAnalysisResults={allAnalysisResults} />;
       case 'comparison':
         return (
           <div className="comparison-container">

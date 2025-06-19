@@ -1,106 +1,222 @@
 .calculation-tab-content {
     padding: 20px;
     background-color: #f9f9f9;
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 .info-message {
     color: #666;
     font-style: italic;
-}
-
-.analysis-section {
-    margin-bottom: 25px;
-}
-
-.analysis-section:last-child {
-    margin-bottom: 0;
-}
-
-.section-title {
-    font-size: 1.1rem;
-    color: #333;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #eee;
-}
-
-.results-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-}
-
-.result-item {
-    background-color: #fff;
-    padding: 15px;
-    border-radius: 4px;
-    border: 1px solid #e0e0e0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 40px 20px;
+    font-size: 1.1rem;
 }
 
-.axis-label {
-    font-size: 0.9rem;
-    color: #555;
-    margin-bottom: 8px;
+.summary-section {
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    overflow: hidden;
 }
 
-.axis-value {
-    font-size: 1.5rem;
+.summary-title {
+    font-size: 1.4rem;
+    color: #2c3e50;
+    margin: 0;
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
     font-weight: 600;
-    color: #007bff;
-}
-
-.criteria-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.criteria-item {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 4px;
-    border: 1px solid #e0e0e0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.criteria-label {
-    display: flex;
-    flex-direction: column;
-}
-
-.criteria-label span:first-child {
-    font-size: 1.1rem;
-    font-family: 'Times New Roman', Times, serif;
-    font-weight: bold;
-    color: #333;
-}
-
-.criteria-description {
-    font-size: 0.85rem;
-    color: #777;
-    margin-top: 5px;
-}
-
-.criteria-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #28a745;
-    margin-left: 20px;
-}
-
-.calculation-points {
     text-align: center;
-    color: #888;
+}
+
+.summary-table-container {
+    padding: 0;
+    overflow-x: auto;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.summary-table th {
+    padding: 15px 20px;
+    text-align: center;
+    border-bottom: 2px solid #e0e0e0;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.parameter-header {
+    background-color: #ecf0f1;
+    color: #2c3e50;
+    text-align: left;
+    width: 40%;
+}
+
+.spectrum-header {
+    color: #2c3e50;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background-color: #e9ecef;
+}
+
+.summary-table td {
+    padding: 12px 20px;
+    border-bottom: 1px solid #f0f2f5;
+    text-align: center;
+}
+
+.parameter-name {
+    text-align: left !important;
+    background-color: #fafbfc;
+    border-right: 2px solid #e0e0e0;
+}
+
+.parameter-name strong {
+    display: block;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    margin-bottom: 3px;
+}
+
+.parameter-description {
     font-size: 0.9rem;
-    margin-top: 20px;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+.value-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #2c3e50;
+}
+
+.main-criteria-row .value-cell {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2980b9;
+}
+
+.info-value {
+    color: #7f8c8d;
+    font-size: 1rem;
+}
+
+.divider-row td {
+    padding: 5px 0;
+    border: none;
+}
+
+.divider-row hr {
+    border: none;
+    height: 1px;
+    background-color: #ddd;
+    margin: 0;
+}
+
+.main-criteria-row {
+    background-color: #f8f9fa;
+}
+
+.main-criteria-row td {
+    padding: 16px 20px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.status-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: #495057;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    background-color: #6c757d;
+}
+
+.legend {
+    padding: 20px 25px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+}
+
+.legend p {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 1rem;
+}
+
+.legend ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #495057;
+}
+
+.legend li {
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.legend strong {
+    color: #2c3e50;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .calculation-tab-content {
+        padding: 15px;
+    }
+    
+    .summary-title {
+        font-size: 1.2rem;
+        padding: 15px 20px;
+    }
+    
+    .summary-table {
+        font-size: 1rem;
+    }
+    
+    .summary-table th,
+    .summary-table td {
+        padding: 10px 12px;
+    }
+    
+    .parameter-name strong {
+        font-size: 1.2rem;
+    }
+    
+    .main-criteria-row .value-cell {
+        font-size: 1.3rem;
+    }
+    
+    .status-indicators {
+        flex-direction: column;
+        gap: 15px;
+        align-items: center;
+    }
+    
+    .legend {
+        padding: 15px 20px;
+    }
 } 

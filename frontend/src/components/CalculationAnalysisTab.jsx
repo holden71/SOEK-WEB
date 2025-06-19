@@ -1,8 +1,10 @@
 import React from 'react';
 import '../styles/CalculationAnalysisTab.css';
 
-const CalculationAnalysisTab = ({ analysisResult }) => {
-  if (!analysisResult) {
+const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => {
+  const hasAnyResults = Object.keys(allAnalysisResults).length > 0 || analysisResult;
+
+  if (!hasAnyResults) {
     return (
       <div className="calculation-tab-content">
         <p className="info-message">Для розрахунку необхідно завантажити дані випробувань та вимог.</p>
@@ -10,56 +12,121 @@ const CalculationAnalysisTab = ({ analysisResult }) => {
     );
   }
 
-  const { m_x_max, m_y_max, m_z_max, m1, m2, numberOfPoints } = analysisResult;
-
   const formatValue = (value) => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '—';
+    }
     if (value === Infinity) {
       return '∞';
     }
     return value.toFixed(4);
   };
 
+  // Get results for МРЗ and ПЗ
+  const mrzResult = allAnalysisResults['МРЗ'] || (analysisResult && Object.keys(allAnalysisResults).length === 0 ? analysisResult : null);
+  const pzResult = allAnalysisResults['ПЗ'];
+
   return (
     <div className="calculation-tab-content">
-      <div className="analysis-section">
-        <h4 className="section-title">Максимальні відношення по осях (m)</h4>
-        <div className="results-grid">
-          <div className="result-item">
-            <span className="axis-label">Вісь X</span>
-            <span className="axis-value">{formatValue(m_x_max)}</span>
-          </div>
-          <div className="result-item">
-            <span className="axis-label">Вісь Y</span>
-            <span className="axis-value">{formatValue(m_y_max)}</span>
-          </div>
-          <div className="result-item">
-            <span className="axis-label">Вісь Z</span>
-            <span className="axis-value">{formatValue(m_z_max)}</span>
-          </div>
+      <div className="summary-section">
+        <h3 className="summary-title">Результати сейсмічного аналізу</h3>
+        
+        <div className="summary-table-container">
+          <table className="summary-table">
+            <thead>
+              <tr>
+                <th className="parameter-header">Параметр</th>
+                <th className="spectrum-header mrz-header">МРЗ</th>
+                <th className="spectrum-header pz-header">ПЗ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="main-criteria-row">
+                <td className="parameter-name">
+                  <strong>m₁</strong>
+                  <span className="parameter-description">max(mₓ, mᵧ, mz)</span>
+                </td>
+                <td className="value-cell mrz-value">{formatValue(mrzResult?.m1)}</td>
+                <td className="value-cell pz-value">{formatValue(pzResult?.m1)}</td>
+              </tr>
+              
+              <tr className="main-criteria-row">
+                <td className="parameter-name">
+                  <strong>m₂</strong>
+                  <span className="parameter-description">√(mₓ² + mᵧ² + mz²)</span>
+                </td>
+                <td className="value-cell mrz-value">{formatValue(mrzResult?.m2)}</td>
+                <td className="value-cell pz-value">{formatValue(pzResult?.m2)}</td>
+              </tr>
+              
+              <tr className="divider-row">
+                <td colSpan="3"><hr /></td>
+              </tr>
+              
+              <tr>
+                <td className="parameter-name">
+                  <strong>mₓ</strong>
+                  <span className="parameter-description">по осі X</span>
+                </td>
+                <td className="value-cell">{formatValue(mrzResult?.m_x_max)}</td>
+                <td className="value-cell">{formatValue(pzResult?.m_x_max)}</td>
+              </tr>
+              
+              <tr>
+                <td className="parameter-name">
+                  <strong>mᵧ</strong>
+                  <span className="parameter-description">по осі Y</span>
+                </td>
+                <td className="value-cell">{formatValue(mrzResult?.m_y_max)}</td>
+                <td className="value-cell">{formatValue(pzResult?.m_y_max)}</td>
+              </tr>
+              
+              <tr>
+                <td className="parameter-name">
+                  <strong>mz</strong>
+                  <span className="parameter-description">по осі Z</span>
+                </td>
+                <td className="value-cell">{formatValue(mrzResult?.m_z_max)}</td>
+                <td className="value-cell">{formatValue(pzResult?.m_z_max)}</td>
+              </tr>
+              
+              <tr className="divider-row">
+                <td colSpan="3"><hr /></td>
+              </tr>
+              
+              <tr className="info-row">
+                <td className="parameter-name">
+                  <strong>Точки розрахунку</strong>
+                  <span className="parameter-description">кількість</span>
+                </td>
+                <td className="value-cell info-value">{mrzResult?.numberOfPoints || '—'}</td>
+                <td className="value-cell info-value">{pzResult?.numberOfPoints || '—'}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      <div className="analysis-section">
-        <h4 className="section-title">Критерії сейсмостійкості</h4>
-        <div className="criteria-grid">
-          <div className="criteria-item">
-            <div className="criteria-label">
-              <span>m<sub>1</sub> = max(m<sub>x</sub>, m<sub>y</sub>, m<sub>z</sub>)</span>
-              <span className="criteria-description">Приріст вимог із сейсмостійкості</span>
-            </div>
-            <span className="criteria-value">{formatValue(m1)}</span>
+        {/* Status indicators */}
+        <div className="status-indicators">
+          <div className="status-item">
+            <span className="status-dot mrz-dot"></span>
+            <span>МРЗ: {mrzResult ? 'Доступно' : 'Недоступно'}</span>
           </div>
-          <div className="criteria-item">
-            <div className="criteria-label">
-              <span>m<sub>2</sub> = √(m<sub>x</sub>² + m<sub>y</sub>² + m<sub>z</sub>²)</span>
-              <span className="criteria-description">Приріст вимог із сейсмостійкості, що враховує квадратичне усереднення по осях</span>
-            </div>
-            <span className="criteria-value">{formatValue(m2)}</span>
+          <div className="status-item">
+            <span className="status-dot pz-dot"></span>
+            <span>ПЗ: {pzResult ? 'Доступно' : 'Недоступно'}</span>
           </div>
         </div>
-      </div>
-      <div className="analysis-section calculation-points">
-        <p>Розрахунок виконано по <strong>{numberOfPoints}</strong> точкам</p>
+
+        {/* Legend */}
+        <div className="legend">
+          <p><strong>Критерії оцінки сейсмостійкості:</strong></p>
+          <ul>
+            <li><strong>m₁</strong> — приріст вимог із сейсмостійкості (максимальний по осях)</li>
+            <li><strong>m₂</strong> — приріст вимог із сейсмостійкості з квадратичним усередненням</li>
+            <li><strong>mₓ, mᵧ, mz</strong> — максимальні відношення по відповідних осях</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
