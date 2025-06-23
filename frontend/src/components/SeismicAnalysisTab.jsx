@@ -15,7 +15,9 @@ const SeismicAnalysisTab = ({
     vc_mrz: false
   },
   setSpectrumSelection = () => {},
-  allAnalysisResults = {}
+  allAnalysisResults = {},
+  stressInputs = {},
+  setStressInputs = () => {}
 }) => {
   const handleFrequencyToggle = () => {
     setIsFrequencyEnabled(!isFrequencyEnabled);
@@ -95,6 +97,32 @@ const SeismicAnalysisTab = ({
     return value.toFixed(4);
   };
 
+  // Функция для обработки изменения состояния чекбокса напряжения
+  const handleStressToggle = (fieldName) => {
+    setStressInputs(prev => ({
+      ...prev,
+      [fieldName]: {
+        ...prev[fieldName],
+        enabled: !prev[fieldName].enabled,
+        value: !prev[fieldName].enabled ? prev[fieldName].value : '' // Clear value when disabling
+      }
+    }));
+  };
+
+  // Функция для обработки изменения значения поля напряжения
+  const handleStressValueChange = (fieldName, value) => {
+    // Allow only numbers, decimal point, and minus sign
+    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+      setStressInputs(prev => ({
+        ...prev,
+        [fieldName]: {
+          ...prev[fieldName],
+          value: value
+        }
+      }));
+    }
+  };
+
   return (
     <div className="seismic-analysis-container">
       <div className="seismic-analysis-form">
@@ -127,100 +155,284 @@ const SeismicAnalysisTab = ({
           </div>
 
           <div className="parameter-group">
-            <div className="data-availability-section">
-              <h4 className="section-title">Доступність даних</h4>
+            <div className="spectrum-analysis-section">
+              <h4 className="section-title">Вибір спектрів для аналізу</h4>
               
-              <div className="availability-item">
-                <div className="availability-label">
-                  <span className="parameter-label">Попередній розрахунок ПЗ</span>
-                  {dataAvailability.pz && allAnalysisResults['ПЗ'] && (
-                    <div className="analysis-values">
-                      <span className="value-small">m₁: {formatValue(allAnalysisResults['ПЗ'].m1)}</span>
-                      <span className="value-small">m₂: {formatValue(allAnalysisResults['ПЗ'].m2)}</span>
-                    </div>
-                  )}
+              {/* Доступність даних */}
+              <div className="data-availability-subsection">
+                <div className="availability-item">
+                  <div className="availability-label">
+                    <span className="parameter-label">Попередній розрахунок ПЗ</span>
+                    {dataAvailability.pz && allAnalysisResults['ПЗ'] && (
+                      <div className="analysis-values">
+                        <span className="value-small">m₁: {formatValue(allAnalysisResults['ПЗ'].m1)}</span>
+                        <span className="value-small">m₂: {formatValue(allAnalysisResults['ПЗ'].m2)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="availability-status">
+                    <span className={`status-text ${dataAvailability.pz ? 'available' : 'unavailable'}`}>
+                      {dataAvailability.pz ? 'Доступно' : 'Недоступно'}
+                    </span>
+                  </div>
                 </div>
-                <div className="availability-status">
-                  <span className={`status-text ${dataAvailability.pz ? 'available' : 'unavailable'}`}>
-                    {dataAvailability.pz ? 'Доступно' : 'Недоступно'}
-                  </span>
+
+                <div className="availability-item">
+                  <div className="availability-label">
+                    <span className="parameter-label">Попередній розрахунок МРЗ</span>
+                    {dataAvailability.mrz && allAnalysisResults['МРЗ'] && (
+                      <div className="analysis-values">
+                        <span className="value-small">m₁: {formatValue(allAnalysisResults['МРЗ'].m1)}</span>
+                        <span className="value-small">m₂: {formatValue(allAnalysisResults['МРЗ'].m2)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="availability-status">
+                    <span className={`status-text ${dataAvailability.mrz ? 'available' : 'unavailable'}`}>
+                      {dataAvailability.mrz ? 'Доступно' : 'Недоступно'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="availability-item">
-                <div className="availability-label">
-                  <span className="parameter-label">Попередній розрахунок МРЗ</span>
-                  {dataAvailability.mrz && allAnalysisResults['МРЗ'] && (
-                    <div className="analysis-values">
-                      <span className="value-small">m₁: {formatValue(allAnalysisResults['МРЗ'].m1)}</span>
-                      <span className="value-small">m₂: {formatValue(allAnalysisResults['МРЗ'].m2)}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="availability-status">
-                  <span className={`status-text ${dataAvailability.mrz ? 'available' : 'unavailable'}`}>
-                    {dataAvailability.mrz ? 'Доступно' : 'Недоступно'}
-                  </span>
+              {/* Разделительная линия */}
+              <div className="section-divider"></div>
+
+              {/* Вибір спектрів */}
+              <div className="spectrum-selection-subsection">
+                <div className="spectrum-grid">
+                  <div className="spectrum-item">
+                    <label className={`spectrum-checkbox-container ${!dataAvailability.pz ? 'disabled' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={spectrumSelection.xc_pz}
+                        onChange={() => handleSpectrumToggle('xc_pz')}
+                        disabled={!dataAvailability.pz}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="spectrum-label">Спектр ХС ПЗ</span>
+                    </label>
+                  </div>
+
+                  <div className="spectrum-item">
+                    <label className={`spectrum-checkbox-container ${!dataAvailability.mrz ? 'disabled' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={spectrumSelection.xc_mrz}
+                        onChange={() => handleSpectrumToggle('xc_mrz')}
+                        disabled={!dataAvailability.mrz}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="spectrum-label">Спектр ХС МРЗ</span>
+                    </label>
+                  </div>
+
+                  <div className="spectrum-item">
+                    <label className={`spectrum-checkbox-container ${!dataAvailability.pz ? 'disabled' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={spectrumSelection.vc_pz}
+                        onChange={() => handleSpectrumToggle('vc_pz')}
+                        disabled={!dataAvailability.pz}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="spectrum-label">Спектр ВС ПЗ</span>
+                    </label>
+                  </div>
+
+                  <div className="spectrum-item">
+                    <label className={`spectrum-checkbox-container ${!dataAvailability.mrz ? 'disabled' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={spectrumSelection.vc_mrz}
+                        onChange={() => handleSpectrumToggle('vc_mrz')}
+                        disabled={!dataAvailability.mrz}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="spectrum-label">Спектр ВС МРЗ</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
+        {/* Самостоятельный блок вхідних розрахункових напружень */}
+        <div className="stress-inputs-container">
           <div className="parameter-group">
-            <div className="spectrum-selection-section">
-              <h4 className="section-title">Вибір спектрів для аналізу</h4>
+            <div className="stress-inputs-section">
+              <h4 className="section-title">Вхідні розрахункові напруження</h4>
               
-              <div className="spectrum-grid">
-                <div className="spectrum-item">
-                  <label className={`spectrum-checkbox-container ${!dataAvailability.pz ? 'disabled' : ''}`}>
+              {/* Sigma - отдельная микрогруппа */}
+              <div className="stress-micro-group">
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
                     <input
                       type="checkbox"
-                      checked={spectrumSelection.xc_pz}
-                      onChange={() => handleSpectrumToggle('xc_pz')}
-                      disabled={!dataAvailability.pz}
+                      checked={stressInputs.sigma?.enabled || false}
+                      onChange={() => handleStressToggle('sigma')}
                     />
                     <span className="checkmark"></span>
-                    <span className="spectrum-label">Спектр ХС ПЗ</span>
+                    <span className="stress-label">σ</span>
                   </label>
+                  <input
+                    type="text"
+                    value={stressInputs.sigma?.value || ''}
+                    onChange={(e) => handleStressValueChange('sigma', e.target.value)}
+                    disabled={!stressInputs.sigma?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.sigma?.enabled ? 'disabled' : ''}`}
+                  />
                 </div>
+              </div>
 
-                <div className="spectrum-item">
-                  <label className={`spectrum-checkbox-container ${!dataAvailability.mrz ? 'disabled' : ''}`}>
+              {/* HCCLPF - отдельная микрогруппа */}
+              <div className="stress-micro-group">
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
                     <input
                       type="checkbox"
-                      checked={spectrumSelection.xc_mrz}
-                      onChange={() => handleSpectrumToggle('xc_mrz')}
-                      disabled={!dataAvailability.mrz}
+                      checked={stressInputs.hcclpf?.enabled || false}
+                      onChange={() => handleStressToggle('hcclpf')}
                     />
                     <span className="checkmark"></span>
-                    <span className="spectrum-label">Спектр ХС МРЗ</span>
+                    <span className="stress-label">HCCLPF</span>
                   </label>
+                  <input
+                    type="text"
+                    value={stressInputs.hcclpf?.value || ''}
+                    onChange={(e) => handleStressValueChange('hcclpf', e.target.value)}
+                    disabled={!stressInputs.hcclpf?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.hcclpf?.enabled ? 'disabled' : ''}`}
+                  />
                 </div>
+              </div>
 
-                <div className="spectrum-item">
-                  <label className={`spectrum-checkbox-container ${!dataAvailability.pz ? 'disabled' : ''}`}>
+              {/* sigma_1, sigma_2 - группа */}
+              <div className="stress-group">
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
                     <input
                       type="checkbox"
-                      checked={spectrumSelection.vc_pz}
-                      onChange={() => handleSpectrumToggle('vc_pz')}
-                      disabled={!dataAvailability.pz}
+                      checked={stressInputs.sigma_1?.enabled || false}
+                      onChange={() => handleStressToggle('sigma_1')}
                     />
                     <span className="checkmark"></span>
-                    <span className="spectrum-label">Спектр ВС ПЗ</span>
+                    <span className="stress-label">σ₁</span>
                   </label>
+                  <input
+                    type="text"
+                    value={stressInputs.sigma_1?.value || ''}
+                    onChange={(e) => handleStressValueChange('sigma_1', e.target.value)}
+                    disabled={!stressInputs.sigma_1?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.sigma_1?.enabled ? 'disabled' : ''}`}
+                  />
                 </div>
-
-                <div className="spectrum-item">
-                  <label className={`spectrum-checkbox-container ${!dataAvailability.mrz ? 'disabled' : ''}`}>
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
                     <input
                       type="checkbox"
-                      checked={spectrumSelection.vc_mrz}
-                      onChange={() => handleSpectrumToggle('vc_mrz')}
-                      disabled={!dataAvailability.mrz}
+                      checked={stressInputs.sigma_2?.enabled || false}
+                      onChange={() => handleStressToggle('sigma_2')}
                     />
                     <span className="checkmark"></span>
-                    <span className="spectrum-label">Спектр ВС МРЗ</span>
+                    <span className="stress-label">σ₂</span>
                   </label>
+                  <input
+                    type="text"
+                    value={stressInputs.sigma_2?.value || ''}
+                    onChange={(e) => handleStressValueChange('sigma_2', e.target.value)}
+                    disabled={!stressInputs.sigma_2?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.sigma_2?.enabled ? 'disabled' : ''}`}
+                  />
+                </div>
+              </div>
+
+              {/* (sigma_1)_1, (sigma_1)_2 - группа */}
+              <div className="stress-group">
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
+                    <input
+                      type="checkbox"
+                      checked={stressInputs.sigma_1_1?.enabled || false}
+                      onChange={() => handleStressToggle('sigma_1_1')}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="stress-label">(σ₁)₁</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={stressInputs.sigma_1_1?.value || ''}
+                    onChange={(e) => handleStressValueChange('sigma_1_1', e.target.value)}
+                    disabled={!stressInputs.sigma_1_1?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.sigma_1_1?.enabled ? 'disabled' : ''}`}
+                  />
+                </div>
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
+                    <input
+                      type="checkbox"
+                      checked={stressInputs.sigma_1_2?.enabled || false}
+                      onChange={() => handleStressToggle('sigma_1_2')}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="stress-label">(σ₁)₂</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={stressInputs.sigma_1_2?.value || ''}
+                    onChange={(e) => handleStressValueChange('sigma_1_2', e.target.value)}
+                    disabled={!stressInputs.sigma_1_2?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.sigma_1_2?.enabled ? 'disabled' : ''}`}
+                  />
+                </div>
+              </div>
+
+              {/* (sigma_1)_s1, (sigma_2)_s2 - группа */}
+              <div className="stress-group">
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
+                    <input
+                      type="checkbox"
+                      checked={stressInputs.sigma_1_s1?.enabled || false}
+                      onChange={() => handleStressToggle('sigma_1_s1')}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="stress-label">(σ₁)s1</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={stressInputs.sigma_1_s1?.value || ''}
+                    onChange={(e) => handleStressValueChange('sigma_1_s1', e.target.value)}
+                    disabled={!stressInputs.sigma_1_s1?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.sigma_1_s1?.enabled ? 'disabled' : ''}`}
+                  />
+                </div>
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
+                    <input
+                      type="checkbox"
+                      checked={stressInputs.sigma_2_s2?.enabled || false}
+                      onChange={() => handleStressToggle('sigma_2_s2')}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="stress-label">(σ₂)s2</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={stressInputs.sigma_2_s2?.value || ''}
+                    onChange={(e) => handleStressValueChange('sigma_2_s2', e.target.value)}
+                    disabled={!stressInputs.sigma_2_s2?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.sigma_2_s2?.enabled ? 'disabled' : ''}`}
+                  />
                 </div>
               </div>
             </div>
@@ -235,6 +447,7 @@ const SeismicAnalysisTab = ({
               // Placeholder for future functionality
               console.log('Button clicked - functionality to be added');
               console.log('Selected spectrums:', spectrumSelection);
+              console.log('Stress inputs:', stressInputs);
             }}
           >
             Розрахувати

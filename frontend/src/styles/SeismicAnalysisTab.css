@@ -193,6 +193,26 @@
   color: #6c757d;
 }
 
+/* Стили для объединенной секции анализа спектров */
+.spectrum-analysis-section {
+  padding: 0;
+}
+
+.data-availability-subsection {
+  margin-bottom: 20px;
+}
+
+.section-divider {
+  height: 1px;
+  background-color: #e9ecef;
+  margin: 20px 0;
+}
+
+.spectrum-selection-subsection {
+  margin-top: 0;
+  padding-top: 0;
+}
+
 /* Стили для значений анализа */
 .analysis-values {
   display: flex;
@@ -338,5 +358,130 @@
   
   .spectrum-checkbox-container input[type="checkbox"]:checked + .checkmark::after {
     font-size: 10px;
+  }
+}
+
+/* Стили для блока вхідних розрахункових напружень */
+.stress-inputs-container {
+  margin-top: 24px;
+}
+
+.stress-inputs-section {
+  padding: 0;
+}
+
+.stress-micro-group {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #ffffff;
+}
+
+.stress-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #ffffff;
+}
+
+.stress-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stress-checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  font-family: 'Arial', sans-serif;
+  margin-bottom: 4px;
+}
+
+.stress-checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.stress-checkbox-container .checkmark {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #007bff;
+  border-radius: 3px;
+  margin-right: 8px;
+  position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.stress-checkbox-container input[type="checkbox"]:checked + .checkmark {
+  background-color: #007bff;
+}
+
+.stress-checkbox-container input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.stress-label {
+  user-select: none;
+  line-height: 1.2;
+}
+
+.stress-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Arial', sans-serif;
+  transition: all 0.2s;
+}
+
+.stress-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.stress-input.disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  border-color: #e9ecef;
+}
+
+.stress-input::placeholder {
+  color: #adb5bd;
+  font-style: italic;
+}
+
+/* Адаптация для мобильных устройств - стресс поля */
+@media (max-width: 600px) {
+  .stress-group {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .stress-checkbox-container {
+    font-size: 13px;
+  }
+  
+  .stress-input {
+    font-size: 13px;
+    padding: 6px 8px;
   }
 } 

@@ -239,6 +239,18 @@ const AnalysisModal = ({
     vc_pz: false,    // Спектр ВС ПЗ
     vc_mrz: false    // Спектр ВС МРЗ
   });
+
+  // Input stress calculation states  
+  const [stressInputs, setStressInputs] = useState({
+    sigma: { enabled: false, value: '' },
+    hcclpf: { enabled: false, value: '' },
+    sigma_1: { enabled: false, value: '' },
+    sigma_2: { enabled: false, value: '' },
+    sigma_1_1: { enabled: false, value: '' },
+    sigma_1_2: { enabled: false, value: '' },
+    sigma_1_s1: { enabled: false, value: '' },
+    sigma_2_s2: { enabled: false, value: '' }
+  });
   
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
@@ -1094,6 +1106,8 @@ const AnalysisModal = ({
             spectrumSelection={spectrumSelection}
             setSpectrumSelection={setSpectrumSelection}
             allAnalysisResults={allAnalysisResults}
+            stressInputs={stressInputs}
+            setStressInputs={setStressInputs}
           />
         );
       case 'pressure':
