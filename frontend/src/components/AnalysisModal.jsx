@@ -232,6 +232,14 @@ const AnalysisModal = ({
   const [naturalFrequency, setNaturalFrequency] = useState('');
   const [forceRecalculate, setForceRecalculate] = useState(0); // Force recalculation trigger
   
+  // Spectrum selection states
+  const [spectrumSelection, setSpectrumSelection] = useState({
+    xc_pz: false,    // Спектр ХС ПЗ
+    xc_mrz: false,   // Спектр ХС МРЗ
+    vc_pz: false,    // Спектр ВС ПЗ
+    vc_mrz: false    // Спектр ВС МРЗ
+  });
+  
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
   const dampingTimerRef = useRef(null); // Timer ref for debouncing
@@ -243,6 +251,53 @@ const AnalysisModal = ({
       fetchAllSpectralData();
     }
   }, [isOpen, elementData]);
+
+  // Auto-select available spectrums when data is loaded
+  useEffect(() => {
+    if (Object.keys(allSpectralData).length > 0 && Object.keys(allRequirementsData).length > 0) {
+      const newSelection = { ...spectrumSelection };
+      
+      // Check ПЗ availability
+      const pzSpectralData = allSpectralData?.['ПЗ'];
+      const pzRequirementsData = allRequirementsData?.['ПЗ'];
+      
+      if (pzSpectralData && pzRequirementsData) {
+        const hasPzSpectral = (pzSpectralData.pz_x && pzSpectralData.pz_x.length > 0) ||
+                             (pzSpectralData.pz_y && pzSpectralData.pz_y.length > 0) ||
+                             (pzSpectralData.pz_z && pzSpectralData.pz_z.length > 0);
+        
+        const hasPzRequirements = (pzRequirementsData.pz_x && pzRequirementsData.pz_x.length > 0) ||
+                                 (pzRequirementsData.pz_y && pzRequirementsData.pz_y.length > 0) ||
+                                 (pzRequirementsData.pz_z && pzRequirementsData.pz_z.length > 0);
+        
+        if (hasPzSpectral && hasPzRequirements) {
+          newSelection.xc_pz = true;
+          newSelection.vc_pz = true;
+        }
+      }
+
+      // Check МРЗ availability
+      const mrzSpectralData = allSpectralData?.['МРЗ'];
+      const mrzRequirementsData = allRequirementsData?.['МРЗ'];
+      
+      if (mrzSpectralData && mrzRequirementsData) {
+        const hasMrzSpectral = (mrzSpectralData.mrz_x && mrzSpectralData.mrz_x.length > 0) ||
+                              (mrzSpectralData.mrz_y && mrzSpectralData.mrz_y.length > 0) ||
+                              (mrzSpectralData.mrz_z && mrzSpectralData.mrz_z.length > 0);
+        
+        const hasMrzRequirements = (mrzRequirementsData.mrz_x && mrzRequirementsData.mrz_x.length > 0) ||
+                                  (mrzRequirementsData.mrz_y && mrzRequirementsData.mrz_y.length > 0) ||
+                                  (mrzRequirementsData.mrz_z && mrzRequirementsData.mrz_z.length > 0);
+        
+        if (hasMrzSpectral && hasMrzRequirements) {
+          newSelection.xc_mrz = true;
+          newSelection.vc_mrz = true;
+        }
+      }
+
+      setSpectrumSelection(newSelection);
+    }
+  }, [allSpectralData, allRequirementsData]);
 
   // Auto-recalculate when natural frequency changes
   useEffect(() => {
@@ -1036,6 +1091,8 @@ const AnalysisModal = ({
             setNaturalFrequency={setNaturalFrequency}
             allSpectralData={allSpectralData}
             allRequirementsData={allRequirementsData}
+            spectrumSelection={spectrumSelection}
+            setSpectrumSelection={setSpectrumSelection}
           />
         );
       case 'pressure':

@@ -210,4 +210,115 @@
   .frequency-input {
     max-width: 100%;
   }
+}
+
+/* Стили для блока выбора спектров */
+.spectrum-selection-section {
+  padding: 0;
+}
+
+.spectrum-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.spectrum-item {
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #ffffff;
+  transition: all 0.2s;
+}
+
+.spectrum-item:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.spectrum-checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  font-family: 'Arial', sans-serif;
+  width: 100%;
+}
+
+.spectrum-checkbox-container.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.spectrum-checkbox-container.disabled .spectrum-label {
+  color: #6c757d;
+}
+
+.spectrum-checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.spectrum-checkbox-container .checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #007bff;
+  border-radius: 3px;
+  margin-right: 10px;
+  position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.spectrum-checkbox-container.disabled .checkmark {
+  border-color: #dee2e6;
+}
+
+.spectrum-checkbox-container input[type="checkbox"]:checked + .checkmark {
+  background-color: #007bff;
+}
+
+.spectrum-checkbox-container.disabled input[type="checkbox"]:checked + .checkmark {
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+.spectrum-checkbox-container input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.spectrum-label {
+  user-select: none;
+  line-height: 1.2;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 600px) {
+  .spectrum-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .spectrum-checkbox-container {
+    font-size: 13px;
+  }
+  
+  .spectrum-checkbox-container .checkmark {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+  }
+  
+  .spectrum-checkbox-container input[type="checkbox"]:checked + .checkmark::after {
+    font-size: 10px;
+  }
 } 

@@ -7,7 +7,14 @@ const SeismicAnalysisTab = ({
   naturalFrequency, 
   setNaturalFrequency,
   allSpectralData,
-  allRequirementsData
+  allRequirementsData,
+  spectrumSelection = {
+    xc_pz: false,
+    xc_mrz: false,
+    vc_pz: false,
+    vc_mrz: false
+  },
+  setSpectrumSelection = () => {}
 }) => {
   const handleFrequencyToggle = () => {
     setIsFrequencyEnabled(!isFrequencyEnabled);
@@ -68,7 +75,13 @@ const SeismicAnalysisTab = ({
 
   const dataAvailability = checkDataAvailability();
 
-
+  // Функция для обработки изменения выбора спектров
+  const handleSpectrumToggle = (spectrumType) => {
+    setSpectrumSelection(prev => ({
+      ...prev,
+      [spectrumType]: !prev[spectrumType]
+    }));
+  };
 
   return (
     <div className="seismic-analysis-container">
@@ -128,6 +141,66 @@ const SeismicAnalysisTab = ({
               </div>
             </div>
           </div>
+
+          <div className="parameter-group">
+            <div className="spectrum-selection-section">
+              <h4 className="section-title">Вибір спектрів для аналізу</h4>
+              
+              <div className="spectrum-grid">
+                <div className="spectrum-item">
+                  <label className={`spectrum-checkbox-container ${!dataAvailability.pz ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={spectrumSelection.xc_pz}
+                      onChange={() => handleSpectrumToggle('xc_pz')}
+                      disabled={!dataAvailability.pz}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="spectrum-label">Спектр ХС ПЗ</span>
+                  </label>
+                </div>
+
+                <div className="spectrum-item">
+                  <label className={`spectrum-checkbox-container ${!dataAvailability.mrz ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={spectrumSelection.xc_mrz}
+                      onChange={() => handleSpectrumToggle('xc_mrz')}
+                      disabled={!dataAvailability.mrz}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="spectrum-label">Спектр ХС МРЗ</span>
+                  </label>
+                </div>
+
+                <div className="spectrum-item">
+                  <label className={`spectrum-checkbox-container ${!dataAvailability.pz ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={spectrumSelection.vc_pz}
+                      onChange={() => handleSpectrumToggle('vc_pz')}
+                      disabled={!dataAvailability.pz}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="spectrum-label">Спектр ВС ПЗ</span>
+                  </label>
+                </div>
+
+                <div className="spectrum-item">
+                  <label className={`spectrum-checkbox-container ${!dataAvailability.mrz ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={spectrumSelection.vc_mrz}
+                      onChange={() => handleSpectrumToggle('vc_mrz')}
+                      disabled={!dataAvailability.mrz}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="spectrum-label">Спектр ВС МРЗ</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="form-actions">
@@ -137,6 +210,7 @@ const SeismicAnalysisTab = ({
             onClick={() => {
               // Placeholder for future functionality
               console.log('Button clicked - functionality to be added');
+              console.log('Selected spectrums:', spectrumSelection);
             }}
           >
             Розрахувати
