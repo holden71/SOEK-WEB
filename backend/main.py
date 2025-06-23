@@ -13,7 +13,7 @@ from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException, Query,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult, SpectralDataResult, SaveAnalysisResultParams, SaveAnalysisResultResponse
+from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult, SpectralDataResult, SaveAnalysisResultParams, SaveAnalysisResultResponse, SaveStressInputsParams, SaveStressInputsResponse
 from pydantic import BaseModel
 from settings import settings
 from sqlalchemy import inspect, text
@@ -1132,6 +1132,161 @@ async def save_analysis_result(
         db.rollback()
         print(f"Error saving analysis result: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error saving analysis result: {str(e)}")
+
+@app.post("/api/save-stress-inputs", response_model=SaveStressInputsResponse)
+async def save_stress_inputs(
+    db: DbSessionDep,
+    params: SaveStressInputsParams = Body(...)
+):
+    """
+    Save stress input values to SRTN_EK_SEISM_DATA table.
+    
+    This endpoint updates the SRTN_EK_SEISM_DATA table with stress input values:
+    - SIGMA_DOP (σ)
+    - HCLPF 
+    - SIGMA_1 (σ₁)
+    - SIGMA_2 (σ₂)
+    - SIGMA_S_1 ((σ₁)₁)
+    - SIGMA_S_2 ((σ₁)₂)
+    - SIGMA_S_S1 ((σ₁)s₁)
+    - SIGMA_S_S2 ((σ₂)s₂)
+    """
+    try:
+        # Build update query dynamically based on which values are provided
+        update_fields = []
+        update_params = {"ek_id": params.ek_id}
+        
+        # Map parameter names to database column names
+        field_mapping = {
+            "sigma": "SIGMA_DOP",
+            "hclpf": "HCLPF", 
+            "sigma_1": "SIGMA_1",
+            "sigma_2": "SIGMA_2",
+            "sigma_1_1": "SIGMA_S_1",
+            "sigma_1_2": "SIGMA_S_2",
+            "sigma_1_s1": "SIGMA_S_S1",
+            "sigma_2_s2": "SIGMA_S_S2"
+        }
+        
+        # Add fields that are provided (including null values to clear them)
+        request_data = params.dict(exclude_unset=True)
+        for param_name, db_column in field_mapping.items():
+            # Include field if it was explicitly provided in the request
+            if param_name in request_data:
+                param_value = getattr(params, param_name)
+                update_fields.append(f"{db_column} = :{param_name}")
+                update_params[param_name] = param_value
+        
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="At least one stress input value must be provided")
+        
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": params.ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {params.ek_id} not found")
+        
+        # Perform the update
+        update_query = text(f"""
+            UPDATE SRTN_EK_SEISM_DATA 
+            SET {', '.join(update_fields)}
+            WHERE EK_ID = :ek_id
+        """)
+        
+        print(f"Executing stress inputs update query: {update_query}")
+        print(f"Parameters: {update_params}")
+        
+        result = db.execute(update_query, update_params)
+        
+        # Check if the update was successful
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"No rows updated for EK_ID {params.ek_id}")
+        
+        # Commit the transaction
+        db.commit()
+        
+        # Prepare response with updated fields
+        updated_fields = {}
+        for param_name, db_column in field_mapping.items():
+            param_value = getattr(params, param_name)
+            if param_value is not None:
+                updated_fields[db_column] = param_value
+        
+        return SaveStressInputsResponse(
+            success=True,
+            message=f"Successfully updated stress inputs for EK_ID {params.ek_id}",
+            updated_fields=updated_fields
+        )
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving stress inputs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error saving stress inputs: {str(e)}")
+
+@app.get("/api/get-stress-inputs")
+async def get_stress_inputs(
+    db: DbSessionDep,
+    ek_id: int = Query(..., description="ID of the element")
+):
+    """
+    Get stress input values from SRTN_EK_SEISM_DATA table.
+    
+    This endpoint retrieves stress input values for a specific element:
+    - SIGMA_DOP (σ)
+    - HCLPF 
+    - SIGMA_1 (σ₁)
+    - SIGMA_2 (σ₂)
+    - SIGMA_S_1 ((σ₁)₁)
+    - SIGMA_S_2 ((σ₁)₂)
+    - SIGMA_S_S1 ((σ₁)s₁)
+    - SIGMA_S_S2 ((σ₂)s₂)
+    """
+    try:
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
+        
+        # Get stress input values
+        stress_query = text("""
+            SELECT SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2, SIGMA_S_1, SIGMA_S_2, SIGMA_S_S1, SIGMA_S_S2
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(stress_query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
+        
+        # Map database columns to response
+        stress_values = {
+            "SIGMA_DOP": row[0],
+            "HCLPF": row[1],
+            "SIGMA_1": row[2],
+            "SIGMA_2": row[3],
+            "SIGMA_S_1": row[4],
+            "SIGMA_S_2": row[5],
+            "SIGMA_S_S1": row[6],
+            "SIGMA_S_S2": row[7]
+        }
+        
+        return {
+            "success": True,
+            "ek_id": ek_id,
+            "stress_values": stress_values
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting stress inputs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving stress inputs: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

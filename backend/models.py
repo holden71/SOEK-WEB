@@ -75,4 +75,20 @@ class SaveAnalysisResultParams(BaseModel):
 class SaveAnalysisResultResponse(BaseModel):
     success: bool
     message: str
+    updated_fields: Dict[str, Any]
+
+class SaveStressInputsParams(BaseModel):
+    ek_id: int
+    sigma: Optional[float] = None
+    hclpf: Optional[float] = None
+    sigma_1: Optional[float] = None
+    sigma_2: Optional[float] = None
+    sigma_1_1: Optional[float] = None
+    sigma_1_2: Optional[float] = None
+    sigma_1_s1: Optional[float] = None
+    sigma_2_s2: Optional[float] = None
+
+class SaveStressInputsResponse(BaseModel):
+    success: bool
+    message: str
     updated_fields: Dict[str, Any] 

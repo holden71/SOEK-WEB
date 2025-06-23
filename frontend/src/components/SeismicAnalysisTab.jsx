@@ -17,7 +17,8 @@ const SeismicAnalysisTab = ({
   setSpectrumSelection = () => {},
   allAnalysisResults = {},
   stressInputs = {},
-  setStressInputs = () => {}
+  setStressInputs = () => {},
+  saveStressInputs = () => {}
 }) => {
   const handleFrequencyToggle = () => {
     setIsFrequencyEnabled(!isFrequencyEnabled);
@@ -264,6 +265,29 @@ const SeismicAnalysisTab = ({
             <div className="stress-inputs-section">
               <h4 className="section-title">Вхідні розрахункові напруження</h4>
               
+              {/* HCLPF - отдельная микрогруппа */}
+              <div className="stress-micro-group">
+                <div className="stress-field">
+                  <label className="stress-checkbox-container">
+                    <input
+                      type="checkbox"
+                      checked={stressInputs.hclpf?.enabled || false}
+                      onChange={() => handleStressToggle('hclpf')}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="stress-label">HCLPF, g</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={stressInputs.hclpf?.value || ''}
+                    onChange={(e) => handleStressValueChange('hclpf', e.target.value)}
+                    disabled={!stressInputs.hclpf?.enabled}
+                    placeholder="Значення"
+                    className={`stress-input ${!stressInputs.hclpf?.enabled ? 'disabled' : ''}`}
+                  />
+                </div>
+              </div>
+
               {/* Sigma - отдельная микрогруппа */}
               <div className="stress-micro-group">
                 <div className="stress-field">
@@ -283,29 +307,6 @@ const SeismicAnalysisTab = ({
                     disabled={!stressInputs.sigma?.enabled}
                     placeholder="Значення"
                     className={`stress-input ${!stressInputs.sigma?.enabled ? 'disabled' : ''}`}
-                  />
-                </div>
-              </div>
-
-              {/* HCLPF - отдельная микрогруппа */}
-              <div className="stress-micro-group">
-                <div className="stress-field">
-                  <label className="stress-checkbox-container">
-                    <input
-                      type="checkbox"
-                      checked={stressInputs.hcclpf?.enabled || false}
-                      onChange={() => handleStressToggle('hcclpf')}
-                    />
-                    <span className="checkmark"></span>
-                    <span className="stress-label">HCLPF, g</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={stressInputs.hcclpf?.value || ''}
-                    onChange={(e) => handleStressValueChange('hcclpf', e.target.value)}
-                    disabled={!stressInputs.hcclpf?.enabled}
-                    placeholder="Значення"
-                    className={`stress-input ${!stressInputs.hcclpf?.enabled ? 'disabled' : ''}`}
                   />
                 </div>
               </div>
@@ -444,8 +445,11 @@ const SeismicAnalysisTab = ({
             type="button" 
             className="calculate-button"
             onClick={() => {
-              // Placeholder for future functionality
-              console.log('Button clicked - functionality to be added');
+              // Save stress inputs to database
+              saveStressInputs(stressInputs);
+              
+              // Placeholder for future calculation functionality
+              console.log('Button clicked - stress inputs saved');
               console.log('Selected spectrums:', spectrumSelection);
               console.log('Stress inputs:', stressInputs);
             }}

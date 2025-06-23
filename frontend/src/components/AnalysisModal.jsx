@@ -243,7 +243,7 @@ const AnalysisModal = ({
   // Input stress calculation states  
   const [stressInputs, setStressInputs] = useState({
     sigma: { enabled: false, value: '' },
-    hcclpf: { enabled: false, value: '' },
+            hclpf: { enabled: false, value: '' },
     sigma_1: { enabled: false, value: '' },
     sigma_2: { enabled: false, value: '' },
     sigma_1_1: { enabled: false, value: '' },
@@ -257,10 +257,26 @@ const AnalysisModal = ({
   const dampingTimerRef = useRef(null); // Timer ref for debouncing
   const frequencyTimerRef = useRef(null); // Timer ref for natural frequency debouncing
 
-  // Fetch spectral data when modal opens
+  // Reset stress inputs and fetch data when modal opens or element changes
   useEffect(() => {
     if (isOpen && elementData) {
+      // Reset stress inputs to default values
+      setStressInputs({
+        sigma: { enabled: false, value: '' },
+        hclpf: { enabled: false, value: '' },
+        sigma_1: { enabled: false, value: '' },
+        sigma_2: { enabled: false, value: '' },
+        sigma_1_1: { enabled: false, value: '' },
+        sigma_1_2: { enabled: false, value: '' },
+        sigma_1_s1: { enabled: false, value: '' },
+        sigma_2_s2: { enabled: false, value: '' }
+      });
+      
       fetchAllSpectralData();
+      // Small delay to ensure reset is applied before loading from DB
+      setTimeout(() => {
+        fetchStressInputsFromDatabase();
+      }, 100);
     }
   }, [isOpen, elementData]);
 
@@ -820,6 +836,136 @@ const AnalysisModal = ({
     }
   };
 
+  const saveStressInputs = async (stressInputsData) => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot save stress inputs: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+
+      // Prepare data for API call - only include enabled fields with valid values
+      const stressData = {
+        ek_id: ekId
+      };
+
+      // Add enabled fields - if empty, send null to clear database value
+      Object.keys(stressInputsData).forEach(key => {
+        const field = stressInputsData[key];
+        if (field && field.enabled) {
+          if (field.value === '' || field.value === null || field.value === undefined) {
+            // Send null for empty values to clear database
+            stressData[key] = null;
+          } else if (!isNaN(parseFloat(field.value))) {
+            // Send numeric value
+            stressData[key] = parseFloat(field.value);
+          } else {
+            // Invalid numeric value, send null
+            stressData[key] = null;
+          }
+        }
+      });
+
+      // Only proceed if we have at least one enabled field to save
+      const hasEnabledFields = Object.keys(stressInputsData).some(key => 
+        stressInputsData[key] && stressInputsData[key].enabled
+      );
+      if (!hasEnabledFields) {
+        return;
+      }
+
+      const response = await fetch('http://localhost:8000/api/save-stress-inputs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(stressData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error saving stress inputs:', errorData);
+        return;
+      }
+
+      const result = await response.json();
+      
+    } catch (err) {
+      console.error('Error saving stress inputs:', err);
+    }
+  };
+
+  const fetchStressInputsFromDatabase = async () => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot fetch stress inputs: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+
+      const response = await fetch(`http://localhost:8000/api/get-stress-inputs?ek_id=${ekId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error fetching stress inputs:', errorData);
+        return;
+      }
+
+      const result = await response.json();
+      
+      // Update stress inputs with values from database
+      if (result.stress_values) {
+        // Start with fresh default values
+        const newStressInputs = {
+          sigma: { enabled: false, value: '' },
+          hclpf: { enabled: false, value: '' },
+          sigma_1: { enabled: false, value: '' },
+          sigma_2: { enabled: false, value: '' },
+          sigma_1_1: { enabled: false, value: '' },
+          sigma_1_2: { enabled: false, value: '' },
+          sigma_1_s1: { enabled: false, value: '' },
+          sigma_2_s2: { enabled: false, value: '' }
+        };
+        
+        // Map database values to form fields
+        const fieldMapping = {
+          'SIGMA_DOP': 'sigma',
+          'HCLPF': 'hclpf',
+          'SIGMA_1': 'sigma_1',
+          'SIGMA_2': 'sigma_2',
+          'SIGMA_S_1': 'sigma_1_1',
+          'SIGMA_S_2': 'sigma_1_2',
+          'SIGMA_S_S1': 'sigma_1_s1',
+          'SIGMA_S_S2': 'sigma_2_s2'
+        };
+
+        Object.entries(fieldMapping).forEach(([dbColumn, formField]) => {
+          const dbValue = result.stress_values[dbColumn];
+          if (dbValue !== null && dbValue !== undefined && dbValue !== '') {
+            newStressInputs[formField] = {
+              enabled: true,
+              value: dbValue.toString()
+            };
+          }
+        });
+
+        setStressInputs(newStressInputs);
+      }
+      
+    } catch (err) {
+      console.error('Error fetching stress inputs:', err);
+    }
+  };
+
   const fetchAllRequirementsData = async (ekId) => {
     try {
       const newAllRequirementsData = {};
@@ -1108,6 +1254,7 @@ const AnalysisModal = ({
             allAnalysisResults={allAnalysisResults}
             stressInputs={stressInputs}
             setStressInputs={setStressInputs}
+            saveStressInputs={saveStressInputs}
           />
         );
       case 'pressure':

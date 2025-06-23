@@ -12,6 +12,9 @@ from settings import settings
 
 logger = logging.getLogger("uvicorn")
 
+# Disable SQLAlchemy logging
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+
 
 class DbException(Exception):
     pass
@@ -33,7 +36,7 @@ class DbSessionManager:
         )
 
         oracledb.init_oracle_client(lib_dir=settings.db_libdir)
-        cls._engine = create_engine(url_object, echo=settings.echo_sql)
+        cls._engine = create_engine(url_object, echo=False)  # Explicitly disable SQL logging
         cls._session_maker = sessionmaker(bind=cls._engine, expire_on_commit=False)
 
         # Checking whether a connection could be made successfully
