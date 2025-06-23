@@ -193,6 +193,24 @@
   color: #6c757d;
 }
 
+/* Стили для значений анализа */
+.analysis-values {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.value-small {
+  font-size: 11px;
+  color: #6c757d;
+  font-family: 'Arial', sans-serif;
+  font-weight: 500;
+  background-color: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #e9ecef;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .seismic-analysis-container {

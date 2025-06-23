@@ -1093,6 +1093,7 @@ const AnalysisModal = ({
             allRequirementsData={allRequirementsData}
             spectrumSelection={spectrumSelection}
             setSpectrumSelection={setSpectrumSelection}
+            allAnalysisResults={allAnalysisResults}
           />
         );
       case 'pressure':

@@ -14,7 +14,8 @@ const SeismicAnalysisTab = ({
     vc_pz: false,
     vc_mrz: false
   },
-  setSpectrumSelection = () => {}
+  setSpectrumSelection = () => {},
+  allAnalysisResults = {}
 }) => {
   const handleFrequencyToggle = () => {
     setIsFrequencyEnabled(!isFrequencyEnabled);
@@ -83,6 +84,17 @@ const SeismicAnalysisTab = ({
     }));
   };
 
+  // Функция для форматирования значений m1 и m2
+  const formatValue = (value) => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '—';
+    }
+    if (value === Infinity) {
+      return '∞';
+    }
+    return value.toFixed(4);
+  };
+
   return (
     <div className="seismic-analysis-container">
       <div className="seismic-analysis-form">
@@ -121,6 +133,12 @@ const SeismicAnalysisTab = ({
               <div className="availability-item">
                 <div className="availability-label">
                   <span className="parameter-label">Попередній розрахунок ПЗ</span>
+                  {dataAvailability.pz && allAnalysisResults['ПЗ'] && (
+                    <div className="analysis-values">
+                      <span className="value-small">m₁: {formatValue(allAnalysisResults['ПЗ'].m1)}</span>
+                      <span className="value-small">m₂: {formatValue(allAnalysisResults['ПЗ'].m2)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="availability-status">
                   <span className={`status-text ${dataAvailability.pz ? 'available' : 'unavailable'}`}>
@@ -132,6 +150,12 @@ const SeismicAnalysisTab = ({
               <div className="availability-item">
                 <div className="availability-label">
                   <span className="parameter-label">Попередній розрахунок МРЗ</span>
+                  {dataAvailability.mrz && allAnalysisResults['МРЗ'] && (
+                    <div className="analysis-values">
+                      <span className="value-small">m₁: {formatValue(allAnalysisResults['МРЗ'].m1)}</span>
+                      <span className="value-small">m₂: {formatValue(allAnalysisResults['МРЗ'].m2)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="availability-status">
                   <span className={`status-text ${dataAvailability.mrz ? 'available' : 'unavailable'}`}>
