@@ -1161,32 +1161,34 @@ async def save_stress_inputs(
             # Общие характеристики
             "sigma_dop": "SIGMA_DOP",
             "hclpf": "HCLPF",
+            "sigma_1": "SIGMA_1",
+            "sigma_2": "SIGMA_2",
             # Поля для ПЗ
-            "sigma_pz": "SIGMA_1",  # Пока используем старое поле, если нет отдельного
-            "sigma_1_pz": "SIGMA_S_1_PZ",
-            "sigma_2_pz": "SIGMA_S_2_PZ", 
-            "sigma_1_1_pz": "SIGMA_S_S1_PZ",
-            "sigma_1_2_pz": "SIGMA_S_S2_PZ",
-            "sigma_1_s1_pz": "SIGMA_S_ALT_1_PZ",  # Предполагаемое название
-            "sigma_2_s2_pz": "SIGMA_S_ALT_2_PZ",  # Предполагаемое название
+            "sigma_1_1_pz": "SIGMA_S_1_PZ",
+            "sigma_1_2_pz": "SIGMA_S_2_PZ",
+            "sigma_1_s1_pz": "SIGMA_S_S1_PZ",
+            "sigma_2_s2_pz": "SIGMA_S_S2_PZ",
             # Поля для МРЗ
-            "sigma_mrz": "SIGMA_2",  # Пока используем старое поле, если нет отдельного
-            "sigma_1_mrz": "SIGMA_S_1_MRZ",
-            "sigma_2_mrz": "SIGMA_S_2_MRZ",
-            "sigma_1_1_mrz": "SIGMA_S_S1_MRZ", 
-            "sigma_1_2_mrz": "SIGMA_S_S2_MRZ",
-            "sigma_1_s1_mrz": "SIGMA_S_ALT_1_MRZ",
-            "sigma_2_s2_mrz": "SIGMA_S_ALT_2_MRZ"
+            "sigma_1_1_mrz": "SIGMA_S_1_MRZ", 
+            "sigma_1_2_mrz": "SIGMA_S_2_MRZ",
+            "sigma_1_s1_mrz": "SIGMA_S_S1_MRZ",
+            "sigma_2_s2_mrz": "SIGMA_S_S2_MRZ"
         }
         
-        # Add fields that are provided (including null values to clear them)
-        request_data = params.dict(exclude_unset=True)
+        # Add all fields (including null values to clear them)
         for param_name, db_column in field_mapping.items():
-            # Include field if it was explicitly provided in the request
-            if param_name in request_data:
-                param_value = getattr(params, param_name)
-                update_fields.append(f"{db_column} = :{param_name}")
-                update_params[param_name] = param_value
+            param_value = getattr(params, param_name)
+            update_fields.append(f"{db_column} = :{param_name}")
+            update_params[param_name] = param_value
+        
+        # Clear previous calculation results when saving new input data
+        # but keep M1 values as they come from spectral analysis, not stress inputs
+        update_fields.extend([
+            "SIGMA_S_ALT_1_PZ = NULL",
+            "SIGMA_S_ALT_2_PZ = NULL", 
+            "SIGMA_S_ALT_1_MRZ = NULL",
+            "SIGMA_S_ALT_2_MRZ = NULL"
+        ])
         
         if not update_fields:
             raise HTTPException(status_code=400, detail="At least one stress input value must be provided")
@@ -1304,6 +1306,272 @@ async def get_stress_inputs(
     except Exception as e:
         print(f"Error getting stress inputs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving stress inputs: {str(e)}")
+
+@app.get("/api/get-analysis-results")
+async def get_analysis_results(
+    db: DbSessionDep,
+    ek_id: int = Query(..., description="ID of the element")
+):
+    """
+    Get analysis results (M1, M2 values) from SRTN_EK_SEISM_DATA table.
+    """
+    try:
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
+        
+        # Get analysis results
+        results_query = text("""
+            SELECT M1_PZ, M2_PZ, M1_MRZ, M2_MRZ
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(results_query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
+        
+        # Parse results
+        analysis_values = {}
+        
+        if row[0] is not None:
+            analysis_values["M1_PZ"] = row[0]
+        if row[1] is not None:
+            analysis_values["M2_PZ"] = row[1]
+        if row[2] is not None:
+            analysis_values["M1_MRZ"] = row[2]
+        if row[3] is not None:
+            analysis_values["M2_MRZ"] = row[3]
+        
+        return {
+            "success": True,
+            "ek_id": ek_id,
+            "analysis_values": analysis_values
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting analysis results: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving analysis results: {str(e)}")
+
+@app.get("/api/get-calculation-results")
+async def get_calculation_results(
+    db: DbSessionDep,
+    ek_id: int = Query(..., description="ID of the element")
+):
+    """
+    Get calculation results (sigma alt values) from SRTN_EK_SEISM_DATA table.
+    """
+    try:
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
+        
+        # Get calculation results
+        results_query = text("""
+            SELECT SIGMA_S_ALT_1_PZ, SIGMA_S_ALT_2_PZ, SIGMA_S_ALT_1_MRZ, SIGMA_S_ALT_2_MRZ
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(results_query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
+        
+        # Parse results
+        calculated_values = {}
+        
+        if row[0] is not None:
+            calculated_values["SIGMA_S_ALT_1_PZ"] = row[0]
+        if row[1] is not None:
+            calculated_values["SIGMA_S_ALT_2_PZ"] = row[1]
+        if row[2] is not None:
+            calculated_values["SIGMA_S_ALT_1_MRZ"] = row[2]
+        if row[3] is not None:
+            calculated_values["SIGMA_S_ALT_2_MRZ"] = row[3]
+        
+        return {
+            "success": True,
+            "ek_id": ek_id,
+            "calculated_values": calculated_values
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting calculation results: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving calculation results: {str(e)}")
+
+@app.post("/api/calculate-sigma-alt")
+async def calculate_sigma_alt(
+    db: DbSessionDep,
+    ek_id: int = Body(..., embed=True)
+):
+    """
+    Calculate sigma alt (σ*) values using the formulas:
+    (σs)₁* = (σs)₁ + (σs)s₁ · (m₁ - 1)
+    (σs)₂* = (σs)₂ + (σs)s₂ · (m₁ - 1)
+    
+    Results are saved to SIGMA_S_ALT_1_PZ, SIGMA_S_ALT_2_PZ, SIGMA_S_ALT_1_MRZ, SIGMA_S_ALT_2_MRZ
+    """
+    try:
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
+        
+        # Get current data for calculations
+        data_query = text("""
+            SELECT 
+                -- PZ data
+                SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ,
+                M1_PZ,
+                -- MRZ data  
+                SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ,
+                M1_MRZ,
+                -- Also get alt values to see if they exist
+                SIGMA_S_ALT_1_PZ, SIGMA_S_ALT_2_PZ, SIGMA_S_ALT_1_MRZ, SIGMA_S_ALT_2_MRZ
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(data_query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
+        
+        # Extract values
+        (sigma_s_1_pz, sigma_s_2_pz, sigma_s_s1_pz, sigma_s_s2_pz, m1_pz,
+         sigma_s_1_mrz, sigma_s_2_mrz, sigma_s_s1_mrz, sigma_s_s2_mrz, m1_mrz,
+         existing_alt_1_pz, existing_alt_2_pz, existing_alt_1_mrz, existing_alt_2_mrz) = row
+        
+        print(f"=== CALCULATION DATA FOR EK_ID {ek_id} ===")
+        print(f"PZ Data:")
+        print(f"  sigma_s_1_pz = {sigma_s_1_pz}")
+        print(f"  sigma_s_2_pz = {sigma_s_2_pz}")
+        print(f"  sigma_s_s1_pz = {sigma_s_s1_pz}")
+        print(f"  sigma_s_s2_pz = {sigma_s_s2_pz}")
+        print(f"  m1_pz = {m1_pz}")
+        print(f"MRZ Data:")
+        print(f"  sigma_s_1_mrz = {sigma_s_1_mrz}")
+        print(f"  sigma_s_2_mrz = {sigma_s_2_mrz}")
+        print(f"  sigma_s_s1_mrz = {sigma_s_s1_mrz}")
+        print(f"  sigma_s_s2_mrz = {sigma_s_s2_mrz}")
+        print(f"  m1_mrz = {m1_mrz}")
+        print(f"Existing ALT values: PZ({existing_alt_1_pz}, {existing_alt_2_pz}), MRZ({existing_alt_1_mrz}, {existing_alt_2_mrz})")
+        print(f"============================================")
+        
+        update_fields = []
+        update_params = {"ek_id": ek_id}
+        calculated_values = {}
+        
+        # Calculate for PZ if data is available
+        print(f"Checking PZ calculation requirements:")
+        print(f"  sigma_s_1_pz={sigma_s_1_pz}, sigma_s_s1_pz={sigma_s_s1_pz}, m1_pz={m1_pz}")
+        if all(v is not None for v in [sigma_s_1_pz, sigma_s_s1_pz, m1_pz]):
+            sigma_alt_1_pz = sigma_s_1_pz + sigma_s_s1_pz * (m1_pz - 1)
+            update_fields.append("SIGMA_S_ALT_1_PZ = :sigma_alt_1_pz")
+            update_params["sigma_alt_1_pz"] = sigma_alt_1_pz
+            calculated_values["SIGMA_S_ALT_1_PZ"] = sigma_alt_1_pz
+            print(f"  ✓ Calculated sigma_alt_1_pz = {sigma_alt_1_pz}")
+        else:
+            print(f"  ✗ Cannot calculate sigma_alt_1_pz - missing required values")
+        
+        print(f"  sigma_s_2_pz={sigma_s_2_pz}, sigma_s_s2_pz={sigma_s_s2_pz}, m1_pz={m1_pz}")
+        if all(v is not None for v in [sigma_s_2_pz, sigma_s_s2_pz, m1_pz]):
+            sigma_alt_2_pz = sigma_s_2_pz + sigma_s_s2_pz * (m1_pz - 1)
+            update_fields.append("SIGMA_S_ALT_2_PZ = :sigma_alt_2_pz")
+            update_params["sigma_alt_2_pz"] = sigma_alt_2_pz
+            calculated_values["SIGMA_S_ALT_2_PZ"] = sigma_alt_2_pz
+            print(f"  ✓ Calculated sigma_alt_2_pz = {sigma_alt_2_pz}")
+        else:
+            print(f"  ✗ Cannot calculate sigma_alt_2_pz - missing required values")
+        
+        # Calculate for MRZ if data is available
+        print(f"Checking MRZ calculation requirements:")
+        print(f"  sigma_s_1_mrz={sigma_s_1_mrz}, sigma_s_s1_mrz={sigma_s_s1_mrz}, m1_mrz={m1_mrz}")
+        if all(v is not None for v in [sigma_s_1_mrz, sigma_s_s1_mrz, m1_mrz]):
+            sigma_alt_1_mrz = sigma_s_1_mrz + sigma_s_s1_mrz * (m1_mrz - 1)
+            update_fields.append("SIGMA_S_ALT_1_MRZ = :sigma_alt_1_mrz")
+            update_params["sigma_alt_1_mrz"] = sigma_alt_1_mrz
+            calculated_values["SIGMA_S_ALT_1_MRZ"] = sigma_alt_1_mrz
+            print(f"  ✓ Calculated sigma_alt_1_mrz = {sigma_alt_1_mrz}")
+        else:
+            print(f"  ✗ Cannot calculate sigma_alt_1_mrz - missing required values")
+        
+        print(f"  sigma_s_2_mrz={sigma_s_2_mrz}, sigma_s_s2_mrz={sigma_s_s2_mrz}, m1_mrz={m1_mrz}")
+        if all(v is not None for v in [sigma_s_2_mrz, sigma_s_s2_mrz, m1_mrz]):
+            sigma_alt_2_mrz = sigma_s_2_mrz + sigma_s_s2_mrz * (m1_mrz - 1)
+            update_fields.append("SIGMA_S_ALT_2_MRZ = :sigma_alt_2_mrz")
+            update_params["sigma_alt_2_mrz"] = sigma_alt_2_mrz
+            calculated_values["SIGMA_S_ALT_2_MRZ"] = sigma_alt_2_mrz
+            print(f"  ✓ Calculated sigma_alt_2_mrz = {sigma_alt_2_mrz}")
+        else:
+            print(f"  ✗ Cannot calculate sigma_alt_2_mrz - missing required values")
+        
+        if not update_fields:
+            print("No calculations performed - insufficient data for both PZ and MRZ")
+            return {
+                "success": True,
+                "message": "No calculations performed - insufficient data for both PZ and MRZ", 
+                "calculated_values": {}
+            }
+        
+        # Perform the update
+        update_query = text(f"""
+            UPDATE SRTN_EK_SEISM_DATA 
+            SET {', '.join(update_fields)}
+            WHERE EK_ID = :ek_id
+        """)
+        
+        print(f"Executing sigma alt calculation query: {update_query}")
+        print(f"Parameters: {update_params}")
+        
+        result = db.execute(update_query, update_params)
+        
+        # Check if the update was successful
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"No rows updated for EK_ID {ek_id}")
+        
+        # Commit the transaction
+        db.commit()
+        
+        # Verify that the values were actually saved
+        verify_query = text("""
+            SELECT SIGMA_S_ALT_1_PZ, SIGMA_S_ALT_2_PZ, SIGMA_S_ALT_1_MRZ, SIGMA_S_ALT_2_MRZ
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        verify_result = db.execute(verify_query, {"ek_id": ek_id})
+        verify_row = verify_result.fetchone()
+        
+        if verify_row:
+            print(f"Verification - saved ALT values: PZ({verify_row[0]}, {verify_row[1]}), MRZ({verify_row[2]}, {verify_row[3]})")
+        
+        return {
+            "success": True,
+            "message": f"Successfully calculated sigma alt values for EK_ID {ek_id}",
+            "calculated_values": calculated_values
+        }
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error calculating sigma alt: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error calculating sigma alt: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

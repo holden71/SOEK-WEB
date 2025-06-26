@@ -689,4 +689,108 @@
     font-size: 13px;
     padding: 6px 8px;
   }
+}
+
+/* Calculation Results Section */
+.calculation-results-container {
+  margin-top: 24px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.results-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.results-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.results-section {
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  min-height: 140px;
+}
+
+.results-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 12px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #007bff;
+}
+
+.results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  min-height: 40px;
+  height: 40px;
+}
+
+.result-label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 14px;
+}
+
+.result-value,
+.result-item .no-data-message {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  font-family: 'Courier New', monospace !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  font-style: normal !important;
+}
+
+.result-value {
+  color: #007bff !important;
+}
+
+.result-item .no-data-message {
+  color: #e67e22 !important;
+}
+
+/* Responsive design for results */
+@media (max-width: 768px) {
+  .results-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .calculation-results-container {
+    margin-top: 16px;
+    padding: 16px;
+  }
+  
+  .results-title {
+    font-size: 16px;
+  }
+  
+  .results-section-title {
+    font-size: 14px;
+  }
 } 

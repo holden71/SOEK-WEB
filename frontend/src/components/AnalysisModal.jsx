@@ -245,22 +245,24 @@ const AnalysisModal = ({
     // Общие характеристики
     sigma_dop: { enabled: false, value: '' },
     hclpf: { enabled: false, value: '' },
+    sigma_1: { enabled: false, value: '' },
+    sigma_2: { enabled: false, value: '' },
     // Поля для ПЗ
-    sigma_pz: { enabled: false, value: '' },
-    sigma_1_pz: { enabled: false, value: '' },
-    sigma_2_pz: { enabled: false, value: '' },
     sigma_1_1_pz: { enabled: false, value: '' },
     sigma_1_2_pz: { enabled: false, value: '' },
     sigma_1_s1_pz: { enabled: false, value: '' },
     sigma_2_s2_pz: { enabled: false, value: '' },
     // Поля для МРЗ
-    sigma_mrz: { enabled: false, value: '' },
-    sigma_1_mrz: { enabled: false, value: '' },
-    sigma_2_mrz: { enabled: false, value: '' },
     sigma_1_1_mrz: { enabled: false, value: '' },
     sigma_1_2_mrz: { enabled: false, value: '' },
     sigma_1_s1_mrz: { enabled: false, value: '' },
     sigma_2_s2_mrz: { enabled: false, value: '' }
+  });
+
+  const [calculationResults, setCalculationResults] = useState({
+    pz: {},
+    mrz: {},
+    calculationAttempted: false
   });
   
   const modalRef = useRef(null);
@@ -276,28 +278,28 @@ const AnalysisModal = ({
         // Общие характеристики
         sigma_dop: { enabled: false, value: '' },
         hclpf: { enabled: false, value: '' },
+        sigma_1: { enabled: false, value: '' },
+        sigma_2: { enabled: false, value: '' },
         // Поля для ПЗ
-        sigma_pz: { enabled: false, value: '' },
-        sigma_1_pz: { enabled: false, value: '' },
-        sigma_2_pz: { enabled: false, value: '' },
         sigma_1_1_pz: { enabled: false, value: '' },
         sigma_1_2_pz: { enabled: false, value: '' },
         sigma_1_s1_pz: { enabled: false, value: '' },
         sigma_2_s2_pz: { enabled: false, value: '' },
         // Поля для МРЗ
-        sigma_mrz: { enabled: false, value: '' },
-        sigma_1_mrz: { enabled: false, value: '' },
-        sigma_2_mrz: { enabled: false, value: '' },
         sigma_1_1_mrz: { enabled: false, value: '' },
         sigma_1_2_mrz: { enabled: false, value: '' },
         sigma_1_s1_mrz: { enabled: false, value: '' },
         sigma_2_s2_mrz: { enabled: false, value: '' }
       });
       
+      // Clear calculation results when modal opens or element changes
+      clearCalculationResults();
+      
       fetchAllSpectralData();
       // Small delay to ensure reset is applied before loading from DB
       setTimeout(() => {
         fetchStressInputsFromDatabase();
+        fetchCalculationResultsFromDatabase();
       }, 100);
     }
   }, [isOpen, elementData]);
@@ -858,6 +860,76 @@ const AnalysisModal = ({
     }
   };
 
+  const clearCalculationResults = () => {
+    setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: false });
+  };
+
+  const calculateSigmaAlt = async () => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot calculate sigma alt: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/calculate-sigma-alt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ek_id: ekId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error calculating sigma alt:', errorData);
+        // Mark calculation as attempted but failed
+        setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true });
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Sigma alt calculation result:', result);
+      
+      if (result.success) {
+        console.log('Calculated values:', result.calculated_values);
+        
+        // Update calculation results state - always mark as attempted
+        const newResults = { pz: {}, mrz: {}, calculationAttempted: true };
+        
+        // Parse calculated values and group by PZ/MRZ (only if there are any)
+        if (result.calculated_values && Object.keys(result.calculated_values).length > 0) {
+          Object.entries(result.calculated_values).forEach(([key, value]) => {
+            if (key.includes('_PZ')) {
+              if (key === 'SIGMA_S_ALT_1_PZ') {
+                newResults.pz.sigma_alt_1 = value;
+              } else if (key === 'SIGMA_S_ALT_2_PZ') {
+                newResults.pz.sigma_alt_2 = value;
+              }
+            } else if (key.includes('_MRZ')) {
+              if (key === 'SIGMA_S_ALT_1_MRZ') {
+                newResults.mrz.sigma_alt_1 = value;
+              } else if (key === 'SIGMA_S_ALT_2_MRZ') {
+                newResults.mrz.sigma_alt_2 = value;
+              }
+            }
+          });
+        }
+        
+        setCalculationResults(newResults);
+      } else {
+        // Mark calculation as attempted but no results
+        setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true });
+      }
+      
+    } catch (err) {
+      console.error('Error calculating sigma alt:', err);
+      // Mark calculation as attempted but failed
+      setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true });
+    }
+  };
+
   const saveStressInputs = async (stressInputsData) => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
       console.warn('Cannot save stress inputs: missing element ID');
@@ -868,12 +940,12 @@ const AnalysisModal = ({
     
     try {
 
-      // Prepare data for API call - only include enabled fields with valid values
+      // Prepare data for API call - send all fields regardless of enabled state
       const stressData = {
         ek_id: ekId
       };
 
-      // Add enabled fields - if empty, send null to clear database value
+      // Add all fields - enabled fields get their values, disabled fields get null
       Object.keys(stressInputsData).forEach(key => {
         const field = stressInputsData[key];
         if (field && field.enabled) {
@@ -887,16 +959,13 @@ const AnalysisModal = ({
             // Invalid numeric value, send null
             stressData[key] = null;
           }
+        } else {
+          // Disabled field - send null to clear database
+          stressData[key] = null;
         }
       });
 
-      // Only proceed if we have at least one enabled field to save
-      const hasEnabledFields = Object.keys(stressInputsData).some(key => 
-        stressInputsData[key] && stressInputsData[key].enabled
-      );
-      if (!hasEnabledFields) {
-        return;
-      }
+      console.log('Sending stress data to backend:', stressData);
 
       const response = await fetch('http://localhost:8000/api/save-stress-inputs', {
         method: 'POST',
@@ -914,8 +983,66 @@ const AnalysisModal = ({
 
       const result = await response.json();
       
+      // Clear calculation results after saving new data
+      // since we clear M1 and calculation results in database
+      clearCalculationResults();
+      
     } catch (err) {
       console.error('Error saving stress inputs:', err);
+    }
+  };
+
+  const fetchCalculationResultsFromDatabase = async () => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot fetch calculation results: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/get-calculation-results?ek_id=${ekId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error fetching calculation results:', errorData);
+        return;
+      }
+
+      const result = await response.json();
+      
+      if (result.calculated_values && Object.keys(result.calculated_values).length > 0) {
+        // Update calculation results with values from database
+        const newResults = { pz: {}, mrz: {}, calculationAttempted: true };
+        
+        // Parse calculated values and group by PZ/MRZ
+        Object.entries(result.calculated_values).forEach(([key, value]) => {
+          if (key.includes('_PZ')) {
+            if (key === 'SIGMA_S_ALT_1_PZ') {
+              newResults.pz.sigma_alt_1 = value;
+            } else if (key === 'SIGMA_S_ALT_2_PZ') {
+              newResults.pz.sigma_alt_2 = value;
+            }
+          } else if (key.includes('_MRZ')) {
+            if (key === 'SIGMA_S_ALT_1_MRZ') {
+              newResults.mrz.sigma_alt_1 = value;
+            } else if (key === 'SIGMA_S_ALT_2_MRZ') {
+              newResults.mrz.sigma_alt_2 = value;
+            }
+          }
+        });
+        
+        setCalculationResults(newResults);
+        console.log('Loaded calculation results from database:', newResults);
+      }
+      
+    } catch (err) {
+      console.error('Error fetching calculation results:', err);
     }
   };
 
@@ -951,18 +1078,14 @@ const AnalysisModal = ({
           // Общие характеристики
           sigma_dop: { enabled: false, value: '' },
           hclpf: { enabled: false, value: '' },
+          sigma_1: { enabled: false, value: '' },
+          sigma_2: { enabled: false, value: '' },
           // Поля для ПЗ
-          sigma_pz: { enabled: false, value: '' },
-          sigma_1_pz: { enabled: false, value: '' },
-          sigma_2_pz: { enabled: false, value: '' },
           sigma_1_1_pz: { enabled: false, value: '' },
           sigma_1_2_pz: { enabled: false, value: '' },
           sigma_1_s1_pz: { enabled: false, value: '' },
           sigma_2_s2_pz: { enabled: false, value: '' },
           // Поля для МРЗ
-          sigma_mrz: { enabled: false, value: '' },
-          sigma_1_mrz: { enabled: false, value: '' },
-          sigma_2_mrz: { enabled: false, value: '' },
           sigma_1_1_mrz: { enabled: false, value: '' },
           sigma_1_2_mrz: { enabled: false, value: '' },
           sigma_1_s1_mrz: { enabled: false, value: '' },
@@ -973,16 +1096,16 @@ const AnalysisModal = ({
         const fieldMapping = {
           'SIGMA_DOP': 'sigma_dop',
           'HCLPF': 'hclpf',
-          'SIGMA_1': 'sigma_pz',     // Старое поле используем для ПЗ
-          'SIGMA_2': 'sigma_mrz',    // Старое поле используем для МРЗ
-          'SIGMA_S_1_PZ': 'sigma_1_pz',
-          'SIGMA_S_2_PZ': 'sigma_2_pz',
-          'SIGMA_S_S1_PZ': 'sigma_1_1_pz',
-          'SIGMA_S_S2_PZ': 'sigma_1_2_pz',
-          'SIGMA_S_1_MRZ': 'sigma_1_mrz',
-          'SIGMA_S_2_MRZ': 'sigma_2_mrz',
-          'SIGMA_S_S1_MRZ': 'sigma_1_1_mrz',
-          'SIGMA_S_S2_MRZ': 'sigma_1_2_mrz'
+          'SIGMA_1': 'sigma_1',
+          'SIGMA_2': 'sigma_2',
+          'SIGMA_S_1_PZ': 'sigma_1_1_pz',
+          'SIGMA_S_2_PZ': 'sigma_1_2_pz',
+          'SIGMA_S_S1_PZ': 'sigma_1_s1_pz',
+          'SIGMA_S_S2_PZ': 'sigma_2_s2_pz',
+          'SIGMA_S_1_MRZ': 'sigma_1_1_mrz',
+          'SIGMA_S_2_MRZ': 'sigma_1_2_mrz',
+          'SIGMA_S_S1_MRZ': 'sigma_1_s1_mrz',
+          'SIGMA_S_S2_MRZ': 'sigma_2_s2_mrz'
         };
 
         Object.entries(fieldMapping).forEach(([dbColumn, formField]) => {
@@ -1279,20 +1402,24 @@ const AnalysisModal = ({
     switch (activeSubTab) {
       case 'seismic':
         return (
-          <SeismicAnalysisTab 
-            isFrequencyEnabled={isFrequencyEnabled}
-            setIsFrequencyEnabled={setIsFrequencyEnabled}
-            naturalFrequency={naturalFrequency}
-            setNaturalFrequency={setNaturalFrequency}
-            allSpectralData={allSpectralData}
-            allRequirementsData={allRequirementsData}
-            spectrumSelection={spectrumSelection}
-            setSpectrumSelection={setSpectrumSelection}
-            allAnalysisResults={allAnalysisResults}
-            stressInputs={stressInputs}
-            setStressInputs={setStressInputs}
-            saveStressInputs={saveStressInputs}
-          />
+                      <SeismicAnalysisTab
+              isFrequencyEnabled={isFrequencyEnabled}
+              setIsFrequencyEnabled={setIsFrequencyEnabled}
+              naturalFrequency={naturalFrequency}
+              setNaturalFrequency={setNaturalFrequency}
+              allSpectralData={allSpectralData}
+              allRequirementsData={allRequirementsData}
+              spectrumSelection={spectrumSelection}
+              setSpectrumSelection={setSpectrumSelection}
+              allAnalysisResults={allAnalysisResults}
+              stressInputs={stressInputs}
+              setStressInputs={setStressInputs}
+                          saveStressInputs={saveStressInputs}
+            calculateSigmaAlt={calculateSigmaAlt}
+            calculationResults={calculationResults}
+            clearCalculationResults={clearCalculationResults}
+            fetchCalculationResults={fetchCalculationResultsFromDatabase}
+            />
         );
       case 'pressure':
         return (

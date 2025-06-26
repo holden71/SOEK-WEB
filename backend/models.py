@@ -82,18 +82,14 @@ class SaveStressInputsParams(BaseModel):
     # Общие характеристики
     sigma_dop: Optional[float] = None
     hclpf: Optional[float] = None
+    sigma_1: Optional[float] = None
+    sigma_2: Optional[float] = None
     # Поля для ПЗ
-    sigma_pz: Optional[float] = None
-    sigma_1_pz: Optional[float] = None
-    sigma_2_pz: Optional[float] = None
     sigma_1_1_pz: Optional[float] = None
     sigma_1_2_pz: Optional[float] = None
     sigma_1_s1_pz: Optional[float] = None
     sigma_2_s2_pz: Optional[float] = None
     # Поля для МРЗ
-    sigma_mrz: Optional[float] = None
-    sigma_1_mrz: Optional[float] = None
-    sigma_2_mrz: Optional[float] = None
     sigma_1_1_mrz: Optional[float] = None
     sigma_1_2_mrz: Optional[float] = None
     sigma_1_s1_mrz: Optional[float] = None
