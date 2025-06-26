@@ -296,6 +296,7 @@ const AnalysisModal = ({
       clearCalculationResults();
       
       fetchAllSpectralData();
+      fetchAllRequirementsData(elementData.EK_ID || elementData.ek_id);
       // Small delay to ensure reset is applied before loading from DB
       setTimeout(() => {
         fetchStressInputsFromDatabase();
