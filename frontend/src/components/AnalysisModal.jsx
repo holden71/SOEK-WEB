@@ -242,14 +242,25 @@ const AnalysisModal = ({
 
   // Input stress calculation states  
   const [stressInputs, setStressInputs] = useState({
-    sigma: { enabled: false, value: '' },
-            hclpf: { enabled: false, value: '' },
-    sigma_1: { enabled: false, value: '' },
-    sigma_2: { enabled: false, value: '' },
-    sigma_1_1: { enabled: false, value: '' },
-    sigma_1_2: { enabled: false, value: '' },
-    sigma_1_s1: { enabled: false, value: '' },
-    sigma_2_s2: { enabled: false, value: '' }
+    // Общие характеристики
+    sigma_dop: { enabled: false, value: '' },
+    hclpf: { enabled: false, value: '' },
+    // Поля для ПЗ
+    sigma_pz: { enabled: false, value: '' },
+    sigma_1_pz: { enabled: false, value: '' },
+    sigma_2_pz: { enabled: false, value: '' },
+    sigma_1_1_pz: { enabled: false, value: '' },
+    sigma_1_2_pz: { enabled: false, value: '' },
+    sigma_1_s1_pz: { enabled: false, value: '' },
+    sigma_2_s2_pz: { enabled: false, value: '' },
+    // Поля для МРЗ
+    sigma_mrz: { enabled: false, value: '' },
+    sigma_1_mrz: { enabled: false, value: '' },
+    sigma_2_mrz: { enabled: false, value: '' },
+    sigma_1_1_mrz: { enabled: false, value: '' },
+    sigma_1_2_mrz: { enabled: false, value: '' },
+    sigma_1_s1_mrz: { enabled: false, value: '' },
+    sigma_2_s2_mrz: { enabled: false, value: '' }
   });
   
   const modalRef = useRef(null);
@@ -262,14 +273,25 @@ const AnalysisModal = ({
     if (isOpen && elementData) {
       // Reset stress inputs to default values
       setStressInputs({
-        sigma: { enabled: false, value: '' },
+        // Общие характеристики
+        sigma_dop: { enabled: false, value: '' },
         hclpf: { enabled: false, value: '' },
-        sigma_1: { enabled: false, value: '' },
-        sigma_2: { enabled: false, value: '' },
-        sigma_1_1: { enabled: false, value: '' },
-        sigma_1_2: { enabled: false, value: '' },
-        sigma_1_s1: { enabled: false, value: '' },
-        sigma_2_s2: { enabled: false, value: '' }
+        // Поля для ПЗ
+        sigma_pz: { enabled: false, value: '' },
+        sigma_1_pz: { enabled: false, value: '' },
+        sigma_2_pz: { enabled: false, value: '' },
+        sigma_1_1_pz: { enabled: false, value: '' },
+        sigma_1_2_pz: { enabled: false, value: '' },
+        sigma_1_s1_pz: { enabled: false, value: '' },
+        sigma_2_s2_pz: { enabled: false, value: '' },
+        // Поля для МРЗ
+        sigma_mrz: { enabled: false, value: '' },
+        sigma_1_mrz: { enabled: false, value: '' },
+        sigma_2_mrz: { enabled: false, value: '' },
+        sigma_1_1_mrz: { enabled: false, value: '' },
+        sigma_1_2_mrz: { enabled: false, value: '' },
+        sigma_1_s1_mrz: { enabled: false, value: '' },
+        sigma_2_s2_mrz: { enabled: false, value: '' }
       });
       
       fetchAllSpectralData();
@@ -926,26 +948,41 @@ const AnalysisModal = ({
       if (result.stress_values) {
         // Start with fresh default values
         const newStressInputs = {
-          sigma: { enabled: false, value: '' },
+          // Общие характеристики
+          sigma_dop: { enabled: false, value: '' },
           hclpf: { enabled: false, value: '' },
-          sigma_1: { enabled: false, value: '' },
-          sigma_2: { enabled: false, value: '' },
-          sigma_1_1: { enabled: false, value: '' },
-          sigma_1_2: { enabled: false, value: '' },
-          sigma_1_s1: { enabled: false, value: '' },
-          sigma_2_s2: { enabled: false, value: '' }
+          // Поля для ПЗ
+          sigma_pz: { enabled: false, value: '' },
+          sigma_1_pz: { enabled: false, value: '' },
+          sigma_2_pz: { enabled: false, value: '' },
+          sigma_1_1_pz: { enabled: false, value: '' },
+          sigma_1_2_pz: { enabled: false, value: '' },
+          sigma_1_s1_pz: { enabled: false, value: '' },
+          sigma_2_s2_pz: { enabled: false, value: '' },
+          // Поля для МРЗ
+          sigma_mrz: { enabled: false, value: '' },
+          sigma_1_mrz: { enabled: false, value: '' },
+          sigma_2_mrz: { enabled: false, value: '' },
+          sigma_1_1_mrz: { enabled: false, value: '' },
+          sigma_1_2_mrz: { enabled: false, value: '' },
+          sigma_1_s1_mrz: { enabled: false, value: '' },
+          sigma_2_s2_mrz: { enabled: false, value: '' }
         };
         
         // Map database values to form fields
         const fieldMapping = {
-          'SIGMA_DOP': 'sigma',
+          'SIGMA_DOP': 'sigma_dop',
           'HCLPF': 'hclpf',
-          'SIGMA_1': 'sigma_1',
-          'SIGMA_2': 'sigma_2',
-          'SIGMA_S_1': 'sigma_1_1',
-          'SIGMA_S_2': 'sigma_1_2',
-          'SIGMA_S_S1': 'sigma_1_s1',
-          'SIGMA_S_S2': 'sigma_2_s2'
+          'SIGMA_1': 'sigma_pz',     // Старое поле используем для ПЗ
+          'SIGMA_2': 'sigma_mrz',    // Старое поле используем для МРЗ
+          'SIGMA_S_1_PZ': 'sigma_1_pz',
+          'SIGMA_S_2_PZ': 'sigma_2_pz',
+          'SIGMA_S_S1_PZ': 'sigma_1_1_pz',
+          'SIGMA_S_S2_PZ': 'sigma_1_2_pz',
+          'SIGMA_S_1_MRZ': 'sigma_1_mrz',
+          'SIGMA_S_2_MRZ': 'sigma_2_mrz',
+          'SIGMA_S_S1_MRZ': 'sigma_1_1_mrz',
+          'SIGMA_S_S2_MRZ': 'sigma_1_2_mrz'
         };
 
         Object.entries(fieldMapping).forEach(([dbColumn, formField]) => {

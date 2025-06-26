@@ -1158,14 +1158,25 @@ async def save_stress_inputs(
         
         # Map parameter names to database column names
         field_mapping = {
-            "sigma": "SIGMA_DOP",
-            "hclpf": "HCLPF", 
-            "sigma_1": "SIGMA_1",
-            "sigma_2": "SIGMA_2",
-            "sigma_1_1": "SIGMA_S_1",
-            "sigma_1_2": "SIGMA_S_2",
-            "sigma_1_s1": "SIGMA_S_S1",
-            "sigma_2_s2": "SIGMA_S_S2"
+            # Общие характеристики
+            "sigma_dop": "SIGMA_DOP",
+            "hclpf": "HCLPF",
+            # Поля для ПЗ
+            "sigma_pz": "SIGMA_1",  # Пока используем старое поле, если нет отдельного
+            "sigma_1_pz": "SIGMA_S_1_PZ",
+            "sigma_2_pz": "SIGMA_S_2_PZ", 
+            "sigma_1_1_pz": "SIGMA_S_S1_PZ",
+            "sigma_1_2_pz": "SIGMA_S_S2_PZ",
+            "sigma_1_s1_pz": "SIGMA_S_ALT_1_PZ",  # Предполагаемое название
+            "sigma_2_s2_pz": "SIGMA_S_ALT_2_PZ",  # Предполагаемое название
+            # Поля для МРЗ
+            "sigma_mrz": "SIGMA_2",  # Пока используем старое поле, если нет отдельного
+            "sigma_1_mrz": "SIGMA_S_1_MRZ",
+            "sigma_2_mrz": "SIGMA_S_2_MRZ",
+            "sigma_1_1_mrz": "SIGMA_S_S1_MRZ", 
+            "sigma_1_2_mrz": "SIGMA_S_S2_MRZ",
+            "sigma_1_s1_mrz": "SIGMA_S_ALT_1_MRZ",
+            "sigma_2_s2_mrz": "SIGMA_S_ALT_2_MRZ"
         }
         
         # Add fields that are provided (including null values to clear them)
@@ -1253,7 +1264,9 @@ async def get_stress_inputs(
         
         # Get stress input values
         stress_query = text("""
-            SELECT SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2, SIGMA_S_1, SIGMA_S_2, SIGMA_S_S1, SIGMA_S_S2
+            SELECT SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2, 
+                   SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ,
+                   SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ
             FROM SRTN_EK_SEISM_DATA 
             WHERE EK_ID = :ek_id
         """)
@@ -1270,10 +1283,14 @@ async def get_stress_inputs(
             "HCLPF": row[1],
             "SIGMA_1": row[2],
             "SIGMA_2": row[3],
-            "SIGMA_S_1": row[4],
-            "SIGMA_S_2": row[5],
-            "SIGMA_S_S1": row[6],
-            "SIGMA_S_S2": row[7]
+            "SIGMA_S_1_PZ": row[4],
+            "SIGMA_S_2_PZ": row[5], 
+            "SIGMA_S_S1_PZ": row[6],
+            "SIGMA_S_S2_PZ": row[7],
+            "SIGMA_S_1_MRZ": row[8],
+            "SIGMA_S_2_MRZ": row[9],
+            "SIGMA_S_S1_MRZ": row[10],
+            "SIGMA_S_S2_MRZ": row[11]
         }
         
         return {
