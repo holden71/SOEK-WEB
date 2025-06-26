@@ -573,11 +573,6 @@ const SeismicAnalysisTab = ({
                 await calculateSigmaAlt();
                 console.log('Sigma alt calculation completed');
                 
-                // Load fresh results from database
-                console.log('Loading calculation results from database...');
-                await fetchCalculationResults();
-                console.log('Calculation results loaded');
-                
               } catch (error) {
                 console.error('Error in calculation process:', error);
               }
@@ -589,6 +584,7 @@ const SeismicAnalysisTab = ({
 
         {/* Результаты расчетов - показываем всегда если был запущен расчет */}
         {calculationResults.calculationAttempted && (
+          console.log('Rendering results with missingData:', calculationResults.missingData) ||
           <div className="calculation-results-container">
             <h3 className="results-title">Результати розрахунків</h3>
             
@@ -602,7 +598,12 @@ const SeismicAnalysisTab = ({
                     {calculationResults.pz.sigma_alt_1 !== undefined ? (
                       <span className="result-value">{calculationResults.pz.sigma_alt_1.toFixed(4)} мПа</span>
                     ) : (
-                      <span className="no-data-message">Недостатньо даних</span>
+                      <span className="no-data-message">
+                        {calculationResults.missingData?.pz?.sigma_alt_1 && calculationResults.missingData.pz.sigma_alt_1.length > 0 ? 
+                          `Відсутні дані: ${calculationResults.missingData.pz.sigma_alt_1.join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
                     )}
                   </div>
                   <div className="result-item">
@@ -610,7 +611,12 @@ const SeismicAnalysisTab = ({
                     {calculationResults.pz.sigma_alt_2 !== undefined ? (
                       <span className="result-value">{calculationResults.pz.sigma_alt_2.toFixed(4)} мПа</span>
                     ) : (
-                      <span className="no-data-message">Недостатньо даних</span>
+                      <span className="no-data-message">
+                        {calculationResults.missingData?.pz?.sigma_alt_2 && calculationResults.missingData.pz.sigma_alt_2.length > 0 ? 
+                          `Відсутні дані: ${calculationResults.missingData.pz.sigma_alt_2.join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
                     )}
                   </div>
                 </div>
@@ -625,7 +631,12 @@ const SeismicAnalysisTab = ({
                     {calculationResults.mrz.sigma_alt_1 !== undefined ? (
                       <span className="result-value">{calculationResults.mrz.sigma_alt_1.toFixed(4)} мПа</span>
                     ) : (
-                      <span className="no-data-message">Недостатньо даних</span>
+                      <span className="no-data-message">
+                        {calculationResults.missingData?.mrz?.sigma_alt_1 && calculationResults.missingData.mrz.sigma_alt_1.length > 0 ? 
+                          `Відсутні дані: ${calculationResults.missingData.mrz.sigma_alt_1.join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
                     )}
                   </div>
                   <div className="result-item">
@@ -633,7 +644,12 @@ const SeismicAnalysisTab = ({
                     {calculationResults.mrz.sigma_alt_2 !== undefined ? (
                       <span className="result-value">{calculationResults.mrz.sigma_alt_2.toFixed(4)} мПа</span>
                     ) : (
-                      <span className="no-data-message">Недостатньо даних</span>
+                      <span className="no-data-message">
+                        {calculationResults.missingData?.mrz?.sigma_alt_2 && calculationResults.missingData.mrz.sigma_alt_2.length > 0 ? 
+                          `Відсутні дані: ${calculationResults.missingData.mrz.sigma_alt_2.join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
                     )}
                   </div>
                 </div>

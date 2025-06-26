@@ -1411,6 +1411,103 @@ async def get_calculation_results(
         print(f"Error getting calculation results: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving calculation results: {str(e)}")
 
+@app.get("/api/check-calculation-requirements")
+async def check_calculation_requirements(
+    db: DbSessionDep,
+    ek_id: int = Query(..., description="ID of the element")
+):
+    """
+    Check what data is missing for sigma alt calculations and return detailed information
+    """
+    try:
+        # Get current data
+        data_query = text("""
+            SELECT 
+                -- PZ data
+                SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ, M1_PZ,
+                -- MRZ data  
+                SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ, M1_MRZ
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(data_query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
+        
+        # Extract values
+        (sigma_s_1_pz, sigma_s_2_pz, sigma_s_s1_pz, sigma_s_s2_pz, m1_pz,
+         sigma_s_1_mrz, sigma_s_2_mrz, sigma_s_s1_mrz, sigma_s_s2_mrz, m1_mrz) = row
+        
+        requirements = {
+            "pz": {
+                "sigma_alt_1": {
+                    "can_calculate": all(v is not None for v in [sigma_s_1_pz, sigma_s_s1_pz, m1_pz]),
+                    "missing_fields": []
+                },
+                "sigma_alt_2": {
+                    "can_calculate": all(v is not None for v in [sigma_s_2_pz, sigma_s_s2_pz, m1_pz]),
+                    "missing_fields": []
+                }
+            },
+            "mrz": {
+                "sigma_alt_1": {
+                    "can_calculate": all(v is not None for v in [sigma_s_1_mrz, sigma_s_s1_mrz, m1_mrz]),
+                    "missing_fields": []
+                },
+                "sigma_alt_2": {
+                    "can_calculate": all(v is not None for v in [sigma_s_2_mrz, sigma_s_s2_mrz, m1_mrz]),
+                    "missing_fields": []
+                }
+            }
+        }
+        
+        # Check missing fields for PZ sigma_alt_1
+        if sigma_s_1_pz is None:
+            requirements["pz"]["sigma_alt_1"]["missing_fields"].append("(σ₁)₁")
+        if sigma_s_s1_pz is None:
+            requirements["pz"]["sigma_alt_1"]["missing_fields"].append("(σ₁)s₁")
+        if m1_pz is None:
+            requirements["pz"]["sigma_alt_1"]["missing_fields"].append("M₁")
+            
+        # Check missing fields for PZ sigma_alt_2
+        if sigma_s_2_pz is None:
+            requirements["pz"]["sigma_alt_2"]["missing_fields"].append("(σ₂)₂")
+        if sigma_s_s2_pz is None:
+            requirements["pz"]["sigma_alt_2"]["missing_fields"].append("(σ₂)s₂")
+        if m1_pz is None:
+            requirements["pz"]["sigma_alt_2"]["missing_fields"].append("M₁")
+            
+        # Check missing fields for MRZ sigma_alt_1
+        if sigma_s_1_mrz is None:
+            requirements["mrz"]["sigma_alt_1"]["missing_fields"].append("(σ₁)₁")
+        if sigma_s_s1_mrz is None:
+            requirements["mrz"]["sigma_alt_1"]["missing_fields"].append("(σ₁)s₁")
+        if m1_mrz is None:
+            requirements["mrz"]["sigma_alt_1"]["missing_fields"].append("M₁")
+            
+        # Check missing fields for MRZ sigma_alt_2
+        if sigma_s_2_mrz is None:
+            requirements["mrz"]["sigma_alt_2"]["missing_fields"].append("(σ₂)₂")
+        if sigma_s_s2_mrz is None:
+            requirements["mrz"]["sigma_alt_2"]["missing_fields"].append("(σ₂)s₂")
+        if m1_mrz is None:
+            requirements["mrz"]["sigma_alt_2"]["missing_fields"].append("M₁")
+        
+        return {
+            "success": True,
+            "ek_id": ek_id,
+            "requirements": requirements
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error checking calculation requirements: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error checking requirements: {str(e)}")
+
 @app.post("/api/calculate-sigma-alt")
 async def calculate_sigma_alt(
     db: DbSessionDep,

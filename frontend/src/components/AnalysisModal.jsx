@@ -862,7 +862,7 @@ const AnalysisModal = ({
   };
 
   const clearCalculationResults = () => {
-    setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: false });
+    setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: false, missingData: {} });
   };
 
   const calculateSigmaAlt = async () => {
@@ -874,6 +874,37 @@ const AnalysisModal = ({
     const ekId = elementData.EK_ID || elementData.ek_id;
     
     try {
+      // First, check what data is missing
+      const requirementsResponse = await fetch(`http://localhost:8000/api/check-calculation-requirements?ek_id=${ekId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      let missingData = {};
+      if (requirementsResponse.ok) {
+        const requirementsResult = await requirementsResponse.json();
+        console.log('Requirements check result:', requirementsResult);
+        if (requirementsResult.success && requirementsResult.requirements) {
+          // Extract missing fields information
+          missingData = {
+            pz: {
+              sigma_alt_1: requirementsResult.requirements.pz.sigma_alt_1.missing_fields,
+              sigma_alt_2: requirementsResult.requirements.pz.sigma_alt_2.missing_fields
+            },
+            mrz: {
+              sigma_alt_1: requirementsResult.requirements.mrz.sigma_alt_1.missing_fields,
+              sigma_alt_2: requirementsResult.requirements.mrz.sigma_alt_2.missing_fields
+            }
+          };
+          console.log('Extracted missing data:', missingData);
+        }
+      } else {
+        console.error('Failed to fetch requirements:', requirementsResponse.status);
+      }
+
+      // Then perform the calculation
       const response = await fetch('http://localhost:8000/api/calculate-sigma-alt', {
         method: 'POST',
         headers: {
@@ -885,8 +916,8 @@ const AnalysisModal = ({
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Error calculating sigma alt:', errorData);
-        // Mark calculation as attempted but failed
-        setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true });
+        // Mark calculation as attempted but failed, include missing data info
+        setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true, missingData });
         return;
       }
 
@@ -897,7 +928,7 @@ const AnalysisModal = ({
         console.log('Calculated values:', result.calculated_values);
         
         // Update calculation results state - always mark as attempted
-        const newResults = { pz: {}, mrz: {}, calculationAttempted: true };
+        const newResults = { pz: {}, mrz: {}, calculationAttempted: true, missingData };
         
         // Parse calculated values and group by PZ/MRZ (only if there are any)
         if (result.calculated_values && Object.keys(result.calculated_values).length > 0) {
@@ -918,10 +949,13 @@ const AnalysisModal = ({
           });
         }
         
+        console.log('Setting calculation results with values:', newResults);
         setCalculationResults(newResults);
       } else {
-        // Mark calculation as attempted but no results
-        setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true });
+        // Mark calculation as attempted but no results, include missing data info
+        const noResultsState = { pz: {}, mrz: {}, calculationAttempted: true, missingData };
+        console.log('Setting calculation results with no values:', noResultsState);
+        setCalculationResults(noResultsState);
       }
       
     } catch (err) {
@@ -1018,8 +1052,8 @@ const AnalysisModal = ({
       const result = await response.json();
       
       if (result.calculated_values && Object.keys(result.calculated_values).length > 0) {
-        // Update calculation results with values from database
-        const newResults = { pz: {}, mrz: {}, calculationAttempted: true };
+        // Update calculation results with values from database, preserve existing missingData
+        const newResults = { pz: {}, mrz: {}, calculationAttempted: false, missingData: {} };
         
         // Parse calculated values and group by PZ/MRZ
         Object.entries(result.calculated_values).forEach(([key, value]) => {
@@ -1038,6 +1072,12 @@ const AnalysisModal = ({
           }
         });
         
+        // Only show results section if there are actual calculated values
+        if (Object.keys(result.calculated_values).length > 0) {
+          newResults.calculationAttempted = true;
+        }
+        
+        console.log('Setting loaded calculation results from database:', newResults);
         setCalculationResults(newResults);
         console.log('Loaded calculation results from database:', newResults);
       }
