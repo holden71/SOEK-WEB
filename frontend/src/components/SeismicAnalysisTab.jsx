@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles/SeismicAnalysisTab.css';
 
 const SeismicAnalysisTab = ({ 
@@ -22,8 +22,105 @@ const SeismicAnalysisTab = ({
   calculateSigmaAlt = () => {},
   calculationResults = { pz: {}, mrz: {}, calculationAttempted: false },
   clearCalculationResults = () => {},
-  fetchCalculationResults = () => {}
+  fetchCalculationResults = () => {},
+  elementData = null
 }) => {
+  // Состояние для результатов расчета коэффициентов k
+  const [kResults, setKResults] = useState({
+    mrz: { k1: null, k2: null, kMin: null, canCalculate: false },
+    pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
+    calculated: false
+  });
+
+  // Отслеживаем изменения в поле допустимых напряжений и пересчитываем k коэффициенты
+  useEffect(() => {
+    // Пересчитываем только если уже были рассчитаны k коэффициенты
+    if (kResults.calculated) {
+      // Инлайн расчет для МРЗ
+      const calculateMRZK = () => {
+        const result = { k1: null, k2: null, kMin: null, canCalculate: false };
+        const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
+                         !isNaN(parseFloat(stressInputs.sigma_dop.value)) ? parseFloat(stressInputs.sigma_dop.value) : null;
+        const sigmaAlt1 = calculationResults.mrz.sigma_alt_1;
+        const sigmaAlt2 = calculationResults.mrz.sigma_alt_2;
+        
+        if (sigmaDop) {
+          let calculatedValues = [];
+          if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
+            result.k1 = (1.4 * sigmaDop) / sigmaAlt1;
+            calculatedValues.push(result.k1);
+          }
+          if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
+            result.k2 = (1.8 * sigmaDop) / sigmaAlt2;
+            calculatedValues.push(result.k2);
+          }
+          if (calculatedValues.length > 0) {
+            result.canCalculate = true;
+            result.kMin = Math.min(...calculatedValues);
+          }
+        }
+        return result;
+      };
+
+      // Инлайн расчет для ПЗ
+      const calculatePZK = () => {
+        const result = { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null };
+        const seismoTxt = elementData?.SEISMO_TXT || elementData?.seismo_txt || '';
+        let seismicCategory = null, coeff1 = null, coeff2 = null;
+        
+        if (seismoTxt.includes('II') || seismoTxt.includes('ІІ')) {
+          seismicCategory = 'II'; coeff1 = 1.5; coeff2 = 1.9;
+        } else if (seismoTxt.includes('I') || seismoTxt.includes('І')) {
+          seismicCategory = 'I'; coeff1 = 1.2; coeff2 = 1.6;
+        }
+        
+        const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
+                         !isNaN(parseFloat(stressInputs.sigma_dop.value)) ? parseFloat(stressInputs.sigma_dop.value) : null;
+        const sigmaAlt1 = calculationResults.pz.sigma_alt_1;
+        const sigmaAlt2 = calculationResults.pz.sigma_alt_2;
+        
+        result.seismicCategory = seismicCategory;
+        if (coeff1 && coeff2) {
+          result.coefficients = { coeff1, coeff2 };
+        }
+        
+        if (sigmaDop && coeff1 && coeff2) {
+          let calculatedValues = [];
+          if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
+            result.k1 = (coeff1 * sigmaDop) / sigmaAlt1;
+            calculatedValues.push(result.k1);
+          }
+          if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
+            result.k2 = (coeff2 * sigmaDop) / sigmaAlt2;
+            calculatedValues.push(result.k2);
+          }
+          if (calculatedValues.length > 0) {
+            result.canCalculate = true;
+            result.kMin = Math.min(...calculatedValues);
+          }
+        }
+        return result;
+      };
+      
+      const mrzResult = calculateMRZK();
+      const pzResult = calculatePZK();
+      
+      setKResults(prev => ({
+        ...prev,
+        mrz: mrzResult,
+        pz: pzResult
+      }));
+    }
+  }, [
+    stressInputs.sigma_dop?.enabled, 
+    stressInputs.sigma_dop?.value, 
+    calculationResults.mrz.sigma_alt_1,
+    calculationResults.mrz.sigma_alt_2,
+    calculationResults.pz.sigma_alt_1,
+    calculationResults.pz.sigma_alt_2,
+    elementData?.SEISMO_TXT,
+    elementData?.seismo_txt
+  ]);
   const handleFrequencyToggle = () => {
     setIsFrequencyEnabled(!isFrequencyEnabled);
     if (!isFrequencyEnabled) {
@@ -127,6 +224,128 @@ const SeismicAnalysisTab = ({
       }));
     }
   };
+
+  // Функция для расчета коэффициента k для МРЗ
+  const calculateKCoefficient = (sigmaData = null) => {
+    const result = { k1: null, k2: null, kMin: null, canCalculate: false };
+    
+    // Проверяем наличие основных данных
+    const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
+                     !isNaN(parseFloat(stressInputs.sigma_dop.value)) ? parseFloat(stressInputs.sigma_dop.value) : null;
+    
+    // Используем переданные данные или данные из состояния
+    const sigmaAlt1 = sigmaData?.mrz?.sigma_alt_1 ?? calculationResults.mrz.sigma_alt_1;
+    const sigmaAlt2 = sigmaData?.mrz?.sigma_alt_2 ?? calculationResults.mrz.sigma_alt_2;
+    
+
+    
+    if (sigmaDop) {
+      let calculatedValues = [];
+      
+      // Рассчитываем k₁ если есть sigmaAlt1
+      if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
+        result.k1 = (1.4 * sigmaDop) / sigmaAlt1;
+        calculatedValues.push(result.k1);
+      }
+      
+      // Рассчитываем k₂ если есть sigmaAlt2
+      if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
+        result.k2 = (1.8 * sigmaDop) / sigmaAlt2;
+        calculatedValues.push(result.k2);
+      }
+      
+      // Если есть хотя бы одно значение
+      if (calculatedValues.length > 0) {
+        result.canCalculate = true;
+        // Если есть оба - берем минимальное, если одно - берем его
+        result.kMin = Math.min(...calculatedValues);
+      }
+    }
+    return result;
+  };
+
+  // Функция для определения категории сейсмостойкости
+  const determineSeismicCategory = () => {
+    const seismoTxt = elementData?.SEISMO_TXT || elementData?.seismo_txt || '';
+    
+    // Сначала проверяем II категорию, потом I
+    if (seismoTxt.includes('II') || seismoTxt.includes('ІІ')) {
+      return { category: 'II', coeff1: 1.5, coeff2: 1.9 };
+    } else if (seismoTxt.includes('I') || seismoTxt.includes('І')) {
+      return { category: 'I', coeff1: 1.2, coeff2: 1.6 };
+    }
+    
+    return { category: null, coeff1: null, coeff2: null };
+  };
+
+  // Функция для расчета коэффициента k для ПЗ
+  const calculateKCoefficientPZ = (sigmaData = null) => {
+    const result = { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null };
+    
+    // Определяем категорию сейсмостойкости
+    const { category: seismicCategory, coeff1, coeff2 } = determineSeismicCategory();
+    
+    // Проверяем наличие основных данных
+    const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
+                     !isNaN(parseFloat(stressInputs.sigma_dop.value)) ? parseFloat(stressInputs.sigma_dop.value) : null;
+    
+    // Используем переданные данные или данные из состояния
+    const sigmaAlt1 = sigmaData?.pz?.sigma_alt_1 ?? calculationResults.pz.sigma_alt_1;
+    const sigmaAlt2 = sigmaData?.pz?.sigma_alt_2 ?? calculationResults.pz.sigma_alt_2;
+    
+
+    
+    // Всегда сохраняем информацию о категории
+    result.seismicCategory = seismicCategory;
+    if (coeff1 && coeff2) {
+      result.coefficients = { coeff1, coeff2 };
+    }
+    
+    if (sigmaDop && coeff1 && coeff2) {
+      let calculatedValues = [];
+      
+      // Рассчитываем k₁ если есть sigmaAlt1
+      if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
+        result.k1 = (coeff1 * sigmaDop) / sigmaAlt1;
+        calculatedValues.push(result.k1);
+      }
+      
+      // Рассчитываем k₂ если есть sigmaAlt2
+      if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
+        result.k2 = (coeff2 * sigmaDop) / sigmaAlt2;
+        calculatedValues.push(result.k2);
+      }
+      
+      // Если есть хотя бы одно значение
+      if (calculatedValues.length > 0) {
+        result.canCalculate = true;
+        // Если есть оба - берем минимальное, если одно - берем его
+        result.kMin = Math.min(...calculatedValues);
+      }
+    }
+    return result;
+  };
+
+  // Определяем категорию сейсмостойкости для информационных сообщений
+  const seismicCategoryInfo = determineSeismicCategory();
+
+  // Функция для расчета всех коэффициентов k
+  const calculateAllKCoefficients = (sigmaData = null) => {
+    const mrzResult = calculateKCoefficient(sigmaData);
+    const pzResult = calculateKCoefficientPZ(sigmaData);
+    
+    setKResults({
+      mrz: mrzResult,
+      pz: pzResult,
+      calculated: true
+    });
+  };
+
+
+
+
+
+
 
   return (
     <div className="seismic-analysis-container">
@@ -559,19 +778,14 @@ const SeismicAnalysisTab = ({
             className="calculate-button"
             onClick={async () => {
               try {
-                console.log('Button clicked - starting calculation process');
-                console.log('Selected spectrums:', spectrumSelection);
-                console.log('Stress inputs:', stressInputs);
-                
                 // Save stress inputs to database first
-                console.log('Saving stress inputs...');
                 await saveStressInputs(stressInputs);
-                console.log('Stress inputs saved successfully');
                 
-                // Then calculate sigma alt values
-                console.log('Calculating sigma alt...');
-                await calculateSigmaAlt();
-                console.log('Sigma alt calculation completed');
+                // Then calculate sigma alt values and k coefficients
+                await calculateSigmaAlt((sigmaResults) => {
+                  // Calculate k coefficients with the actual sigma results
+                  calculateAllKCoefficients(sigmaResults);
+                });
                 
               } catch (error) {
                 console.error('Error in calculation process:', error);
@@ -584,7 +798,6 @@ const SeismicAnalysisTab = ({
 
         {/* Результаты расчетов - показываем всегда если был запущен расчет */}
         {calculationResults.calculationAttempted && (
-          console.log('Rendering results with missingData:', calculationResults.missingData) ||
           <div className="calculation-results-container">
             <h3 className="results-title">Результати розрахунків</h3>
             
@@ -620,6 +833,71 @@ const SeismicAnalysisTab = ({
                     )}
                   </div>
                 </div>
+                
+                {/* Коэффициенты k для ПЗ */}
+                <div className="k-coefficients-section">
+                  <h5 className="k-section-title">
+                    Коефіцієнти k
+                    {kResults.calculated && kResults.pz.canCalculate && kResults.pz.seismicCategory && ` (${kResults.pz.seismicCategory} категорія)`}
+                  </h5>
+                  {kResults.calculated && kResults.pz.canCalculate ? (
+                    <div className="k-results-grid">
+                      {kResults.pz.k1 !== null && kResults.pz.coefficients && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">k₁ = {kResults.pz.coefficients.coeff1}[σ]/(σₛ)₁:</span>
+                          <span className="k-result-value">
+                            {kResults.pz.k1.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                      {kResults.pz.k2 !== null && kResults.pz.coefficients && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">k₂ = {kResults.pz.coefficients.coeff2}[σ]/(σₛ)₂:</span>
+                          <span className="k-result-value">
+                            {kResults.pz.k2.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                      {kResults.pz.kMin !== null && (
+                        <div className="k-result-item k-min-result">
+                          <span className="k-result-formula">k мінімальне:</span>
+                          <span className="k-result-value k-min-value">
+                            {kResults.pz.kMin.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="k-calculation-info">
+                      <p className="k-info-message">
+                        Для розрахунку коефіцієнтів k необхідно:
+                      </p>
+                      <ul className="k-requirements-list">
+                        <li className={stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value ? 'requirement-met' : 'requirement-missing'}>
+                          Ввести значення σ (допустиме напруження)
+                        </li>
+                        <li className={(calculationResults.pz.sigma_alt_1 !== undefined || calculationResults.pz.sigma_alt_2 !== undefined) ? 'requirement-met' : 'requirement-missing'}>
+                          Розрахувати хоча б одне значення: (σₛ)₁* або (σₛ)₂* для ПЗ
+                          {calculationResults.pz.sigma_alt_1 !== undefined && calculationResults.pz.sigma_alt_2 !== undefined ? 
+                            ' (є обидва)' : 
+                            calculationResults.pz.sigma_alt_1 !== undefined ? 
+                              ' (є тільки σₛ₁*)' : 
+                              calculationResults.pz.sigma_alt_2 !== undefined ? 
+                                ' (є тільки σₛ₂*)' : 
+                                ''
+                          }
+                        </li>
+                        <li className={seismicCategoryInfo.category ? 'requirement-met' : 'requirement-missing'}>
+                          Визначити категорію сейсмостійкості
+                          {elementData?.SEISMO_TXT || elementData?.seismo_txt ? 
+                            ` (${elementData.SEISMO_TXT || elementData.seismo_txt}${seismicCategoryInfo.category ? ` → ${seismicCategoryInfo.category} категорія` : ' → не розпізнано'})` : 
+                            ' (не задано)'
+                          }
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Результаты для МРЗ */}
@@ -652,6 +930,61 @@ const SeismicAnalysisTab = ({
                       </span>
                     )}
                   </div>
+                </div>
+                
+                {/* Коэффициенты k для МРЗ */}
+                <div className="k-coefficients-section">
+                  <h5 className="k-section-title">Коефіцієнти k</h5>
+                  {kResults.calculated && kResults.mrz.canCalculate ? (
+                    <div className="k-results-grid">
+                      {kResults.mrz.k1 !== null && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">k₁ = 1.4[σ]/(σₛ)₁:</span>
+                          <span className="k-result-value">
+                            {kResults.mrz.k1.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                      {kResults.mrz.k2 !== null && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">k₂ = 1.8[σ]/(σₛ)₂:</span>
+                          <span className="k-result-value">
+                            {kResults.mrz.k2.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                      {kResults.mrz.kMin !== null && (
+                        <div className="k-result-item k-min-result">
+                          <span className="k-result-formula">k мінімальне:</span>
+                          <span className="k-result-value k-min-value">
+                            {kResults.mrz.kMin.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="k-calculation-info">
+                      <p className="k-info-message">
+                        Для розрахунку коефіцієнтів k необхідно:
+                      </p>
+                      <ul className="k-requirements-list">
+                        <li className={stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value ? 'requirement-met' : 'requirement-missing'}>
+                          Ввести значення σ (допустиме напруження)
+                        </li>
+                        <li className={(calculationResults.mrz.sigma_alt_1 !== undefined || calculationResults.mrz.sigma_alt_2 !== undefined) ? 'requirement-met' : 'requirement-missing'}>
+                          Розрахувати хоча б одне значення: (σₛ)₁* або (σₛ)₂* для МРЗ
+                          {calculationResults.mrz.sigma_alt_1 !== undefined && calculationResults.mrz.sigma_alt_2 !== undefined ? 
+                            ' (є обидва)' : 
+                            calculationResults.mrz.sigma_alt_1 !== undefined ? 
+                              ' (є тільки σₛ₁*)' : 
+                              calculationResults.mrz.sigma_alt_2 !== undefined ? 
+                                ' (є тільки σₛ₂*)' : 
+                                ''
+                          }
+                        </li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

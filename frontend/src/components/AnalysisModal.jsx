@@ -865,7 +865,7 @@ const AnalysisModal = ({
     setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: false, missingData: {} });
   };
 
-  const calculateSigmaAlt = async () => {
+  const calculateSigmaAlt = async (onCalculationComplete = null) => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
       console.warn('Cannot calculate sigma alt: missing element ID');
       return;
@@ -885,7 +885,7 @@ const AnalysisModal = ({
       let missingData = {};
       if (requirementsResponse.ok) {
         const requirementsResult = await requirementsResponse.json();
-        console.log('Requirements check result:', requirementsResult);
+  
         if (requirementsResult.success && requirementsResult.requirements) {
           // Extract missing fields information
           missingData = {
@@ -917,7 +917,13 @@ const AnalysisModal = ({
         const errorData = await response.json();
         console.error('Error calculating sigma alt:', errorData);
         // Mark calculation as attempted but failed, include missing data info
-        setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true, missingData });
+        const failedState = { pz: {}, mrz: {}, calculationAttempted: true, missingData };
+        setCalculationResults(failedState);
+        
+        // Call the callback even in error case
+        if (onCalculationComplete && typeof onCalculationComplete === 'function') {
+          onCalculationComplete(failedState);
+        }
         return;
       }
 
@@ -951,17 +957,55 @@ const AnalysisModal = ({
         
         console.log('Setting calculation results with values:', newResults);
         setCalculationResults(newResults);
+        
+        // Call the callback with actual sigma values if provided
+        if (onCalculationComplete && typeof onCalculationComplete === 'function') {
+          onCalculationComplete(newResults);
+        }
       } else {
         // Mark calculation as attempted but no results, include missing data info
         const noResultsState = { pz: {}, mrz: {}, calculationAttempted: true, missingData };
         console.log('Setting calculation results with no values:', noResultsState);
         setCalculationResults(noResultsState);
+        
+        // Call the callback even if no results
+        if (onCalculationComplete && typeof onCalculationComplete === 'function') {
+          onCalculationComplete(noResultsState);
+        }
       }
       
     } catch (err) {
       console.error('Error calculating sigma alt:', err);
-      // Mark calculation as attempted but failed
-      setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: true });
+      // Try to get missing data info even in error case
+      try {
+        const requirements = await fetchCalculationRequirements(ekId);
+        const missingData = requirements ? {
+          pz: {
+            sigma_alt_1: requirements.pz?.sigma_alt_1?.missing_fields || [],
+            sigma_alt_2: requirements.pz?.sigma_alt_2?.missing_fields || []
+          },
+          mrz: {
+            sigma_alt_1: requirements.mrz?.sigma_alt_1?.missing_fields || [],
+            sigma_alt_2: requirements.mrz?.sigma_alt_2?.missing_fields || []
+          }
+        } : {};
+        const errorState = { pz: {}, mrz: {}, calculationAttempted: true, missingData };
+        setCalculationResults(errorState);
+        
+        // Call the callback even in error case
+        if (onCalculationComplete && typeof onCalculationComplete === 'function') {
+          onCalculationComplete(errorState);
+        }
+      } catch (innerErr) {
+        console.error('Error fetching requirements in error handler:', innerErr);
+        const finalErrorState = { pz: {}, mrz: {}, calculationAttempted: true };
+        setCalculationResults(finalErrorState);
+        
+        // Call the callback even in final error case
+        if (onCalculationComplete && typeof onCalculationComplete === 'function') {
+          onCalculationComplete(finalErrorState);
+        }
+      }
     }
   };
 
@@ -1000,7 +1044,7 @@ const AnalysisModal = ({
         }
       });
 
-      console.log('Sending stress data to backend:', stressData);
+
 
       const response = await fetch('http://localhost:8000/api/save-stress-inputs', {
         method: 'POST',
@@ -1018,12 +1062,34 @@ const AnalysisModal = ({
 
       const result = await response.json();
       
-      // Clear calculation results after saving new data
-      // since we clear M1 and calculation results in database
-      clearCalculationResults();
+      // Don't clear calculation results automatically - let user decide when to recalculate
       
     } catch (err) {
       console.error('Error saving stress inputs:', err);
+    }
+  };
+
+  const fetchCalculationRequirements = async (ekId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/check-calculation-requirements?ek_id=${ekId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error fetching calculation requirements:', errorData);
+        return null;
+      }
+
+      const result = await response.json();
+      return result.requirements;
+      
+    } catch (err) {
+      console.error('Error fetching calculation requirements:', err);
+      return null;
     }
   };
 
@@ -1036,26 +1102,30 @@ const AnalysisModal = ({
     const ekId = elementData.EK_ID || elementData.ek_id;
     
     try {
-      const response = await fetch(`http://localhost:8000/api/get-calculation-results?ek_id=${ekId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      // Fetch both calculation results and requirements information
+      const [resultsResponse, requirements] = await Promise.all([
+        fetch(`http://localhost:8000/api/get-calculation-results?ek_id=${ekId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }),
+        fetchCalculationRequirements(ekId)
+      ]);
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!resultsResponse.ok) {
+        const errorData = await resultsResponse.json();
         console.error('Error fetching calculation results:', errorData);
         return;
       }
 
-      const result = await response.json();
+      const result = await resultsResponse.json();
       
+      // Initialize results structure
+      const newResults = { pz: {}, mrz: {}, calculationAttempted: false, missingData: {} };
+      
+      // Parse calculated values and group by PZ/MRZ
       if (result.calculated_values && Object.keys(result.calculated_values).length > 0) {
-        // Update calculation results with values from database, preserve existing missingData
-        const newResults = { pz: {}, mrz: {}, calculationAttempted: false, missingData: {} };
-        
-        // Parse calculated values and group by PZ/MRZ
         Object.entries(result.calculated_values).forEach(([key, value]) => {
           if (key.includes('_PZ')) {
             if (key === 'SIGMA_S_ALT_1_PZ') {
@@ -1076,11 +1146,23 @@ const AnalysisModal = ({
         if (Object.keys(result.calculated_values).length > 0) {
           newResults.calculationAttempted = true;
         }
-        
-        console.log('Setting loaded calculation results from database:', newResults);
-        setCalculationResults(newResults);
-        console.log('Loaded calculation results from database:', newResults);
       }
+      
+      // Add missing data information from requirements
+      if (requirements) {
+        newResults.missingData = {
+          pz: {
+            sigma_alt_1: requirements.pz?.sigma_alt_1?.missing_fields || [],
+            sigma_alt_2: requirements.pz?.sigma_alt_2?.missing_fields || []
+          },
+          mrz: {
+            sigma_alt_1: requirements.mrz?.sigma_alt_1?.missing_fields || [],
+            sigma_alt_2: requirements.mrz?.sigma_alt_2?.missing_fields || []
+          }
+        };
+      }
+      
+      setCalculationResults(newResults);
       
     } catch (err) {
       console.error('Error fetching calculation results:', err);
@@ -1460,6 +1542,7 @@ const AnalysisModal = ({
             calculationResults={calculationResults}
             clearCalculationResults={clearCalculationResults}
             fetchCalculationResults={fetchCalculationResultsFromDatabase}
+            elementData={elementData}
             />
         );
       case 'pressure':

@@ -796,4 +796,136 @@
   .results-section-title {
     font-size: 14px;
   }
-} 
+}
+
+/* Стили для коэффициентов k */
+.k-coefficients-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.k-section-title {
+  font-size: 14px;
+  color: #495057;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+}
+
+.k-results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.k-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.k-result-item.k-min-result {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  font-weight: 600;
+}
+
+.k-result-formula {
+  font-size: 13px;
+  color: #495057;
+  font-family: 'Arial', sans-serif;
+  font-weight: 500;
+}
+
+.k-result-value {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  color: #007bff;
+}
+
+.k-min-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .k-result-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .k-result-formula {
+    font-size: 12px;
+  }
+  
+  .k-result-value {
+    font-size: 13px;
+    align-self: flex-end;
+  }
+}
+
+/* Стили для информационного сообщения о расчете k */
+.k-calculation-info {
+  padding: 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+}
+
+.k-info-message {
+  font-size: 14px;
+  color: #856404;
+  margin: 0 0 8px 0;
+  font-weight: 500;
+  font-family: 'Arial', sans-serif;
+}
+
+.k-requirements-list {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.k-requirements-list li {
+  font-size: 13px;
+  color: #495057;
+  margin-bottom: 4px;
+  position: relative;
+  font-family: 'Arial', sans-serif;
+}
+
+.k-requirements-list li::before {
+  content: '•';
+  position: absolute;
+  left: -12px;
+  color: #6c757d;
+}
+
+.k-requirements-list li.requirement-met {
+  color: #28a745;
+}
+
+.k-requirements-list li.requirement-met::before {
+  content: '✓';
+  color: #28a745;
+  font-weight: bold;
+}
+
+.k-requirements-list li.requirement-missing {
+  color: #dc3545;
+}
+
+.k-requirements-list li.requirement-missing::before {
+  content: '✗';
+  color: #dc3545;
+  font-weight: bold;
+}
+
+ 
