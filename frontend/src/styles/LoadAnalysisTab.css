@@ -1,0 +1,466 @@
+/* Main container */
+.load-analysis-main-container {
+  padding: 20px;
+  background-color: #f9f9f9;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.load-analysis-main-form {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.load-analysis-main-title {
+  font-size: 20px;
+  color: #2c3e50;
+  margin: 0 0 24px 0;
+  font-weight: 600;
+  text-align: center;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-main-content {
+  margin-bottom: 32px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.load-analysis-group {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 12px;
+  background-color: #fafbfc;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.load-analysis-section-title {
+  font-size: 16px;
+  color: #2c3e50;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 8px;
+}
+
+/* Data availability section */
+.load-analysis-availability-container {
+  margin-bottom: 24px;
+}
+
+.load-analysis-availability-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.load-analysis-availability-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.load-analysis-availability-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: white;
+}
+
+.load-analysis-availability-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.load-analysis-parameter-label {
+  font-size: 14px;
+  color: #2c3e50;
+  font-weight: 500;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-values {
+  display: flex;
+  gap: 12px;
+}
+
+.load-analysis-value-small {
+  font-size: 12px;
+  color: #666;
+  background-color: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+.load-analysis-availability-status {
+  display: flex;
+  align-items: center;
+}
+
+.load-analysis-status-text {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-status-text.available {
+  color: #155724;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.load-analysis-status-text.unavailable {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+}
+
+/* Input fields */
+.load-analysis-common-container,
+.load-analysis-section-container {
+  margin-bottom: 24px;
+}
+
+.load-analysis-inputs-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.load-analysis-input-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.load-analysis-input-micro-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.load-analysis-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 250px;
+}
+
+.load-analysis-checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.load-analysis-checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #007bff;
+  border-radius: 4px;
+  margin-right: 8px;
+  position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.load-analysis-checkbox-container input[type="checkbox"]:checked + .load-analysis-checkmark {
+  background-color: #007bff;
+}
+
+.load-analysis-checkbox-container input[type="checkbox"]:checked + .load-analysis-checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.load-analysis-input-label {
+  user-select: none;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.load-analysis-input-control {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Arial', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: white;
+}
+
+.load-analysis-input-control:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.load-analysis-input-control.disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.load-analysis-input-control::placeholder {
+  color: #999;
+  font-style: italic;
+}
+
+/* Form actions */
+.load-analysis-form-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.load-analysis-calculate-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  font-family: 'Arial', sans-serif;
+  min-width: 120px;
+}
+
+.load-analysis-calculate-button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+.load-analysis-calculate-button:active {
+  transform: translateY(0);
+}
+
+/* Results section */
+.load-analysis-results-container {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.load-analysis-results-title {
+  font-size: 18px;
+  color: #2c3e50;
+  margin: 0 0 20px 0;
+  font-weight: 600;
+  text-align: center;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-results-layout {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.load-analysis-results-section {
+  flex: 1;
+  min-width: 300px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  background-color: #fafbfc;
+}
+
+.load-analysis-results-section-title {
+  font-size: 16px;
+  color: #2c3e50;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #007bff;
+}
+
+.load-analysis-results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.load-analysis-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-result-label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.load-analysis-result-value {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #28a745;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Calculation info section */
+.load-analysis-calculation-info {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: #e9ecef;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.load-analysis-info-title {
+  font-size: 16px;
+  color: #2c3e50;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-info-content {
+  font-size: 14px;
+  color: #495057;
+  line-height: 1.5;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-info-content p {
+  margin: 0 0 8px 0;
+}
+
+.load-analysis-info-content ul {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.load-analysis-info-content li {
+  margin-bottom: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.load-analysis-note {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 12px;
+  color: #856404;
+  font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .load-analysis-main-container {
+    padding: 12px;
+  }
+
+  .load-analysis-main-form {
+    padding: 16px;
+  }
+
+  .load-analysis-input-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .load-analysis-input-field {
+    min-width: auto;
+  }
+
+  .load-analysis-results-layout {
+    flex-direction: column;
+  }
+
+  .load-analysis-results-section {
+    min-width: auto;
+  }
+
+  .load-analysis-availability-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .load-analysis-result-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .load-analysis-result-value {
+    text-align: left;
+  }
+}
+
+/* Additional utility classes */
+.load-analysis-text-center {
+  text-align: center;
+}
+
+.load-analysis-text-muted {
+  color: #6c757d;
+}
+
+.load-analysis-mb-3 {
+  margin-bottom: 1rem;
+}
+
+.load-analysis-mt-3 {
+  margin-top: 1rem;
+}
+
+.load-analysis-border-warning {
+  border-color: #ffc107 !important;
+}
+
+.load-analysis-bg-warning-light {
+  background-color: #fff3cd;
+} 

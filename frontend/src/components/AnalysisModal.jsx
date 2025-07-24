@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import CalculationAnalysisTab from './CalculationAnalysisTab';
 import SeismicAnalysisTab from './SeismicAnalysisTab';
+import LoadAnalysisTab from './LoadAnalysisTab';
 import '../styles/AnalysisModal.css';
 
 const linearInterpolate = (x, x0, y0, x1, y1) => {
@@ -1547,9 +1548,17 @@ const AnalysisModal = ({
         );
       case 'pressure':
         return (
-          <div className="pressure-analysis-container">
-            <p>Аналіз зміни параметрів тиску та температури (в розробці)</p>
-          </div>
+          <LoadAnalysisTab
+            isFrequencyEnabled={isFrequencyEnabled}
+            setIsFrequencyEnabled={setIsFrequencyEnabled}
+            naturalFrequency={naturalFrequency}
+            setNaturalFrequency={setNaturalFrequency}
+            allSpectralData={allSpectralData}
+            allRequirementsData={allRequirementsData}
+            allAnalysisResults={allAnalysisResults}
+            calculationResults={calculationResults}
+            elementData={elementData}
+          />
         );
       default:
         return null;
@@ -1628,7 +1637,7 @@ const AnalysisModal = ({
               className={`subtab-button ${activeSubTab === 'pressure' ? 'active' : ''}`}
               onClick={() => setActiveSubTab('pressure')}
             >
-              Аналіз зміни параметрів тиску та температури
+              Аналіз зміни навантаження
             </button>
           </div>
         )}
