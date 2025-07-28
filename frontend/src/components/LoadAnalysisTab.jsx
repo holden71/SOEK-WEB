@@ -68,7 +68,99 @@ const LoadAnalysisTab = ({
   };
 
   const dataAvailability = checkDataAvailability();
-  const isFormEnabled = dataAvailability.m1_available && dataAvailability.k1_available;
+  // Временно отключаем проверку доступности данных для тестирования
+  const isFormEnabled = true; // dataAvailability.m1_available && dataAvailability.k1_available;
+  
+  // Отладочная информация
+  console.log('Data availability:', dataAvailability);
+  console.log('isFormEnabled:', isFormEnabled);
+  console.log('elementData keys:', elementData ? Object.keys(elementData) : 'No elementData');
+  console.log('elementData full:', elementData);
+
+  // Загрузка сохраненных параметров при монтировании компонента
+  useEffect(() => {
+    const loadSavedParameters = async () => {
+      const elementId = elementData?.EK_ID || elementData?.ek_id || elementData?.id || elementData?.ID;
+      if (!elementId) return;
+      
+              try {
+          const response = await fetch(`http://localhost:8000/api/get-load-analysis-params/${elementId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const savedParams = data.load_params;
+          
+          // Обновляем состояние с сохраненными значениями
+          setLoadInputs(prev => ({
+            ...prev,
+            material: { 
+              enabled: true, 
+              value: savedParams.material || '' 
+            },
+            doc_code_analytics: { 
+              enabled: true, 
+              value: savedParams.doc_code_analytics || '' 
+            },
+            doc_code_operation: { 
+              enabled: true, 
+              value: savedParams.doc_code_operation || '' 
+            },
+            p1_pz: { 
+              enabled: true, 
+              value: savedParams.p1_pz ? savedParams.p1_pz.toString() : '' 
+            },
+            temp1_pz: { 
+              enabled: true, 
+              value: savedParams.temp1_pz ? savedParams.temp1_pz.toString() : '' 
+            },
+            p2_pz: { 
+              enabled: true, 
+              value: savedParams.p2_pz ? savedParams.p2_pz.toString() : '' 
+            },
+            temp2_pz: { 
+              enabled: true, 
+              value: savedParams.temp2_pz ? savedParams.temp2_pz.toString() : '' 
+            },
+            sigma_dop_a_pz: { 
+              enabled: true, 
+              value: savedParams.sigma_dop_a_pz ? savedParams.sigma_dop_a_pz.toString() : '' 
+            },
+            ratio_e_pz: { 
+              enabled: true, 
+              value: savedParams.ratio_e_pz ? savedParams.ratio_e_pz.toString() : '' 
+            },
+            p1_mrz: { 
+              enabled: true, 
+              value: savedParams.p1_mrz ? savedParams.p1_mrz.toString() : '' 
+            },
+            temp1_mrz: { 
+              enabled: true, 
+              value: savedParams.temp1_mrz ? savedParams.temp1_mrz.toString() : '' 
+            },
+            p2_mrz: { 
+              enabled: true, 
+              value: savedParams.p2_mrz ? savedParams.p2_mrz.toString() : '' 
+            },
+            temp2_mrz: { 
+              enabled: true, 
+              value: savedParams.temp2_mrz ? savedParams.temp2_mrz.toString() : '' 
+            },
+            sigma_dop_a_mrz: { 
+              enabled: true, 
+              value: savedParams.sigma_dop_a_mrz ? savedParams.sigma_dop_a_mrz.toString() : '' 
+            },
+            ratio_e_mrz: { 
+              enabled: true, 
+              value: savedParams.ratio_e_mrz ? savedParams.ratio_e_mrz.toString() : '' 
+            }
+          }));
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки сохраненных параметров:', error);
+      }
+    };
+
+    loadSavedParameters();
+  }, [elementData?.id]);
 
   const formatValue = (value) => {
     if (value === null || value === undefined || isNaN(value)) {
@@ -107,12 +199,28 @@ const LoadAnalysisTab = ({
 
   // Функция сохранения параметров в базу данных
   const handleSaveParameters = async () => {
-    if (!isFormEnabled) return;
+    console.log('Попытка сохранения параметров');
+    console.log('isFormEnabled:', isFormEnabled);
+    console.log('elementData:', elementData);
+    
+    if (!isFormEnabled) {
+      console.log('Форма заблокирована, сохранение невозможно');
+      return;
+    }
 
     try {
+      // Ищем ID элемента в разных возможных полях
+      const elementId = elementData?.EK_ID || elementData?.ek_id || elementData?.id || elementData?.ID;
+      
+      if (!elementId) {
+        console.log('Нет elementId, сохранение невозможно');
+        console.log('elementData fields:', elementData ? Object.keys(elementData) : 'No elementData');
+        return;
+      }
+      
       // Подготавливаем данные для отправки
       const dataToSave = {
-        element_id: elementData?.id,
+        element_id: elementId,
         // Общие параметры (заглушки)
         material: loadInputs.material.enabled ? loadInputs.material.value : null,
         doc_code_analytics: loadInputs.doc_code_analytics.enabled ? loadInputs.doc_code_analytics.value : null,
@@ -137,17 +245,28 @@ const LoadAnalysisTab = ({
 
       console.log('Сохраняем параметры анализа навантаження:', dataToSave);
       
-      // Здесь будет вызов API для сохранения в базу
-      // const response = await fetch('/api/save-load-analysis-params', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(dataToSave)
-      // });
+      // Проверяем, что хотя бы одно поле заполнено
+      const hasData = Object.values(dataToSave).some(value => value !== null && value !== '');
+      if (!hasData) {
+        console.log('Нет данных для сохранения');
+        return;
+      }
       
-      alert('Параметри збережено успішно!');
+      // Отправляем данные на сервер для сохранения
+      const response = await fetch('http://localhost:8000/api/save-load-analysis-params', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSave)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Ответ сервера:', result);
     } catch (error) {
       console.error('Ошибка сохранения параметров:', error);
-      alert('Помилка збереження параметрів');
     }
   };
 
@@ -409,7 +528,7 @@ const LoadAnalysisTab = ({
                         disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">SIGMA*, МПа</span>
+                      <span className="load-analysis-input-label">σ*, МПа</span>
                     </label>
                     <input
                       type="text"
@@ -429,7 +548,7 @@ const LoadAnalysisTab = ({
                         disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">DELTA E</span>
+                      <span className="load-analysis-input-label">ΔE</span>
                     </label>
                     <input
                       type="text"
@@ -550,7 +669,7 @@ const LoadAnalysisTab = ({
                         disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">SIGMA*, МПа</span>
+                      <span className="load-analysis-input-label">σ*, МПа</span>
                     </label>
                     <input
                       type="text"
@@ -570,7 +689,7 @@ const LoadAnalysisTab = ({
                         disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">DELTA E</span>
+                      <span className="load-analysis-input-label">ΔE</span>
                     </label>
                     <input
                       type="text"

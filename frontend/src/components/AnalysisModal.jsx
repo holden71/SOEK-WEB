@@ -212,6 +212,10 @@ const AnalysisModal = ({
   selectedPlant,
   selectedUnit
 }) => {
+  // Отладочная информация
+  console.log('AnalysisModal - elementData:', elementData);
+  console.log('AnalysisModal - elementData?.EK_ID:', elementData?.EK_ID);
+  console.log('AnalysisModal - elementData?.ek_id:', elementData?.ek_id);
   const [activeTab, setActiveTab] = useState('spectra');
   const [activeSubTab, setActiveSubTab] = useState('seismic'); // New state for subtabs
   const [spectralData, setSpectralData] = useState(null);

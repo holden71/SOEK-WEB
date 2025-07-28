@@ -99,6 +99,9 @@ function Main() {
   const handleAnalysisClick = (e, row) => {
     const rowData = row.original;
     console.log("Analysis for row data:", rowData);
+    console.log("Row data EK_ID:", rowData?.EK_ID);
+    console.log("Row data ek_id:", rowData?.ek_id);
+    console.log("Row data id:", rowData?.id);
     setAnalysisElementData(rowData);
     setShowAnalysisModal(true);
   };
