@@ -160,7 +160,7 @@ const LoadAnalysisTab = ({
           {/* Статус доступности данных M1 и K1 */}
           <div className="load-analysis-availability-container">
             <div className="load-analysis-group">
-              <h4 className="load-analysis-section-title">Доступність даних для аналізу</h4>
+              <h4 className="load-analysis-section-title">Доступність даних</h4>
               
               <div className="load-analysis-availability-layout">
                 <div className="load-analysis-availability-section">

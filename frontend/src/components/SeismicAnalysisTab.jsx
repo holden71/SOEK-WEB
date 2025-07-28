@@ -363,10 +363,10 @@ const SeismicAnalysisTab = ({
         <h3 className="form-title">Аналіз зміни сейсмічних вимог</h3>
         
         <div className="form-content">
-          {/* Вибір спектрів для аналізу - первая секция */}
+          {/* Доступність даних - первая секция */}
           <div className="spectrum-selection-container">
             <div className="parameter-group">
-              <h4 className="section-title">Вибір спектрів для аналізу</h4>
+              <h4 className="section-title">Доступність даних</h4>
               
               <div className="spectrum-layout">
                 {/* Левая часть - доступность данных */}
