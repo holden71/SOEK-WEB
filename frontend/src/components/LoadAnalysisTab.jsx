@@ -20,25 +20,25 @@ const LoadAnalysisTab = ({
   // Состояние for input parameters
   const [loadInputs, setLoadInputs] = useState({
     // Общие параметры (заглушки пока)
-    material: { enabled: false, value: '' },
-    doc_code_analytics: { enabled: false, value: '' },
-    doc_code_operation: { enabled: false, value: '' },
+    material: { enabled: true, value: '' },
+    doc_code_analytics: { enabled: true, value: '' },
+    doc_code_operation: { enabled: true, value: '' },
     
     // Параметры для ПЗ
-    p1_pz: { enabled: false, value: '' },
-    temp1_pz: { enabled: false, value: '' },
-    p2_pz: { enabled: false, value: '' },
-    temp2_pz: { enabled: false, value: '' },
-    sigma_dop_a_pz: { enabled: false, value: '' },
-    ratio_e_pz: { enabled: false, value: '' },
+    p1_pz: { enabled: true, value: '' },
+    temp1_pz: { enabled: true, value: '' },
+    p2_pz: { enabled: true, value: '' },
+    temp2_pz: { enabled: true, value: '' },
+    sigma_dop_a_pz: { enabled: true, value: '' },
+    ratio_e_pz: { enabled: true, value: '' },
     
     // Параметры для МРЗ
-    p1_mrz: { enabled: false, value: '' },
-    temp1_mrz: { enabled: false, value: '' },
-    p2_mrz: { enabled: false, value: '' },
-    temp2_mrz: { enabled: false, value: '' },
-    sigma_dop_a_mrz: { enabled: false, value: '' },
-    ratio_e_mrz: { enabled: false, value: '' }
+    p1_mrz: { enabled: true, value: '' },
+    temp1_mrz: { enabled: true, value: '' },
+    p2_mrz: { enabled: true, value: '' },
+    temp2_mrz: { enabled: true, value: '' },
+    sigma_dop_a_mrz: { enabled: true, value: '' },
+    ratio_e_mrz: { enabled: true, value: '' }
   });
 
   // Проверка доступности M1 и K1 для расчетов
