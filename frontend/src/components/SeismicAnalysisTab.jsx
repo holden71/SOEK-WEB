@@ -485,31 +485,8 @@ const SeismicAnalysisTab = ({
                   </div>
                 </div>
 
-                {/* HCLPF - общая характеристика */}
-                <div className="stress-micro-group">
-                  <div className="stress-field">
-                    <label className="stress-checkbox-container">
-                      <input
-                        type="checkbox"
-                        checked={stressInputs.hclpf?.enabled || false}
-                        onChange={() => handleStressToggle('hclpf')}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="stress-label">HCLPF, g</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={stressInputs.hclpf?.value || ''}
-                      onChange={(e) => handleStressValueChange('hclpf', e.target.value)}
-                      disabled={!stressInputs.hclpf?.enabled}
-                      placeholder="Значення"
-                      className={`stress-input ${!stressInputs.hclpf?.enabled ? 'disabled' : ''}`}
-                    />
-                  </div>
-                </div>
-
-                {/* Sigma - общая характеристика */}
-                <div className="stress-micro-group">
+                {/* Допустимое напряжение и HCLPF */}
+                <div className="stress-group">
                   <div className="stress-field">
                     <label className="stress-checkbox-container">
                       <input
@@ -527,6 +504,25 @@ const SeismicAnalysisTab = ({
                       disabled={!stressInputs.sigma_dop?.enabled}
                       placeholder="Значення"
                       className={`stress-input ${!stressInputs.sigma_dop?.enabled ? 'disabled' : ''}`}
+                    />
+                  </div>
+                  <div className="stress-field">
+                    <label className="stress-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={stressInputs.hclpf?.enabled || false}
+                        onChange={() => handleStressToggle('hclpf')}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="stress-label">HCLPF, g</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={stressInputs.hclpf?.value || ''}
+                      onChange={(e) => handleStressValueChange('hclpf', e.target.value)}
+                      disabled={!stressInputs.hclpf?.enabled}
+                      placeholder="Значення"
+                      className={`stress-input ${!stressInputs.hclpf?.enabled ? 'disabled' : ''}`}
                     />
                   </div>
                 </div>
