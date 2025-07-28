@@ -13,7 +13,7 @@ from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException, Query,
                      UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult, SpectralDataResult, SaveAnalysisResultParams, SaveAnalysisResultResponse, SaveStressInputsParams, SaveStressInputsResponse
+from models import Plant, SearchData, SetAccelProcedureParams, SetAccelProcedureResult, Term, Unit, FindReqAccelSetParams, FindReqAccelSetResult, ClearAccelSetParams, ClearAccelSetResult, SpectralDataResult, SaveAnalysisResultParams, SaveAnalysisResultResponse, SaveStressInputsParams, SaveStressInputsResponse, SaveKResultsParams, SaveKResultsResponse
 from pydantic import BaseModel
 from settings import settings
 from sqlalchemy import inspect, text
@@ -1669,6 +1669,146 @@ async def calculate_sigma_alt(
         db.rollback()
         print(f"Error calculating sigma alt: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error calculating sigma alt: {str(e)}")
+
+@app.post("/api/save-k-results", response_model=SaveKResultsResponse)
+async def save_k_results(
+    db: DbSessionDep,
+    params: SaveKResultsParams = Body(...)
+):
+    """
+    Save K coefficient results to SRTN_EK_SEISM_DATA table.
+    
+    This endpoint updates the SRTN_EK_SEISM_DATA table with K coefficient values:
+    - K1_PZ, K2_PZ, K_MIN_PZ for ПЗ
+    - K1_MRZ, K2_MRZ, K_MIN_MRZ for МРЗ  
+    - SEISMIC_CATEGORY_PZ for seismic category
+    """
+    try:
+        # Build update query dynamically based on which values are provided
+        update_fields = []
+        update_params = {"ek_id": params.ek_id}
+        
+        # Map parameter names to database column names - сохраняем k1 в K1 поля
+        field_mapping = {
+            # Сохраняем k1 значения в K1 поля
+            "k1_pz": "K1_PZ",      # k1 для ПЗ в K1_PZ
+            "k1_mrz": "K1_MRZ"     # k1 для МРЗ в K1_MRZ
+        }
+        
+        # Add all fields (including null values to clear them)
+        for param_name, db_column in field_mapping.items():
+            param_value = getattr(params, param_name)
+            update_fields.append(f"{db_column} = :{param_name}")
+            update_params[param_name] = param_value
+        
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="At least one K coefficient value must be provided")
+        
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": params.ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {params.ek_id} not found")
+        
+        # Perform the update
+        update_query = text(f"""
+            UPDATE SRTN_EK_SEISM_DATA 
+            SET {', '.join(update_fields)}
+            WHERE EK_ID = :ek_id
+        """)
+        
+        print(f"Executing K results update query: {update_query}")
+        print(f"Parameters: {update_params}")
+        
+        result = db.execute(update_query, update_params)
+        
+        # Check if the update was successful
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"No rows updated for EK_ID {params.ek_id}")
+        
+        # Commit the transaction
+        db.commit()
+        
+        # Prepare response with updated fields
+        updated_fields = {}
+        for param_name, db_column in field_mapping.items():
+            param_value = getattr(params, param_name)
+            if param_value is not None:
+                updated_fields[db_column] = param_value
+        
+        return SaveKResultsResponse(
+            success=True,
+            message=f"Successfully updated K coefficient results for EK_ID {params.ek_id}",
+            updated_fields=updated_fields
+        )
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving K results: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error saving K results: {str(e)}")
+
+@app.get("/api/get-k-results/{ek_id}")
+async def get_k_results(
+    db: DbSessionDep,
+    ek_id: int
+):
+    """
+    Get K coefficient results from SRTN_EK_SEISM_DATA table.
+    
+    This endpoint retrieves K coefficient values for a specific element:
+    - K1_PZ, K2_PZ, K_MIN_PZ for ПЗ
+    - K1_MRZ, K2_MRZ, K_MIN_MRZ for МРЗ
+    - SEISMIC_CATEGORY_PZ for seismic category
+    """
+    try:
+        # Check if the EK_ID exists
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
+        
+        # Get K coefficient values - только K1_PZ, K1_MRZ
+        k_query = text("""
+            SELECT K1_PZ, K1_MRZ
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(k_query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
+        
+        # Check if any K values exist
+        has_k_data = any(value is not None for value in row)
+        
+        # Map database columns to response - возвращаем правильную структуру
+        k_values = {
+            "k1_pz": row[0],      # K1_PZ содержит k1 для ПЗ
+            "k2_pz": None,        # K2_PZ не используется
+            "k_min_pz": row[0],   # K1_PZ - минимальное значение для ПЗ
+            "seismic_category_pz": None,  # Не сохраняем в БД
+            "k1_mrz": row[1],     # K1_MRZ содержит k1 для МРЗ
+            "k2_mrz": None,       # K2_MRZ не используется
+            "k_min_mrz": row[1],  # K1_MRZ - минимальное значение для МРЗ
+            "calculated": has_k_data
+        }
+        
+        return {
+            "success": True,
+            "ek_id": ek_id,
+            **k_values
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting K results: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving K results: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

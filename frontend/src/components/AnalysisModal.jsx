@@ -265,6 +265,13 @@ const AnalysisModal = ({
     mrz: {},
     calculationAttempted: false
   });
+
+  // State for K coefficient results
+  const [kResults, setKResults] = useState({
+    mrz: { k1: null, k2: null, kMin: null, canCalculate: false },
+    pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
+    calculated: false
+  });
   
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
@@ -302,6 +309,7 @@ const AnalysisModal = ({
       setTimeout(() => {
         fetchStressInputsFromDatabase();
         fetchCalculationResultsFromDatabase();
+        fetchKResultsFromDatabase();
       }, 100);
     }
   }, [isOpen, elementData]);
@@ -864,6 +872,11 @@ const AnalysisModal = ({
 
   const clearCalculationResults = () => {
     setCalculationResults({ pz: {}, mrz: {}, calculationAttempted: false, missingData: {} });
+    setKResults({
+      mrz: { k1: null, k2: null, kMin: null, canCalculate: false },
+      pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
+      calculated: false
+    });
   };
 
   const calculateSigmaAlt = async (onCalculationComplete = null) => {
@@ -1010,6 +1023,52 @@ const AnalysisModal = ({
     }
   };
 
+  // Function to save K coefficient results to database
+  const saveKResults = async (kResultsData) => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot save K results: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+      console.log('=== Збереження результатів K коефіцієнтів ===');
+      console.log('EK_ID:', ekId);
+      console.log('K Results:', kResultsData);
+
+      const kData = {
+        ek_id: ekId,
+        // ПЗ результаты
+        k1_pz: kResultsData.pz?.k1 || null,
+        // МРЗ результаты  
+        k1_mrz: kResultsData.mrz?.k1 || null,
+        // Общий флаг что расчет выполнен
+        calculated: kResultsData.calculated || false
+      };
+
+      const response = await fetch('http://localhost:8000/api/save-k-results', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(kData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error saving K results:', errorData);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('✓ Результати K коефіцієнтів збережено:', result);
+      
+    } catch (err) {
+      console.error('Error saving K results:', err);
+    }
+  };
+
   const saveStressInputs = async (stressInputsData) => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
       console.warn('Cannot save stress inputs: missing element ID');
@@ -1091,6 +1150,54 @@ const AnalysisModal = ({
     } catch (err) {
       console.error('Error fetching calculation requirements:', err);
       return null;
+    }
+  };
+
+  // Function to fetch K coefficient results from database
+  const fetchKResultsFromDatabase = async () => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot fetch K results: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+      console.log('=== Завантаження результатів K коефіцієнтів ===');
+      console.log('EK_ID:', ekId);
+
+      const response = await fetch(`http://localhost:8000/api/get-k-results/${ekId}`);
+      
+      if (!response.ok) {
+        console.warn('No K results found for element:', ekId);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('✓ Результати K коефіцієнтів завантажено:', data);
+
+      const newKResults = {
+        pz: {
+          k1: data.k1_pz,
+          k2: data.k2_pz,
+          kMin: data.k_min_pz,
+          seismicCategory: data.seismic_category_pz,
+          canCalculate: data.k_min_pz !== null,
+          coefficients: null // Will be calculated based on seismic category
+        },
+        mrz: {
+          k1: data.k1_mrz,
+          k2: data.k2_mrz,
+          kMin: data.k_min_mrz,
+          canCalculate: data.k_min_mrz !== null
+        },
+        calculated: data.calculated || false
+      };
+
+      setKResults(newKResults);
+      
+    } catch (err) {
+      console.error('Error fetching K results:', err);
     }
   };
 
@@ -1536,14 +1643,17 @@ const AnalysisModal = ({
               spectrumSelection={spectrumSelection}
               setSpectrumSelection={setSpectrumSelection}
               allAnalysisResults={allAnalysisResults}
-              stressInputs={stressInputs}
-              setStressInputs={setStressInputs}
-                          saveStressInputs={saveStressInputs}
-            calculateSigmaAlt={calculateSigmaAlt}
-            calculationResults={calculationResults}
-            clearCalculationResults={clearCalculationResults}
-            fetchCalculationResults={fetchCalculationResultsFromDatabase}
-            elementData={elementData}
+                          stressInputs={stressInputs}
+            setStressInputs={setStressInputs}
+                        saveStressInputs={saveStressInputs}
+          calculateSigmaAlt={calculateSigmaAlt}
+          calculationResults={calculationResults}
+          clearCalculationResults={clearCalculationResults}
+          fetchCalculationResults={fetchCalculationResultsFromDatabase}
+          kResults={kResults}
+          setKResults={setKResults}
+          saveKResults={saveKResults}
+          elementData={elementData}
             />
         );
       case 'pressure':
@@ -1557,6 +1667,7 @@ const AnalysisModal = ({
             allRequirementsData={allRequirementsData}
             allAnalysisResults={allAnalysisResults}
             calculationResults={calculationResults}
+            kResults={kResults}
             elementData={elementData}
           />
         );

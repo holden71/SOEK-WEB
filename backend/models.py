@@ -98,4 +98,17 @@ class SaveStressInputsParams(BaseModel):
 class SaveStressInputsResponse(BaseModel):
     success: bool
     message: str
+    updated_fields: Dict[str, Any]
+
+class SaveKResultsParams(BaseModel):
+    ek_id: int
+    # Сохраняем k1 значения в K1 поля
+    k1_pz: Optional[float] = None      # Сохраняется в K1_PZ
+    k1_mrz: Optional[float] = None     # Сохраняется в K1_MRZ
+    # Общий флаг
+    calculated: Optional[bool] = None
+
+class SaveKResultsResponse(BaseModel):
+    success: bool
+    message: str
     updated_fields: Dict[str, Any] 

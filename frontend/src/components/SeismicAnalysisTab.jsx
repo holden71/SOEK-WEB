@@ -23,14 +23,15 @@ const SeismicAnalysisTab = ({
   calculationResults = { pz: {}, mrz: {}, calculationAttempted: false },
   clearCalculationResults = () => {},
   fetchCalculationResults = () => {},
-  elementData = null
-}) => {
-  // Состояние для результатов расчета коэффициентов k
-  const [kResults, setKResults] = useState({
+  kResults = {
     mrz: { k1: null, k2: null, kMin: null, canCalculate: false },
     pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
     calculated: false
-  });
+  },
+  setKResults = () => {},
+  saveKResults = () => {},
+  elementData = null
+}) => {
 
   // Отслеживаем изменения в поле допустимых напряжений и пересчитываем k коэффициенты
   useEffect(() => {
@@ -330,15 +331,24 @@ const SeismicAnalysisTab = ({
   const seismicCategoryInfo = determineSeismicCategory();
 
   // Функция для расчета всех коэффициентов k
-  const calculateAllKCoefficients = (sigmaData = null) => {
+  const calculateAllKCoefficients = async (sigmaData = null) => {
     const mrzResult = calculateKCoefficient(sigmaData);
     const pzResult = calculateKCoefficientPZ(sigmaData);
     
-    setKResults({
+    const newKResults = {
       mrz: mrzResult,
       pz: pzResult,
       calculated: true
-    });
+    };
+    
+    setKResults(newKResults);
+    
+    // Сохраняем результаты K коэффициентов в базу данных
+    try {
+      await saveKResults(newKResults);
+    } catch (error) {
+      console.error('Error saving K results:', error);
+    }
   };
 
 
@@ -778,9 +788,9 @@ const SeismicAnalysisTab = ({
                 await saveStressInputs(stressInputs);
                 
                 // Then calculate sigma alt values and k coefficients
-                await calculateSigmaAlt((sigmaResults) => {
+                await calculateSigmaAlt(async (sigmaResults) => {
                   // Calculate k coefficients with the actual sigma results
-                  calculateAllKCoefficients(sigmaResults);
+                  await calculateAllKCoefficients(sigmaResults);
                 });
                 
               } catch (error) {

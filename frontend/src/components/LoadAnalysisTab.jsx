@@ -10,118 +10,65 @@ const LoadAnalysisTab = ({
   allRequirementsData,
   allAnalysisResults = {},
   calculationResults = { pz: {}, mrz: {}, calculationAttempted: false },
+  kResults = {
+    mrz: { k1: null, k2: null, kMin: null, canCalculate: false },
+    pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
+    calculated: false
+  },
   elementData = null
 }) => {
-  // Состояние для входных параметров анализа нагрузки
+  // Состояние for input parameters
   const [loadInputs, setLoadInputs] = useState({
-    // Общие характеристики
-    sigma_dop: { enabled: false, value: '' },
-    hclpf: { enabled: false, value: '' },
-    f_mu: { enabled: false, value: '1.0' }, // По умолчанию 1.0
-    ratio_e_pz: { enabled: false, value: '1.069' }, // По умолчанию 1.069
-    
-    // Параметры для МРЗ
-    temp1_mrz: { enabled: false, value: '' },
-    temp2_mrz: { enabled: false, value: '' },
-    p1_mrz: { enabled: false, value: '' },
-    p2_mrz: { enabled: false, value: '' },
-    sigma_dop_a_mrz: { enabled: false, value: '' },
+    // Общие параметры (заглушки пока)
+    material: { enabled: false, value: '' },
+    doc_code_analytics: { enabled: false, value: '' },
+    doc_code_operation: { enabled: false, value: '' },
     
     // Параметры для ПЗ
-    temp1_pz: { enabled: false, value: '' },
-    temp2_pz: { enabled: false, value: '' },
     p1_pz: { enabled: false, value: '' },
+    temp1_pz: { enabled: false, value: '' },
     p2_pz: { enabled: false, value: '' },
-    sigma_dop_a_pz: { enabled: false, value: '' }
+    temp2_pz: { enabled: false, value: '' },
+    sigma_dop_a_pz: { enabled: false, value: '' },
+    ratio_e_pz: { enabled: false, value: '' },
+    
+    // Параметры для МРЗ
+    p1_mrz: { enabled: false, value: '' },
+    temp1_mrz: { enabled: false, value: '' },
+    p2_mrz: { enabled: false, value: '' },
+    temp2_mrz: { enabled: false, value: '' },
+    sigma_dop_a_mrz: { enabled: false, value: '' },
+    ratio_e_mrz: { enabled: false, value: '' }
   });
 
-  // Состояние для результатов расчета
-  const [loadResults, setLoadResults] = useState({
-    mrz: { 
-      delta_t: null,
-      ratio_p: null,
-      ratio_e: null,
-      first_freq_alt: null,
-      m1_alt: null,
-      ratio_m1: null,
-      ratio_sigma_dop: null,
-      hclpf_alt: null,
-      k1_alt: null,
-      canCalculate: false 
-    },
-    pz: { 
-      delta_t: null,
-      ratio_p: null,
-      ratio_e: null,
-      first_freq_alt: null,
-      m1_alt: null,
-      ratio_m1: null,
-      ratio_sigma_dop: null,
-      hclpf_alt: null,
-      k1_alt: null,
-      canCalculate: false 
-    },
-    calculated: false,
-    analysisMethod: 'calculation' // 'calculation' или 'gip'
-  });
-
-  const handleFrequencyToggle = () => {
-    setIsFrequencyEnabled(!isFrequencyEnabled);
-    if (!isFrequencyEnabled) {
-      setNaturalFrequency('');
-    }
-  };
-
-  const handleFrequencyChange = (e) => {
-    const value = e.target.value;
-    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-      setNaturalFrequency(value);
-    }
-  };
-
-  // Проверка доступности данных для ПЗ и МРЗ
+  // Проверка доступности M1 и K1 для расчетов
   const checkDataAvailability = () => {
     const availability = {
       pz: false,
-      mrz: false
+      mrz: false,
+      m1_available: false,
+      k1_available: false
     };
 
-    // Проверяем данные ПЗ
-    const pzSpectralData = allSpectralData?.['ПЗ'];
-    const pzRequirementsData = allRequirementsData?.['ПЗ'];
-    
-    if (pzSpectralData && pzRequirementsData) {
-      const hasPzSpectral = (pzSpectralData.pz_x && pzSpectralData.pz_x.length > 0) ||
-                           (pzSpectralData.pz_y && pzSpectralData.pz_y.length > 0) ||
-                           (pzSpectralData.pz_z && pzSpectralData.pz_z.length > 0);
-      
-      const hasPzRequirements = (pzRequirementsData.pz_x && pzRequirementsData.pz_x.length > 0) ||
-                               (pzRequirementsData.pz_y && pzRequirementsData.pz_y.length > 0) ||
-                               (pzRequirementsData.pz_z && pzRequirementsData.pz_z.length > 0);
-      
-      availability.pz = hasPzSpectral && hasPzRequirements;
-    }
+    // Проверяем наличие M1 для ПЗ и МРЗ
+    const pzM1 = allAnalysisResults?.['ПЗ']?.m1;
+    const mrzM1 = allAnalysisResults?.['МРЗ']?.m1;
+    availability.pz = pzM1 !== null && pzM1 !== undefined && !isNaN(pzM1);
+    availability.mrz = mrzM1 !== null && mrzM1 !== undefined && !isNaN(mrzM1);
+    availability.m1_available = availability.pz || availability.mrz;
 
-    // Проверяем данные МРЗ
-    const mrzSpectralData = allSpectralData?.['МРЗ'];
-    const mrzRequirementsData = allRequirementsData?.['МРЗ'];
-    
-    if (mrzSpectralData && mrzRequirementsData) {
-      const hasMrzSpectral = (mrzSpectralData.mrz_x && mrzSpectralData.mrz_x.length > 0) ||
-                            (mrzSpectralData.mrz_y && mrzSpectralData.mrz_y.length > 0) ||
-                            (mrzSpectralData.mrz_z && mrzSpectralData.mrz_z.length > 0);
-      
-      const hasMrzRequirements = (mrzRequirementsData.mrz_x && mrzRequirementsData.mrz_x.length > 0) ||
-                                (mrzRequirementsData.mrz_y && mrzRequirementsData.mrz_y.length > 0) ||
-                                (mrzRequirementsData.mrz_z && mrzRequirementsData.mrz_z.length > 0);
-      
-      availability.mrz = hasMrzSpectral && hasMrzRequirements;
-    }
+    // Проверяем наличие K1 для ПЗ и МРЗ
+    const pzK1 = kResults?.pz?.k1;
+    const mrzK1 = kResults?.mrz?.k1;
+    const pzK1Available = pzK1 !== null && pzK1 !== undefined && !isNaN(pzK1);
+    const mrzK1Available = mrzK1 !== null && mrzK1 !== undefined && !isNaN(mrzK1);
+    availability.k1_available = (pzK1Available || mrzK1Available) && kResults?.calculated;
 
     return availability;
   };
 
   const dataAvailability = checkDataAvailability();
+  const isFormEnabled = dataAvailability.m1_available && dataAvailability.k1_available;
 
   const formatValue = (value) => {
     if (value === null || value === undefined || isNaN(value)) {
@@ -132,16 +79,21 @@ const LoadAnalysisTab = ({
 
   // Обработчики для переключения полей
   const handleInputToggle = (fieldName) => {
+    if (!isFormEnabled) return; // Блокируем изменения если форма неактивна
+    
     setLoadInputs(prev => ({
       ...prev,
       [fieldName]: {
         ...prev[fieldName],
-        enabled: !prev[fieldName].enabled
+        enabled: !prev[fieldName].enabled,
+        value: !prev[fieldName].enabled ? prev[fieldName].value : ''
       }
     }));
   };
 
   const handleInputValueChange = (fieldName, value) => {
+    if (!isFormEnabled) return; // Блокируем изменения если форма неактивна
+    
     if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
       setLoadInputs(prev => ({
         ...prev,
@@ -153,128 +105,50 @@ const LoadAnalysisTab = ({
     }
   };
 
-  // Функция расчета для метода анализа
-  const calculateAnalysisMethod = () => {
-    const results = {
-      mrz: { ...loadResults.mrz },
-      pz: { ...loadResults.pz },
-      calculated: true,
-      analysisMethod: 'calculation'
-    };
+  // Функция сохранения параметров в базу данных
+  const handleSaveParameters = async () => {
+    if (!isFormEnabled) return;
 
-    // Расчеты для МРЗ
-    if (dataAvailability.mrz) {
-      const mrzData = results.mrz;
+    try {
+      // Подготавливаем данные для отправки
+      const dataToSave = {
+        element_id: elementData?.id,
+        // Общие параметры (заглушки)
+        material: loadInputs.material.enabled ? loadInputs.material.value : null,
+        doc_code_analytics: loadInputs.doc_code_analytics.enabled ? loadInputs.doc_code_analytics.value : null,
+        doc_code_operation: loadInputs.doc_code_operation.enabled ? loadInputs.doc_code_operation.value : null,
+        
+        // Параметры ПЗ
+        p1_pz: loadInputs.p1_pz.enabled ? parseFloat(loadInputs.p1_pz.value) || null : null,
+        temp1_pz: loadInputs.temp1_pz.enabled ? parseFloat(loadInputs.temp1_pz.value) || null : null,
+        p2_pz: loadInputs.p2_pz.enabled ? parseFloat(loadInputs.p2_pz.value) || null : null,
+        temp2_pz: loadInputs.temp2_pz.enabled ? parseFloat(loadInputs.temp2_pz.value) || null : null,
+        sigma_dop_a_pz: loadInputs.sigma_dop_a_pz.enabled ? parseFloat(loadInputs.sigma_dop_a_pz.value) || null : null,
+        ratio_e_pz: loadInputs.ratio_e_pz.enabled ? parseFloat(loadInputs.ratio_e_pz.value) || null : null,
+        
+        // Параметры МРЗ
+        p1_mrz: loadInputs.p1_mrz.enabled ? parseFloat(loadInputs.p1_mrz.value) || null : null,
+        temp1_mrz: loadInputs.temp1_mrz.enabled ? parseFloat(loadInputs.temp1_mrz.value) || null : null,
+        p2_mrz: loadInputs.p2_mrz.enabled ? parseFloat(loadInputs.p2_mrz.value) || null : null,
+        temp2_mrz: loadInputs.temp2_mrz.enabled ? parseFloat(loadInputs.temp2_mrz.value) || null : null,
+        sigma_dop_a_mrz: loadInputs.sigma_dop_a_mrz.enabled ? parseFloat(loadInputs.sigma_dop_a_mrz.value) || null : null,
+        ratio_e_mrz: loadInputs.ratio_e_mrz.enabled ? parseFloat(loadInputs.ratio_e_mrz.value) || null : null
+      };
+
+      console.log('Сохраняем параметры анализа навантаження:', dataToSave);
       
-      // DELTA_T_MRZ = TEMP2 - TEMP1
-      if (loadInputs.temp1_mrz.enabled && loadInputs.temp2_mrz.enabled && 
-          loadInputs.temp1_mrz.value && loadInputs.temp2_mrz.value) {
-        const temp1 = parseFloat(loadInputs.temp1_mrz.value);
-        const temp2 = parseFloat(loadInputs.temp2_mrz.value);
-        mrzData.delta_t = temp2 - temp1;
-      }
-
-      // RATIO_P_MRZ = P2/P1
-      if (loadInputs.p1_mrz.enabled && loadInputs.p2_mrz.enabled && 
-          loadInputs.p1_mrz.value && loadInputs.p2_mrz.value) {
-        const p1 = parseFloat(loadInputs.p1_mrz.value);
-        const p2 = parseFloat(loadInputs.p2_mrz.value);
-        if (p1 !== 0) {
-          mrzData.ratio_p = p2 / p1;
-        }
-      }
-
-      // RATIO_E_MRZ (используем общий RATIO_E_PZ)
-      if (loadInputs.ratio_e_pz.enabled && loadInputs.ratio_e_pz.value) {
-        mrzData.ratio_e = parseFloat(loadInputs.ratio_e_pz.value);
-      }
-
-      // FIRST_FREQ_ALT_MRZ = FIRST_NAT_FREQ / sqrt(RATIO_E_MRZ)
-      if (naturalFrequency && isFrequencyEnabled && mrzData.ratio_e) {
-        const firstFreq = parseFloat(naturalFrequency);
-        mrzData.first_freq_alt = firstFreq / Math.sqrt(mrzData.ratio_e);
-      }
-
-      // RATIO_M1_MRZ = m1/m1* (требует пересчета спектров)
-      if (allAnalysisResults['МРЗ']?.m1 && mrzData.first_freq_alt) {
-        // Здесь нужно будет интегрироваться с пересчетом спектров
-        // Пока используем приближение
-        mrzData.ratio_m1 = 1.0; // Заглушка
-      }
-
-      // RATION_SIGMA_DOP_MRZ = [sigma] / [sigma]*
-      if (loadInputs.sigma_dop.enabled && loadInputs.sigma_dop_a_mrz.enabled &&
-          loadInputs.sigma_dop.value && loadInputs.sigma_dop_a_mrz.value) {
-        const sigmaDop = parseFloat(loadInputs.sigma_dop.value);
-        const sigmaDopA = parseFloat(loadInputs.sigma_dop_a_mrz.value);
-        if (sigmaDopA !== 0) {
-          mrzData.ratio_sigma_dop = sigmaDop / sigmaDopA;
-        }
-      }
-
-      // HCLPF_ALT_MRZ = HCLPF * RATIO_P * RATIO_M1 * RATIO_SIGMA_DOP
-      if (loadInputs.hclpf.enabled && loadInputs.hclpf.value &&
-          mrzData.ratio_p && mrzData.ratio_m1 && mrzData.ratio_sigma_dop) {
-        const hclpf = parseFloat(loadInputs.hclpf.value);
-        mrzData.hclpf_alt = hclpf * mrzData.ratio_p * mrzData.ratio_m1 * mrzData.ratio_sigma_dop;
-      }
-
-      // Проверяем, можно ли выполнить расчет
-      mrzData.canCalculate = !!(mrzData.ratio_p && mrzData.ratio_sigma_dop);
-    }
-
-    // Аналогичные расчеты для ПЗ
-    if (dataAvailability.pz) {
-      const pzData = results.pz;
+      // Здесь будет вызов API для сохранения в базу
+      // const response = await fetch('/api/save-load-analysis-params', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(dataToSave)
+      // });
       
-      if (loadInputs.temp1_pz.enabled && loadInputs.temp2_pz.enabled && 
-          loadInputs.temp1_pz.value && loadInputs.temp2_pz.value) {
-        const temp1 = parseFloat(loadInputs.temp1_pz.value);
-        const temp2 = parseFloat(loadInputs.temp2_pz.value);
-        pzData.delta_t = temp2 - temp1;
-      }
-
-      if (loadInputs.p1_pz.enabled && loadInputs.p2_pz.enabled && 
-          loadInputs.p1_pz.value && loadInputs.p2_pz.value) {
-        const p1 = parseFloat(loadInputs.p1_pz.value);
-        const p2 = parseFloat(loadInputs.p2_pz.value);
-        if (p1 !== 0) {
-          pzData.ratio_p = p2 / p1;
-        }
-      }
-
-      if (loadInputs.ratio_e_pz.enabled && loadInputs.ratio_e_pz.value) {
-        pzData.ratio_e = parseFloat(loadInputs.ratio_e_pz.value);
-      }
-
-      if (naturalFrequency && isFrequencyEnabled && pzData.ratio_e) {
-        const firstFreq = parseFloat(naturalFrequency);
-        pzData.first_freq_alt = firstFreq / Math.sqrt(pzData.ratio_e);
-      }
-
-      if (allAnalysisResults['ПЗ']?.m1 && pzData.first_freq_alt) {
-        pzData.ratio_m1 = 1.0; // Заглушка
-      }
-
-      if (loadInputs.sigma_dop.enabled && loadInputs.sigma_dop_a_pz.enabled &&
-          loadInputs.sigma_dop.value && loadInputs.sigma_dop_a_pz.value) {
-        const sigmaDop = parseFloat(loadInputs.sigma_dop.value);
-        const sigmaDopA = parseFloat(loadInputs.sigma_dop_a_pz.value);
-        if (sigmaDopA !== 0) {
-          pzData.ratio_sigma_dop = sigmaDop / sigmaDopA;
-        }
-      }
-
-      if (loadInputs.hclpf.enabled && loadInputs.hclpf.value &&
-          pzData.ratio_p && pzData.ratio_m1 && pzData.ratio_sigma_dop) {
-        const hclpf = parseFloat(loadInputs.hclpf.value);
-        pzData.hclpf_alt = hclpf * pzData.ratio_p * pzData.ratio_m1 * pzData.ratio_sigma_dop;
-      }
-
-      pzData.canCalculate = !!(pzData.ratio_p && pzData.ratio_sigma_dop);
+      alert('Параметри збережено успішно!');
+    } catch (error) {
+      console.error('Ошибка сохранения параметров:', error);
+      alert('Помилка збереження параметрів');
     }
-
-    setLoadResults(results);
   };
 
   return (
@@ -283,7 +157,7 @@ const LoadAnalysisTab = ({
         <h3 className="load-analysis-main-title">Аналіз зміни навантаження</h3>
         
         <div className="load-analysis-main-content">
-          {/* Доступность данных */}
+          {/* Статус доступности данных M1 и K1 */}
           <div className="load-analysis-availability-container">
             <div className="load-analysis-group">
               <h4 className="load-analysis-section-title">Доступність даних для аналізу</h4>
@@ -292,34 +166,38 @@ const LoadAnalysisTab = ({
                 <div className="load-analysis-availability-section">
                   <div className="load-analysis-availability-item">
                     <div className="load-analysis-availability-label">
-                      <span className="load-analysis-parameter-label">Попередній розрахунок ПЗ</span>
-                      {dataAvailability.pz && allAnalysisResults['ПЗ'] && (
-                        <div className="load-analysis-values">
-                          <span className="load-analysis-value-small">m₁: {formatValue(allAnalysisResults['ПЗ'].m1)}</span>
-                          <span className="load-analysis-value-small">m₂: {formatValue(allAnalysisResults['ПЗ'].m2)}</span>
-                        </div>
-                      )}
+                      <span className="load-analysis-parameter-label">Значення M1 з попереднього розрахунку</span>
+                      <div className="load-analysis-values">
+                        {dataAvailability.pz && allAnalysisResults['ПЗ'] && (
+                          <span className="load-analysis-value-small">ПЗ: {formatValue(allAnalysisResults['ПЗ'].m1)}</span>
+                        )}
+                        {dataAvailability.mrz && allAnalysisResults['МРЗ'] && (
+                          <span className="load-analysis-value-small">МРЗ: {formatValue(allAnalysisResults['МРЗ'].m1)}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="load-analysis-availability-status">
-                      <span className={`load-analysis-status-text ${dataAvailability.pz ? 'available' : 'unavailable'}`}>
-                        {dataAvailability.pz ? 'Доступно' : 'Недоступно'}
+                      <span className={`load-analysis-status-text ${dataAvailability.m1_available ? 'available' : 'unavailable'}`}>
+                        {dataAvailability.m1_available ? 'Доступно' : 'Недоступно'}
                       </span>
                     </div>
                   </div>
 
                   <div className="load-analysis-availability-item">
                     <div className="load-analysis-availability-label">
-                      <span className="load-analysis-parameter-label">Попередній розрахунок МРЗ</span>
-                      {dataAvailability.mrz && allAnalysisResults['МРЗ'] && (
-                        <div className="load-analysis-values">
-                          <span className="load-analysis-value-small">m₁: {formatValue(allAnalysisResults['МРЗ'].m1)}</span>
-                          <span className="load-analysis-value-small">m₂: {formatValue(allAnalysisResults['МРЗ'].m2)}</span>
-                        </div>
-                      )}
+                      <span className="load-analysis-parameter-label">Значення K1 з попереднього розрахунку</span>
+                      <div className="load-analysis-values">
+                        {kResults?.pz?.k1 !== null && kResults?.pz?.k1 !== undefined && (
+                          <span className="load-analysis-value-small">ПЗ: {formatValue(kResults.pz.k1)}</span>
+                        )}
+                        {kResults?.mrz?.k1 !== null && kResults?.mrz?.k1 !== undefined && (
+                          <span className="load-analysis-value-small">МРЗ: {formatValue(kResults.mrz.k1)}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="load-analysis-availability-status">
-                      <span className={`load-analysis-status-text ${dataAvailability.mrz ? 'available' : 'unavailable'}`}>
-                        {dataAvailability.mrz ? 'Доступно' : 'Недоступно'}
+                      <span className={`load-analysis-status-text ${dataAvailability.k1_available ? 'available' : 'unavailable'}`}>
+                        {dataAvailability.k1_available ? 'Доступно' : 'Недоступно'}
                       </span>
                     </div>
                   </div>
@@ -328,96 +206,218 @@ const LoadAnalysisTab = ({
             </div>
           </div>
 
-          {/* Общие входные данные */}
-          <div className="load-analysis-common-container">
+          {/* Сообщение о недоступности формы */}
+          {!isFormEnabled && (
+            <div className="load-analysis-disabled-message">
+              <div className="load-analysis-group">
+                <div className="load-analysis-warning">
+                  <h4 className="load-analysis-warning-title">Форма недоступна</h4>
+                  <p className="load-analysis-warning-text">
+                    Для виконання аналізу зміни навантаження необхідно спочатку розрахувати значення M1 та K1 
+                    у формі "Аналіз зміни сейсмічних вимог".
+                  </p>
+                  <ul className="load-analysis-requirements-list">
+                    <li className={dataAvailability.m1_available ? 'requirement-met' : 'requirement-missing'}>
+                      Наявність розрахованих значень M1
+                    </li>
+                    <li className={dataAvailability.k1_available ? 'requirement-met' : 'requirement-missing'}>
+                      Наявність розрахованих значень K1
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Общие параметры */}
+          <div className={`load-analysis-common-container ${!isFormEnabled ? 'disabled-section' : ''}`}>
             <div className="load-analysis-group">
               <div className="load-analysis-inputs-section">
-                <h4 className="load-analysis-section-title">Загальні характеристики</h4>
+                <h4 className="load-analysis-section-title">Загальні параметри</h4>
                 
-                {/* Собственная частота */}
+                <div className="load-analysis-input-group">
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.material?.enabled || false}
+                        onChange={() => handleInputToggle('material')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">Ввід матеріалу</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.material?.value || ''}
+                      onChange={(e) => handleInputValueChange('material', e.target.value)}
+                      disabled={!loadInputs.material?.enabled || !isFormEnabled}
+                      placeholder="Матеріал"
+                      className={`load-analysis-input-control ${(!loadInputs.material?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.doc_code_analytics?.enabled || false}
+                        onChange={() => handleInputToggle('doc_code_analytics')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">Шифр документа (аналітика)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.doc_code_analytics?.value || ''}
+                      onChange={(e) => handleInputValueChange('doc_code_analytics', e.target.value)}
+                      disabled={!loadInputs.doc_code_analytics?.enabled || !isFormEnabled}
+                      placeholder="Шифр документа"
+                      className={`load-analysis-input-control ${(!loadInputs.doc_code_analytics?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                </div>
+
                 <div className="load-analysis-input-micro-group">
                   <div className="load-analysis-input-field">
                     <label className="load-analysis-checkbox-container">
                       <input
                         type="checkbox"
-                        checked={isFrequencyEnabled}
-                        onChange={handleFrequencyToggle}
+                        checked={loadInputs.doc_code_operation?.enabled || false}
+                        onChange={() => handleInputToggle('doc_code_operation')}
+                        disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">Власна частота, Гц</span>
+                      <span className="load-analysis-input-label">Шифр документа (експлуатація)</span>
                     </label>
                     <input
                       type="text"
-                      value={naturalFrequency}
-                      onChange={handleFrequencyChange}
-                      disabled={!isFrequencyEnabled}
-                      placeholder="Введіть частоту"
-                      className={`load-analysis-input-control ${!isFrequencyEnabled ? 'disabled' : ''}`}
+                      value={loadInputs.doc_code_operation?.value || ''}
+                      onChange={(e) => handleInputValueChange('doc_code_operation', e.target.value)}
+                      disabled={!loadInputs.doc_code_operation?.enabled || !isFormEnabled}
+                      placeholder="Шифр документа"
+                      className={`load-analysis-input-control ${(!loadInputs.doc_code_operation?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                {/* Допустимое напряжение */}
+          {/* Параметры для ПЗ */}
+          <div className={`load-analysis-section-container ${!isFormEnabled ? 'disabled-section' : ''}`}>
+            <div className="load-analysis-group">
+              <div className="load-analysis-inputs-section">
+                <h4 className="load-analysis-section-title">Індивідуальні параметри для ПЗ</h4>
+                
+                {/* P аналітичне та T аналітичне */}
                 <div className="load-analysis-input-group">
                   <div className="load-analysis-input-field">
                     <label className="load-analysis-checkbox-container">
                       <input
                         type="checkbox"
-                        checked={loadInputs.sigma_dop?.enabled || false}
-                        onChange={() => handleInputToggle('sigma_dop')}
+                        checked={loadInputs.p1_pz?.enabled || false}
+                        onChange={() => handleInputToggle('p1_pz')}
+                        disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">[σ], МПа</span>
+                      <span className="load-analysis-input-label">P аналітичне, МПа</span>
                     </label>
                     <input
                       type="text"
-                      value={loadInputs.sigma_dop?.value || ''}
-                      onChange={(e) => handleInputValueChange('sigma_dop', e.target.value)}
-                      disabled={!loadInputs.sigma_dop?.enabled}
-                      placeholder="Значення"
-                      className={`load-analysis-input-control ${!loadInputs.sigma_dop?.enabled ? 'disabled' : ''}`}
+                      value={loadInputs.p1_pz?.value || ''}
+                      onChange={(e) => handleInputValueChange('p1_pz', e.target.value)}
+                      disabled={!loadInputs.p1_pz?.enabled || !isFormEnabled}
+                      placeholder="P1_PZ"
+                      className={`load-analysis-input-control ${(!loadInputs.p1_pz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
                     />
                   </div>
                   <div className="load-analysis-input-field">
                     <label className="load-analysis-checkbox-container">
                       <input
                         type="checkbox"
-                        checked={loadInputs.hclpf?.enabled || false}
-                        onChange={() => handleInputToggle('hclpf')}
+                        checked={loadInputs.temp1_pz?.enabled || false}
+                        onChange={() => handleInputToggle('temp1_pz')}
+                        disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">HCLPF, g</span>
+                      <span className="load-analysis-input-label">T аналітичне, °C</span>
                     </label>
                     <input
                       type="text"
-                      value={loadInputs.hclpf?.value || ''}
-                      onChange={(e) => handleInputValueChange('hclpf', e.target.value)}
-                      disabled={!loadInputs.hclpf?.enabled}
-                      placeholder="Значення"
-                      className={`load-analysis-input-control ${!loadInputs.hclpf?.enabled ? 'disabled' : ''}`}
+                      value={loadInputs.temp1_pz?.value || ''}
+                      onChange={(e) => handleInputValueChange('temp1_pz', e.target.value)}
+                      disabled={!loadInputs.temp1_pz?.enabled || !isFormEnabled}
+                      placeholder="TEMP1_PZ"
+                      className={`load-analysis-input-control ${(!loadInputs.temp1_pz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
                     />
                   </div>
                 </div>
 
-                {/* Коэффициенты */}
+                {/* P експлуатація та T експлуатація */}
                 <div className="load-analysis-input-group">
                   <div className="load-analysis-input-field">
                     <label className="load-analysis-checkbox-container">
                       <input
                         type="checkbox"
-                        checked={loadInputs.f_mu?.enabled || false}
-                        onChange={() => handleInputToggle('f_mu')}
+                        checked={loadInputs.p2_pz?.enabled || false}
+                        onChange={() => handleInputToggle('p2_pz')}
+                        disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">F_μ</span>
+                      <span className="load-analysis-input-label">P експлуатація, МПа</span>
                     </label>
                     <input
                       type="text"
-                      value={loadInputs.f_mu?.value || ''}
-                      onChange={(e) => handleInputValueChange('f_mu', e.target.value)}
-                      disabled={!loadInputs.f_mu?.enabled}
-                      placeholder="1.0"
-                      className={`load-analysis-input-control ${!loadInputs.f_mu?.enabled ? 'disabled' : ''}`}
+                      value={loadInputs.p2_pz?.value || ''}
+                      onChange={(e) => handleInputValueChange('p2_pz', e.target.value)}
+                      disabled={!loadInputs.p2_pz?.enabled || !isFormEnabled}
+                      placeholder="P2_PZ"
+                      className={`load-analysis-input-control ${(!loadInputs.p2_pz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.temp2_pz?.enabled || false}
+                        onChange={() => handleInputToggle('temp2_pz')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">T експлуатація, °C</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.temp2_pz?.value || ''}
+                      onChange={(e) => handleInputValueChange('temp2_pz', e.target.value)}
+                      disabled={!loadInputs.temp2_pz?.enabled || !isFormEnabled}
+                      placeholder="TEMP2_PZ"
+                      className={`load-analysis-input-control ${(!loadInputs.temp2_pz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                </div>
+
+                {/* SIGMA* та DELTA E */}
+                <div className="load-analysis-input-group">
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.sigma_dop_a_pz?.enabled || false}
+                        onChange={() => handleInputToggle('sigma_dop_a_pz')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">SIGMA*, МПа</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.sigma_dop_a_pz?.value || ''}
+                      onChange={(e) => handleInputValueChange('sigma_dop_a_pz', e.target.value)}
+                      disabled={!loadInputs.sigma_dop_a_pz?.enabled || !isFormEnabled}
+                      placeholder="SIGMA_DOP_A_PZ"
+                      className={`load-analysis-input-control ${(!loadInputs.sigma_dop_a_pz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
                     />
                   </div>
                   <div className="load-analysis-input-field">
@@ -426,17 +426,18 @@ const LoadAnalysisTab = ({
                         type="checkbox"
                         checked={loadInputs.ratio_e_pz?.enabled || false}
                         onChange={() => handleInputToggle('ratio_e_pz')}
+                        disabled={!isFormEnabled}
                       />
                       <span className="load-analysis-checkmark"></span>
-                      <span className="load-analysis-input-label">RATIO_E</span>
+                      <span className="load-analysis-input-label">DELTA E</span>
                     </label>
                     <input
                       type="text"
                       value={loadInputs.ratio_e_pz?.value || ''}
                       onChange={(e) => handleInputValueChange('ratio_e_pz', e.target.value)}
-                      disabled={!loadInputs.ratio_e_pz?.enabled}
-                      placeholder="1.069"
-                      className={`load-analysis-input-control ${!loadInputs.ratio_e_pz?.enabled ? 'disabled' : ''}`}
+                      disabled={!loadInputs.ratio_e_pz?.enabled || !isFormEnabled}
+                      placeholder="RATIO_E_PZ"
+                      className={`load-analysis-input-control ${(!loadInputs.ratio_e_pz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
                     />
                   </div>
                 </div>
@@ -444,359 +445,158 @@ const LoadAnalysisTab = ({
             </div>
           </div>
 
-          {/* Входные данные для ПЗ */}
-          {dataAvailability.pz && (
-            <div className="load-analysis-section-container">
-              <div className="load-analysis-group">
-                <div className="load-analysis-inputs-section">
-                  <h4 className="load-analysis-section-title">Вхідні параметри для ПЗ</h4>
-                  
-                  {/* Температуры */}
-                  <div className="load-analysis-input-group">
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.temp1_pz?.enabled || false}
-                          onChange={() => handleInputToggle('temp1_pz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">T₁, °C</span>
-                      </label>
+          {/* Параметры для МРЗ */}
+          <div className={`load-analysis-section-container ${!isFormEnabled ? 'disabled-section' : ''}`}>
+            <div className="load-analysis-group">
+              <div className="load-analysis-inputs-section">
+                <h4 className="load-analysis-section-title">Індивідуальні параметри для МРЗ</h4>
+                
+                {/* P аналітичне та T аналітичне */}
+                <div className="load-analysis-input-group">
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
                       <input
-                        type="text"
-                        value={loadInputs.temp1_pz?.value || ''}
-                        onChange={(e) => handleInputValueChange('temp1_pz', e.target.value)}
-                        disabled={!loadInputs.temp1_pz?.enabled}
-                        placeholder="Початкова температура"
-                        className={`load-analysis-input-control ${!loadInputs.temp1_pz?.enabled ? 'disabled' : ''}`}
+                        type="checkbox"
+                        checked={loadInputs.p1_mrz?.enabled || false}
+                        onChange={() => handleInputToggle('p1_mrz')}
+                        disabled={!isFormEnabled}
                       />
-                    </div>
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.temp2_pz?.enabled || false}
-                          onChange={() => handleInputToggle('temp2_pz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">T₂, °C</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={loadInputs.temp2_pz?.value || ''}
-                        onChange={(e) => handleInputValueChange('temp2_pz', e.target.value)}
-                        disabled={!loadInputs.temp2_pz?.enabled}
-                        placeholder="Нова температура"
-                        className={`load-analysis-input-control ${!loadInputs.temp2_pz?.enabled ? 'disabled' : ''}`}
-                      />
-                    </div>
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">P аналітичне, МПа</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.p1_mrz?.value || ''}
+                      onChange={(e) => handleInputValueChange('p1_mrz', e.target.value)}
+                      disabled={!loadInputs.p1_mrz?.enabled || !isFormEnabled}
+                      placeholder="P1_MRZ"
+                      className={`load-analysis-input-control ${(!loadInputs.p1_mrz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
                   </div>
-
-                  {/* Давления */}
-                  <div className="load-analysis-input-group">
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.p1_pz?.enabled || false}
-                          onChange={() => handleInputToggle('p1_pz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">P₁, МПа</span>
-                      </label>
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
                       <input
-                        type="text"
-                        value={loadInputs.p1_pz?.value || ''}
-                        onChange={(e) => handleInputValueChange('p1_pz', e.target.value)}
-                        disabled={!loadInputs.p1_pz?.enabled}
-                        placeholder="Початковий тиск"
-                        className={`load-analysis-input-control ${!loadInputs.p1_pz?.enabled ? 'disabled' : ''}`}
+                        type="checkbox"
+                        checked={loadInputs.temp1_mrz?.enabled || false}
+                        onChange={() => handleInputToggle('temp1_mrz')}
+                        disabled={!isFormEnabled}
                       />
-                    </div>
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.p2_pz?.enabled || false}
-                          onChange={() => handleInputToggle('p2_pz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">P₂, МПа</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={loadInputs.p2_pz?.value || ''}
-                        onChange={(e) => handleInputValueChange('p2_pz', e.target.value)}
-                        disabled={!loadInputs.p2_pz?.enabled}
-                        placeholder="Новий тиск"
-                        className={`load-analysis-input-control ${!loadInputs.p2_pz?.enabled ? 'disabled' : ''}`}
-                      />
-                    </div>
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">T аналітичне, °C</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.temp1_mrz?.value || ''}
+                      onChange={(e) => handleInputValueChange('temp1_mrz', e.target.value)}
+                      disabled={!loadInputs.temp1_mrz?.enabled || !isFormEnabled}
+                      placeholder="TEMP1_MRZ"
+                      className={`load-analysis-input-control ${(!loadInputs.temp1_mrz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
                   </div>
+                </div>
 
-                  {/* Допустимое напряжение для температуры */}
-                  <div className="load-analysis-input-micro-group">
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.sigma_dop_a_pz?.enabled || false}
-                          onChange={() => handleInputToggle('sigma_dop_a_pz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">[σ]*, МПа</span>
-                      </label>
+                {/* P експлуатація та T експлуатація */}
+                <div className="load-analysis-input-group">
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
                       <input
-                        type="text"
-                        value={loadInputs.sigma_dop_a_pz?.value || ''}
-                        onChange={(e) => handleInputValueChange('sigma_dop_a_pz', e.target.value)}
-                        disabled={!loadInputs.sigma_dop_a_pz?.enabled}
-                        placeholder="Допустиме напруження при новій температурі"
-                        className={`load-analysis-input-control ${!loadInputs.sigma_dop_a_pz?.enabled ? 'disabled' : ''}`}
+                        type="checkbox"
+                        checked={loadInputs.p2_mrz?.enabled || false}
+                        onChange={() => handleInputToggle('p2_mrz')}
+                        disabled={!isFormEnabled}
                       />
-                    </div>
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">P експлуатація, МПа</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.p2_mrz?.value || ''}
+                      onChange={(e) => handleInputValueChange('p2_mrz', e.target.value)}
+                      disabled={!loadInputs.p2_mrz?.enabled || !isFormEnabled}
+                      placeholder="P2_MRZ"
+                      className={`load-analysis-input-control ${(!loadInputs.p2_mrz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.temp2_mrz?.enabled || false}
+                        onChange={() => handleInputToggle('temp2_mrz')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">T експлуатація, °C</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.temp2_mrz?.value || ''}
+                      onChange={(e) => handleInputValueChange('temp2_mrz', e.target.value)}
+                      disabled={!loadInputs.temp2_mrz?.enabled || !isFormEnabled}
+                      placeholder="TEMP2_MRZ"
+                      className={`load-analysis-input-control ${(!loadInputs.temp2_mrz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                </div>
+
+                {/* SIGMA* та DELTA E */}
+                <div className="load-analysis-input-group">
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.sigma_dop_a_mrz?.enabled || false}
+                        onChange={() => handleInputToggle('sigma_dop_a_mrz')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">SIGMA*, МПа</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.sigma_dop_a_mrz?.value || ''}
+                      onChange={(e) => handleInputValueChange('sigma_dop_a_mrz', e.target.value)}
+                      disabled={!loadInputs.sigma_dop_a_mrz?.enabled || !isFormEnabled}
+                      placeholder="SIGMA_DOP_A_MRZ"
+                      className={`load-analysis-input-control ${(!loadInputs.sigma_dop_a_mrz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.ratio_e_mrz?.enabled || false}
+                        onChange={() => handleInputToggle('ratio_e_mrz')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">DELTA E</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.ratio_e_mrz?.value || ''}
+                      onChange={(e) => handleInputValueChange('ratio_e_mrz', e.target.value)}
+                      disabled={!loadInputs.ratio_e_mrz?.enabled || !isFormEnabled}
+                      placeholder="RATIO_E_MRZ"
+                      className={`load-analysis-input-control ${(!loadInputs.ratio_e_mrz?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
                   </div>
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Входные данные для МРЗ */}
-          {dataAvailability.mrz && (
-            <div className="load-analysis-section-container">
-              <div className="load-analysis-group">
-                <div className="load-analysis-inputs-section">
-                  <h4 className="load-analysis-section-title">Вхідні параметри для МРЗ</h4>
-                  
-                  {/* Температуры */}
-                  <div className="load-analysis-input-group">
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.temp1_mrz?.enabled || false}
-                          onChange={() => handleInputToggle('temp1_mrz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">T₁, °C</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={loadInputs.temp1_mrz?.value || ''}
-                        onChange={(e) => handleInputValueChange('temp1_mrz', e.target.value)}
-                        disabled={!loadInputs.temp1_mrz?.enabled}
-                        placeholder="Початкова температура"
-                        className={`load-analysis-input-control ${!loadInputs.temp1_mrz?.enabled ? 'disabled' : ''}`}
-                      />
-                    </div>
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.temp2_mrz?.enabled || false}
-                          onChange={() => handleInputToggle('temp2_mrz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">T₂, °C</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={loadInputs.temp2_mrz?.value || ''}
-                        onChange={(e) => handleInputValueChange('temp2_mrz', e.target.value)}
-                        disabled={!loadInputs.temp2_mrz?.enabled}
-                        placeholder="Нова температура"
-                        className={`load-analysis-input-control ${!loadInputs.temp2_mrz?.enabled ? 'disabled' : ''}`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Давления */}
-                  <div className="load-analysis-input-group">
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.p1_mrz?.enabled || false}
-                          onChange={() => handleInputToggle('p1_mrz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">P₁, МПа</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={loadInputs.p1_mrz?.value || ''}
-                        onChange={(e) => handleInputValueChange('p1_mrz', e.target.value)}
-                        disabled={!loadInputs.p1_mrz?.enabled}
-                        placeholder="Початковий тиск"
-                        className={`load-analysis-input-control ${!loadInputs.p1_mrz?.enabled ? 'disabled' : ''}`}
-                      />
-                    </div>
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.p2_mrz?.enabled || false}
-                          onChange={() => handleInputToggle('p2_mrz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">P₂, МПа</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={loadInputs.p2_mrz?.value || ''}
-                        onChange={(e) => handleInputValueChange('p2_mrz', e.target.value)}
-                        disabled={!loadInputs.p2_mrz?.enabled}
-                        placeholder="Новий тиск"
-                        className={`load-analysis-input-control ${!loadInputs.p2_mrz?.enabled ? 'disabled' : ''}`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Допустимое напряжение для температуры */}
-                  <div className="load-analysis-input-micro-group">
-                    <div className="load-analysis-input-field">
-                      <label className="load-analysis-checkbox-container">
-                        <input
-                          type="checkbox"
-                          checked={loadInputs.sigma_dop_a_mrz?.enabled || false}
-                          onChange={() => handleInputToggle('sigma_dop_a_mrz')}
-                        />
-                        <span className="load-analysis-checkmark"></span>
-                        <span className="load-analysis-input-label">[σ]*, МПа</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={loadInputs.sigma_dop_a_mrz?.value || ''}
-                        onChange={(e) => handleInputValueChange('sigma_dop_a_mrz', e.target.value)}
-                        disabled={!loadInputs.sigma_dop_a_mrz?.enabled}
-                        placeholder="Допустиме напруження при новій температурі"
-                        className={`load-analysis-input-control ${!loadInputs.sigma_dop_a_mrz?.enabled ? 'disabled' : ''}`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         <div className="load-analysis-form-actions">
           <button 
             type="button" 
-            className="load-analysis-calculate-button"
-            onClick={calculateAnalysisMethod}
+            className={`load-analysis-calculate-button ${!isFormEnabled ? 'disabled' : ''}`}
+            onClick={handleSaveParameters}
+            disabled={!isFormEnabled}
           >
-            Розрахувати
+            Зберегти параметри
           </button>
         </div>
-
-        {/* Результаты расчетов */}
-        {loadResults.calculated && (
-          <div className="load-analysis-results-container">
-            <h3 className="load-analysis-results-title">Результати розрахунків</h3>
-            
-            <div className="load-analysis-results-layout">
-              {/* Результаты для ПЗ */}
-              {dataAvailability.pz && (
-                <div className="load-analysis-results-section">
-                  <h4 className="load-analysis-results-section-title">Результати для ПЗ</h4>
-                  <div className="load-analysis-results-grid">
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">ΔT:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.pz.delta_t !== null ? `${loadResults.pz.delta_t.toFixed(2)} °C` : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">Δp (P₂/P₁):</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.pz.ratio_p !== null ? loadResults.pz.ratio_p.toFixed(4) : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">f₁*:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.pz.first_freq_alt !== null ? `${loadResults.pz.first_freq_alt.toFixed(4)} Гц` : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">Δσ:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.pz.ratio_sigma_dop !== null ? loadResults.pz.ratio_sigma_dop.toFixed(4) : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">HCLPF*:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.pz.hclpf_alt !== null ? `${loadResults.pz.hclpf_alt.toFixed(4)} g` : 'Н/Д'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Результаты для МРЗ */}
-              {dataAvailability.mrz && (
-                <div className="load-analysis-results-section">
-                  <h4 className="load-analysis-results-section-title">Результати для МРЗ</h4>
-                  <div className="load-analysis-results-grid">
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">ΔT:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.mrz.delta_t !== null ? `${loadResults.mrz.delta_t.toFixed(2)} °C` : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">Δp (P₂/P₁):</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.mrz.ratio_p !== null ? loadResults.mrz.ratio_p.toFixed(4) : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">f₁*:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.mrz.first_freq_alt !== null ? `${loadResults.mrz.first_freq_alt.toFixed(4)} Гц` : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">Δσ:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.mrz.ratio_sigma_dop !== null ? loadResults.mrz.ratio_sigma_dop.toFixed(4) : 'Н/Д'}
-                      </span>
-                    </div>
-                    <div className="load-analysis-result-item">
-                      <span className="load-analysis-result-label">HCLPF*:</span>
-                      <span className="load-analysis-result-value">
-                        {loadResults.mrz.hclpf_alt !== null ? `${loadResults.mrz.hclpf_alt.toFixed(4)} g` : 'Н/Д'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Информация о расчете */}
-            <div className="load-analysis-calculation-info">
-              <h4 className="load-analysis-info-title">Інформація про розрахунок</h4>
-              <div className="load-analysis-info-content">
-                <p><strong>Метод розрахунку:</strong> Метод аналізу (на основі розрахункової оцінки)</p>
-                <p><strong>Формули:</strong></p>
-                <ul>
-                  <li>ΔT = T₂ - T₁</li>
-                  <li>Δp = P₂/P₁</li>
-                  <li>f₁* = f₁ / √(RATIO_E)</li>
-                  <li>Δσ = [σ] / [σ]*</li>
-                  <li>HCLPF* = HCLPF × Δp × Δm × Δσ</li>
-                </ul>
-                <p className="load-analysis-note">
-                  <strong>Примітка:</strong> Для повного розрахунку необхідно інтегрувати з процедурою порівняння спектрів 
-                  для визначення коефіцієнта Δm на основі зміненої власної частоти.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

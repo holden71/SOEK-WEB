@@ -135,6 +135,88 @@
   border: 1px solid #f5c6cb;
 }
 
+/* Disabled form message */
+.load-analysis-disabled-message {
+  margin-bottom: 24px;
+}
+
+.load-analysis-warning {
+  padding: 20px;
+}
+
+.load-analysis-warning-title {
+  font-size: 18px;
+  color: #856404;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-warning-text {
+  font-size: 14px;
+  color: #856404;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-requirements-list {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.load-analysis-requirements-list li {
+  font-size: 13px;
+  color: #495057;
+  margin-bottom: 4px;
+  position: relative;
+  font-family: 'Arial', sans-serif;
+}
+
+.load-analysis-requirements-list li::before {
+  content: '•';
+  position: absolute;
+  left: -12px;
+  color: #6c757d;
+}
+
+.load-analysis-requirements-list li.requirement-met {
+  color: #28a745;
+}
+
+.load-analysis-requirements-list li.requirement-met::before {
+  content: '✓';
+  color: #28a745;
+  font-weight: bold;
+}
+
+.load-analysis-requirements-list li.requirement-missing {
+  color: #dc3545;
+}
+
+.load-analysis-requirements-list li.requirement-missing::before {
+  content: '✗';
+  color: #dc3545;
+  font-weight: bold;
+}
+
+/* Disabled sections */
+.disabled-section {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.disabled-section .load-analysis-group {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.disabled-section .load-analysis-section-title {
+  color: #6c757d;
+  border-bottom-color: #dee2e6;
+}
+
 /* Input fields */
 .load-analysis-common-container,
 .load-analysis-section-container {
@@ -272,6 +354,20 @@
 
 .load-analysis-calculate-button:active {
   transform: translateY(0);
+}
+
+.load-analysis-calculate-button.disabled,
+.load-analysis-calculate-button:disabled {
+  background-color: #6c757d;
+  color: #fff;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.load-analysis-calculate-button.disabled:hover,
+.load-analysis-calculate-button:disabled:hover {
+  background-color: #6c757d;
+  transform: none;
 }
 
 /* Results section */
@@ -437,6 +533,22 @@
 
   .load-analysis-result-value {
     text-align: left;
+  }
+
+  .load-analysis-warning {
+    padding: 16px;
+  }
+
+  .load-analysis-warning-title {
+    font-size: 16px;
+  }
+
+  .load-analysis-warning-text {
+    font-size: 13px;
+  }
+
+  .load-analysis-requirements-list li {
+    font-size: 12px;
   }
 }
 
