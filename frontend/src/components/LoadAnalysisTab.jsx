@@ -17,6 +17,16 @@ const LoadAnalysisTab = ({
   },
   elementData = null
 }) => {
+  console.log('LoadAnalysisTab rendering with elementData:', elementData);
+  
+  // Состояние для результатов расчета
+  const [loadCalculationResults, setLoadCalculationResults] = useState({
+    pz: { deltaT: null, deltaP: null },
+    mrz: { deltaT: null, deltaP: null },
+    calculationAttempted: false,
+    missingData: { pz: [], mrz: [] }
+  });
+  
   // Состояние for input parameters
   const [loadInputs, setLoadInputs] = useState({
     // Общие параметры (заглушки пока)
@@ -83,8 +93,8 @@ const LoadAnalysisTab = ({
       const elementId = elementData?.EK_ID || elementData?.ek_id || elementData?.id || elementData?.ID;
       if (!elementId) return;
       
-              try {
-          const response = await fetch(`http://localhost:8000/api/get-load-analysis-params/${elementId}`);
+      try {
+        const response = await fetch(`http://localhost:8000/api/get-load-analysis-params/${elementId}`);
         if (response.ok) {
           const data = await response.json();
           const savedParams = data.load_params;
@@ -153,6 +163,23 @@ const LoadAnalysisTab = ({
               value: savedParams.ratio_e_mrz ? savedParams.ratio_e_mrz.toString() : '' 
             }
           }));
+
+          // Загружаем сохраненные результаты расчетов
+          if (savedParams.delta_t_pz !== null || savedParams.ratio_p_pz !== null || 
+              savedParams.delta_t_mrz !== null || savedParams.ratio_p_mrz !== null) {
+            setLoadCalculationResults({
+              pz: { 
+                deltaT: savedParams.delta_t_pz, 
+                deltaP: savedParams.ratio_p_pz 
+              },
+              mrz: { 
+                deltaT: savedParams.delta_t_mrz, 
+                deltaP: savedParams.ratio_p_mrz 
+              },
+              calculationAttempted: true,
+              missingData: { pz: [], mrz: [] }
+            });
+          }
         }
       } catch (error) {
         console.error('Ошибка загрузки сохраненных параметров:', error);
@@ -169,9 +196,78 @@ const LoadAnalysisTab = ({
     return parseFloat(value).toFixed(4);
   };
 
+  // Функция для расчета delta T и delta P
+  const performLoadCalculation = () => {
+    const results = {
+      pz: { deltaT: null, deltaP: null },
+      mrz: { deltaT: null, deltaP: null },
+      calculationAttempted: true,
+      missingData: { pz: [], mrz: [] }
+    };
+
+    // Расчет для ПЗ
+    const pzMissingData = [];
+    
+    // Проверяем наличие данных для delta T (T2 - T1)
+    const temp1Pz = loadInputs.temp1_pz?.enabled && loadInputs.temp1_pz?.value ? parseFloat(loadInputs.temp1_pz.value) : null;
+    const temp2Pz = loadInputs.temp2_pz?.enabled && loadInputs.temp2_pz?.value ? parseFloat(loadInputs.temp2_pz.value) : null;
+    
+    if (temp1Pz !== null && temp2Pz !== null) {
+      results.pz.deltaT = temp2Pz - temp1Pz;
+    } else {
+      if (!loadInputs.temp1_pz?.enabled || temp1Pz === null) pzMissingData.push('T1_PZ');
+      if (!loadInputs.temp2_pz?.enabled || temp2Pz === null) pzMissingData.push('T2_PZ');
+    }
+
+    // Проверяем наличие данных для delta P (P2 / P1)
+    const p1Pz = loadInputs.p1_pz?.enabled && loadInputs.p1_pz?.value ? parseFloat(loadInputs.p1_pz.value) : null;
+    const p2Pz = loadInputs.p2_pz?.enabled && loadInputs.p2_pz?.value ? parseFloat(loadInputs.p2_pz.value) : null;
+    
+    if (p1Pz !== null && p2Pz !== null && p1Pz !== 0) {
+      results.pz.deltaP = p2Pz / p1Pz;
+    } else {
+      if (!loadInputs.p1_pz?.enabled || p1Pz === null) pzMissingData.push('P1_PZ');
+      if (!loadInputs.p2_pz?.enabled || p2Pz === null) pzMissingData.push('P2_PZ');
+      if (p1Pz === 0) pzMissingData.push('P1_PZ (нульове значення)');
+    }
+
+    results.missingData.pz = pzMissingData;
+
+    // Расчет для МРЗ
+    const mrzMissingData = [];
+    
+    // Проверяем наличие данных для delta T (T2 - T1)
+    const temp1Mrz = loadInputs.temp1_mrz?.enabled && loadInputs.temp1_mrz?.value ? parseFloat(loadInputs.temp1_mrz.value) : null;
+    const temp2Mrz = loadInputs.temp2_mrz?.enabled && loadInputs.temp2_mrz?.value ? parseFloat(loadInputs.temp2_mrz.value) : null;
+    
+    if (temp1Mrz !== null && temp2Mrz !== null) {
+      results.mrz.deltaT = temp2Mrz - temp1Mrz;
+    } else {
+      if (!loadInputs.temp1_mrz?.enabled || temp1Mrz === null) mrzMissingData.push('T1_MRZ');
+      if (!loadInputs.temp2_mrz?.enabled || temp2Mrz === null) mrzMissingData.push('T2_MRZ');
+    }
+
+    // Проверяем наличие данных для delta P (P2 / P1)
+    const p1Mrz = loadInputs.p1_mrz?.enabled && loadInputs.p1_mrz?.value ? parseFloat(loadInputs.p1_mrz.value) : null;
+    const p2Mrz = loadInputs.p2_mrz?.enabled && loadInputs.p2_mrz?.value ? parseFloat(loadInputs.p2_mrz.value) : null;
+    
+    if (p1Mrz !== null && p2Mrz !== null && p1Mrz !== 0) {
+      results.mrz.deltaP = p2Mrz / p1Mrz;
+    } else {
+      if (!loadInputs.p1_mrz?.enabled || p1Mrz === null) mrzMissingData.push('P1_MRZ');
+      if (!loadInputs.p2_mrz?.enabled || p2Mrz === null) mrzMissingData.push('P2_MRZ');
+      if (p1Mrz === 0) mrzMissingData.push('P1_MRZ (нульове значення)');
+    }
+
+    results.missingData.mrz = mrzMissingData;
+
+    setLoadCalculationResults(results);
+    return results; // Возвращаем результаты для использования в handleCalculate
+  };
+
   // Обработчики для переключения полей
   const handleInputToggle = (fieldName) => {
-    if (!isFormEnabled) return; // Блокируем изменения если форма неактивна
+    if (!isFormEnabled) return;
     
     setLoadInputs(prev => ({
       ...prev,
@@ -184,7 +280,7 @@ const LoadAnalysisTab = ({
   };
 
   const handleInputValueChange = (fieldName, value) => {
-    if (!isFormEnabled) return; // Блокируем изменения если форма неактивна
+    if (!isFormEnabled) return;
     
     if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
       setLoadInputs(prev => ({
@@ -197,19 +293,22 @@ const LoadAnalysisTab = ({
     }
   };
 
-  // Функция сохранения параметров в базу данных
-  const handleSaveParameters = async () => {
-    console.log('Попытка сохранения параметров');
+  // Функция расчета и сохранения параметров
+  const handleCalculate = async () => {
+    console.log('Попытка расчета и сохранения параметров');
     console.log('isFormEnabled:', isFormEnabled);
     console.log('elementData:', elementData);
     
     if (!isFormEnabled) {
-      console.log('Форма заблокирована, сохранение невозможно');
+      console.log('Форма заблокирована, расчет невозможен');
       return;
     }
 
+    // Сначала выполняем расчет и получаем результаты
+    const calculationResults = performLoadCalculation();
+    console.log('Результаты расчета:', calculationResults);
+
     try {
-      // Ищем ID элемента в разных возможных полях
       const elementId = elementData?.EK_ID || elementData?.ek_id || elementData?.id || elementData?.ID;
       
       if (!elementId) {
@@ -221,7 +320,7 @@ const LoadAnalysisTab = ({
       // Подготавливаем данные для отправки
       const dataToSave = {
         element_id: elementId,
-        // Общие параметры (заглушки)
+        // Общие параметры
         material: loadInputs.material.enabled ? loadInputs.material.value : null,
         doc_code_analytics: loadInputs.doc_code_analytics.enabled ? loadInputs.doc_code_analytics.value : null,
         doc_code_operation: loadInputs.doc_code_operation.enabled ? loadInputs.doc_code_operation.value : null,
@@ -240,7 +339,15 @@ const LoadAnalysisTab = ({
         p2_mrz: loadInputs.p2_mrz.enabled ? parseFloat(loadInputs.p2_mrz.value) || null : null,
         temp2_mrz: loadInputs.temp2_mrz.enabled ? parseFloat(loadInputs.temp2_mrz.value) || null : null,
         sigma_dop_a_mrz: loadInputs.sigma_dop_a_mrz.enabled ? parseFloat(loadInputs.sigma_dop_a_mrz.value) || null : null,
-        ratio_e_mrz: loadInputs.ratio_e_mrz.enabled ? parseFloat(loadInputs.ratio_e_mrz.value) || null : null
+        ratio_e_mrz: loadInputs.ratio_e_mrz.enabled ? parseFloat(loadInputs.ratio_e_mrz.value) || null : null,
+        
+        // Результаты расчетов ПЗ
+        delta_t_pz: calculationResults.pz.deltaT,
+        ratio_p_pz: calculationResults.pz.deltaP,
+        
+        // Результаты расчетов МРЗ
+        delta_t_mrz: calculationResults.mrz.deltaT,
+        ratio_p_mrz: calculationResults.mrz.deltaP
       };
 
       console.log('Сохраняем параметры анализа навантаження:', dataToSave);
@@ -269,6 +376,19 @@ const LoadAnalysisTab = ({
       console.error('Ошибка сохранения параметров:', error);
     }
   };
+
+  // Простая проверка для отладки
+  if (!elementData) {
+    console.log('LoadAnalysisTab: elementData is null or undefined');
+    return (
+      <div className="load-analysis-main-container">
+        <div className="load-analysis-main-form">
+          <h3 className="load-analysis-main-title">Аналіз зміни навантаження</h3>
+          <p>Завантаження даних...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="load-analysis-main-container">
@@ -710,12 +830,121 @@ const LoadAnalysisTab = ({
           <button 
             type="button" 
             className={`load-analysis-calculate-button ${!isFormEnabled ? 'disabled' : ''}`}
-            onClick={handleSaveParameters}
+            onClick={handleCalculate}
             disabled={!isFormEnabled}
           >
-            Зберегти параметри
+            Розрахувати
           </button>
         </div>
+
+        {/* Результаты расчетов - показываем всегда если был запущен расчет */}
+        {loadCalculationResults.calculationAttempted && (
+          <div className="calculation-results-container">
+            <h3 className="results-title">Результати розрахунків</h3>
+            
+            <div className="results-layout">
+              {/* Результаты для ПЗ */}
+              <div className="results-section">
+                <h4 className="results-section-title">Результати для ПЗ</h4>
+                <div className="results-grid">
+                  <div className="result-item">
+                    <span className="result-label">ΔT (T₂ - T₁):</span>
+                    {loadCalculationResults.pz.deltaT !== null ? (
+                      <span className="result-value">{loadCalculationResults.pz.deltaT.toFixed(4)} °C</span>
+                    ) : (
+                      <span className="no-data-message">
+                        {loadCalculationResults.missingData?.pz?.filter(item => item.includes('T')).length > 0 ? 
+                          `Відсутні дані: ${loadCalculationResults.missingData.pz.filter(item => item.includes('T')).join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
+                    )}
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">ΔP (P₂ / P₁):</span>
+                    {loadCalculationResults.pz.deltaP !== null ? (
+                      <span className="result-value">{loadCalculationResults.pz.deltaP.toFixed(4)}</span>
+                    ) : (
+                      <span className="no-data-message">
+                        {loadCalculationResults.missingData?.pz?.filter(item => item.includes('P')).length > 0 ? 
+                          `Відсутні дані: ${loadCalculationResults.missingData.pz.filter(item => item.includes('P')).join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Информация о недостающих данных для ПЗ */}
+                {loadCalculationResults.missingData?.pz?.length > 0 && (
+                  <div className="k-calculation-info">
+                    <p className="k-info-message">
+                      Для розрахунку необхідно:
+                    </p>
+                    <ul className="k-requirements-list">
+                      <li className={loadCalculationResults.pz.deltaT !== null ? 'requirement-met' : 'requirement-missing'}>
+                        Ввести значення T₁ та T₂ для розрахунку ΔT
+                      </li>
+                      <li className={loadCalculationResults.pz.deltaP !== null ? 'requirement-met' : 'requirement-missing'}>
+                        Ввести значення P₁ та P₂ (P₁ ≠ 0) для розрахунку ΔP
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Результаты для МРЗ */}
+              <div className="results-section">
+                <h4 className="results-section-title">Результати для МРЗ</h4>
+                <div className="results-grid">
+                  <div className="result-item">
+                    <span className="result-label">ΔT (T₂ - T₁):</span>
+                    {loadCalculationResults.mrz.deltaT !== null ? (
+                      <span className="result-value">{loadCalculationResults.mrz.deltaT.toFixed(4)} °C</span>
+                    ) : (
+                      <span className="no-data-message">
+                        {loadCalculationResults.missingData?.mrz?.filter(item => item.includes('T')).length > 0 ? 
+                          `Відсутні дані: ${loadCalculationResults.missingData.mrz.filter(item => item.includes('T')).join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
+                    )}
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">ΔP (P₂ / P₁):</span>
+                    {loadCalculationResults.mrz.deltaP !== null ? (
+                      <span className="result-value">{loadCalculationResults.mrz.deltaP.toFixed(4)}</span>
+                    ) : (
+                      <span className="no-data-message">
+                        {loadCalculationResults.missingData?.mrz?.filter(item => item.includes('P')).length > 0 ? 
+                          `Відсутні дані: ${loadCalculationResults.missingData.mrz.filter(item => item.includes('P')).join(', ')}` : 
+                          'Недостатньо даних'
+                        }
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Информация о недостающих данных для МРЗ */}
+                {loadCalculationResults.missingData?.mrz?.length > 0 && (
+                  <div className="k-calculation-info">
+                    <p className="k-info-message">
+                      Для розрахунку необхідно:
+                    </p>
+                    <ul className="k-requirements-list">
+                      <li className={loadCalculationResults.mrz.deltaT !== null ? 'requirement-met' : 'requirement-missing'}>
+                        Ввести значення T₁ та T₂ для розрахунку ΔT
+                      </li>
+                      <li className={loadCalculationResults.mrz.deltaP !== null ? 'requirement-met' : 'requirement-missing'}>
+                        Ввести значення P₁ та P₂ (P₁ ≠ 0) для розрахунку ΔP
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

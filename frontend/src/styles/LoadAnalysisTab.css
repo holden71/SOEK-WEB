@@ -575,4 +575,169 @@
 
 .load-analysis-bg-warning-light {
   background-color: #fff3cd;
+}
+
+/* Стили для результатов расчетов (идентичные SeismicAnalysisTab) */
+.calculation-results-container {
+  margin-top: 24px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.results-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.results-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.results-section {
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  min-height: 140px;
+}
+
+.results-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 12px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #007bff;
+}
+
+.results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  min-height: 50px;
+}
+
+.result-label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 14px;
+}
+
+.result-value,
+.result-item .no-data-message {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  font-family: 'Courier New', monospace !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  font-style: normal !important;
+}
+
+.result-value {
+  color: #007bff !important;
+}
+
+.result-item .no-data-message {
+  color: #e67e22 !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  word-break: break-word;
+  text-align: right;
+}
+
+/* Responsive design for results */
+@media (max-width: 768px) {
+  .results-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .calculation-results-container {
+    margin-top: 16px;
+    padding: 16px;
+  }
+  
+  .results-title {
+    font-size: 16px;
+  }
+  
+  .results-section-title {
+    font-size: 14px;
+  }
+}
+
+/* Стили для информационного сообщения о расчете */
+.k-calculation-info {
+  padding: 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  margin-top: 16px;
+}
+
+.k-info-message {
+  font-size: 14px;
+  color: #856404;
+  margin: 0 0 8px 0;
+  font-weight: 500;
+  font-family: 'Arial', sans-serif;
+}
+
+.k-requirements-list {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.k-requirements-list li {
+  font-size: 13px;
+  color: #495057;
+  margin-bottom: 4px;
+  position: relative;
+  font-family: 'Arial', sans-serif;
+}
+
+.k-requirements-list li::before {
+  content: '•';
+  position: absolute;
+  left: -12px;
+  color: #6c757d;
+}
+
+.k-requirements-list li.requirement-met {
+  color: #28a745;
+}
+
+.k-requirements-list li.requirement-met::before {
+  content: '✓';
+  color: #28a745;
+  font-weight: bold;
+}
+
+.k-requirements-list li.requirement-missing {
+  color: #dc3545;
+}
+
+.k-requirements-list li.requirement-missing::before {
+  content: '✗';
+  color: #dc3545;
+  font-weight: bold;
 } 

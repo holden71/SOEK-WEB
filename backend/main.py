@@ -1827,6 +1827,11 @@ class LoadAnalysisParams(BaseModel):
     temp2_mrz: float | None = None
     sigma_dop_a_mrz: float | None = None
     ratio_e_mrz: float | None = None
+    # Результаты расчетов
+    delta_t_pz: float | None = None
+    ratio_p_pz: float | None = None
+    delta_t_mrz: float | None = None
+    ratio_p_mrz: float | None = None
 
 @app.post("/api/save-load-analysis-params")
 async def save_load_analysis_params(
@@ -1871,7 +1876,12 @@ async def save_load_analysis_params(
             "p2_mrz": "P2_MRZ", 
             "temp2_mrz": "TEMP2_MRZ",
             "sigma_dop_a_mrz": "SIGMA_DOP_A_MRZ",
-            "ratio_e_mrz": "RATIO_E_MRZ"
+            "ratio_e_mrz": "RATIO_E_MRZ",
+            # Результаты расчетов
+            "delta_t_pz": "DELTA_T_PZ",
+            "ratio_p_pz": "RATIO_P_PZ",
+            "delta_t_mrz": "DELTA_T_MRZ",
+            "ratio_p_mrz": "RATIO_P_MRZ"
         }
         
         # Add all fields (including null values to clear them)
@@ -1948,7 +1958,8 @@ async def get_load_analysis_params(
             SELECT 
                 MAT_NAME, DOC_1, DOC_2,
                 P1_PZ, TEMP1_PZ, P2_PZ, TEMP2_PZ, SIGMA_DOP_A_PZ, RATIO_E_PZ,
-                P1_MRZ, TEMP1_MRZ, P2_MRZ, TEMP2_MRZ, SIGMA_DOP_A_MRZ, RATIO_E_MRZ
+                P1_MRZ, TEMP1_MRZ, P2_MRZ, TEMP2_MRZ, SIGMA_DOP_A_MRZ, RATIO_E_MRZ,
+                DELTA_T_PZ, RATIO_P_PZ, DELTA_T_MRZ, RATIO_P_MRZ
             FROM SRTN_EK_SEISM_DATA 
             WHERE EK_ID = :ek_id
         """)
@@ -1975,7 +1986,12 @@ async def get_load_analysis_params(
             "p2_mrz": row[11],
             "temp2_mrz": row[12],
             "sigma_dop_a_mrz": row[13],
-            "ratio_e_mrz": row[14]
+            "ratio_e_mrz": row[14],
+            # Результаты расчетов
+            "delta_t_pz": row[15],
+            "ratio_p_pz": row[16],
+            "delta_t_mrz": row[17],
+            "ratio_p_mrz": row[18]
         }
         
         return {
