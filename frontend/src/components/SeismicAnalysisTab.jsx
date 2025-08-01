@@ -33,95 +33,7 @@ const SeismicAnalysisTab = ({
   elementData = null
 }) => {
 
-  // Отслеживаем изменения в поле допустимых напряжений и пересчитываем k коэффициенты
-  useEffect(() => {
-    // Пересчитываем только если уже были рассчитаны k коэффициенты
-    if (kResults.calculated) {
-      // Инлайн расчет для МРЗ
-      const calculateMRZK = () => {
-        const result = { k1: null, k2: null, kMin: null, canCalculate: false };
-        const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
-                         !isNaN(parseFloat(stressInputs.sigma_dop.value)) ? parseFloat(stressInputs.sigma_dop.value) : null;
-        const sigmaAlt1 = calculationResults.mrz.sigma_alt_1;
-        const sigmaAlt2 = calculationResults.mrz.sigma_alt_2;
-        
-        if (sigmaDop) {
-          let calculatedValues = [];
-          if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
-            result.k1 = (1.4 * sigmaDop) / sigmaAlt1;
-            calculatedValues.push(result.k1);
-          }
-          if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
-            result.k2 = (1.8 * sigmaDop) / sigmaAlt2;
-            calculatedValues.push(result.k2);
-          }
-          if (calculatedValues.length > 0) {
-            result.canCalculate = true;
-            result.kMin = Math.min(...calculatedValues);
-          }
-        }
-        return result;
-      };
 
-      // Инлайн расчет для ПЗ
-      const calculatePZK = () => {
-        const result = { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null };
-        const seismoTxt = elementData?.SEISMO_TXT || elementData?.seismo_txt || '';
-        let seismicCategory = null, coeff1 = null, coeff2 = null;
-        
-        if (seismoTxt.includes('II') || seismoTxt.includes('ІІ')) {
-          seismicCategory = 'II'; coeff1 = 1.5; coeff2 = 1.9;
-        } else if (seismoTxt.includes('I') || seismoTxt.includes('І')) {
-          seismicCategory = 'I'; coeff1 = 1.2; coeff2 = 1.6;
-        }
-        
-        const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
-                         !isNaN(parseFloat(stressInputs.sigma_dop.value)) ? parseFloat(stressInputs.sigma_dop.value) : null;
-        const sigmaAlt1 = calculationResults.pz.sigma_alt_1;
-        const sigmaAlt2 = calculationResults.pz.sigma_alt_2;
-        
-        result.seismicCategory = seismicCategory;
-        if (coeff1 && coeff2) {
-          result.coefficients = { coeff1, coeff2 };
-        }
-        
-        if (sigmaDop && coeff1 && coeff2) {
-          let calculatedValues = [];
-          if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
-            result.k1 = (coeff1 * sigmaDop) / sigmaAlt1;
-            calculatedValues.push(result.k1);
-          }
-          if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
-            result.k2 = (coeff2 * sigmaDop) / sigmaAlt2;
-            calculatedValues.push(result.k2);
-          }
-          if (calculatedValues.length > 0) {
-            result.canCalculate = true;
-            result.kMin = Math.min(...calculatedValues);
-          }
-        }
-        return result;
-      };
-      
-      const mrzResult = calculateMRZK();
-      const pzResult = calculatePZK();
-      
-      setKResults(prev => ({
-        ...prev,
-        mrz: mrzResult,
-        pz: pzResult
-      }));
-    }
-  }, [
-    stressInputs.sigma_dop?.enabled, 
-    stressInputs.sigma_dop?.value, 
-    calculationResults.mrz.sigma_alt_1,
-    calculationResults.mrz.sigma_alt_2,
-    calculationResults.pz.sigma_alt_1,
-    calculationResults.pz.sigma_alt_2,
-    elementData?.SEISMO_TXT,
-    elementData?.seismo_txt
-  ]);
   const handleFrequencyToggle = () => {
     setIsFrequencyEnabled(!isFrequencyEnabled);
     if (!isFrequencyEnabled) {
@@ -784,8 +696,8 @@ const SeismicAnalysisTab = ({
             className="calculate-button"
             onClick={async () => {
               try {
-                // Save stress inputs to database first
-                await saveStressInputs(stressInputs);
+                // Save stress inputs to database first (including natural frequency)
+                await saveStressInputs(stressInputs, isFrequencyEnabled, naturalFrequency);
                 
                 // Then calculate sigma alt values and k coefficients
                 await calculateSigmaAlt(async (sigmaResults) => {

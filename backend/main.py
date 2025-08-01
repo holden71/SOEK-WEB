@@ -1142,6 +1142,7 @@ async def save_stress_inputs(
     Save stress input values to SRTN_EK_SEISM_DATA table.
     
     This endpoint updates the SRTN_EK_SEISM_DATA table with stress input values:
+    - FIRST_NAT_FREQ (власна частота)
     - SIGMA_DOP (σ)
     - HCLPF 
     - SIGMA_1 (σ₁)
@@ -1159,6 +1160,7 @@ async def save_stress_inputs(
         # Map parameter names to database column names
         field_mapping = {
             # Общие характеристики
+            "natural_frequency": "FIRST_NAT_FREQ",
             "sigma_dop": "SIGMA_DOP",
             "hclpf": "HCLPF",
             "sigma_1": "SIGMA_1",
@@ -1206,9 +1208,6 @@ async def save_stress_inputs(
             WHERE EK_ID = :ek_id
         """)
         
-        print(f"Executing stress inputs update query: {update_query}")
-        print(f"Parameters: {update_params}")
-        
         result = db.execute(update_query, update_params)
         
         # Check if the update was successful
@@ -1248,6 +1247,7 @@ async def get_stress_inputs(
     Get stress input values from SRTN_EK_SEISM_DATA table.
     
     This endpoint retrieves stress input values for a specific element:
+    - FIRST_NAT_FREQ (власна частота)
     - SIGMA_DOP (σ)
     - HCLPF 
     - SIGMA_1 (σ₁)
@@ -1266,7 +1266,7 @@ async def get_stress_inputs(
         
         # Get stress input values
         stress_query = text("""
-            SELECT SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2, 
+            SELECT FIRST_NAT_FREQ, SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2, 
                    SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ,
                    SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ
             FROM SRTN_EK_SEISM_DATA 
@@ -1281,18 +1281,19 @@ async def get_stress_inputs(
         
         # Map database columns to response
         stress_values = {
-            "SIGMA_DOP": row[0],
-            "HCLPF": row[1],
-            "SIGMA_1": row[2],
-            "SIGMA_2": row[3],
-            "SIGMA_S_1_PZ": row[4],
-            "SIGMA_S_2_PZ": row[5], 
-            "SIGMA_S_S1_PZ": row[6],
-            "SIGMA_S_S2_PZ": row[7],
-            "SIGMA_S_1_MRZ": row[8],
-            "SIGMA_S_2_MRZ": row[9],
-            "SIGMA_S_S1_MRZ": row[10],
-            "SIGMA_S_S2_MRZ": row[11]
+            "FIRST_NAT_FREQ": row[0],
+            "SIGMA_DOP": row[1],
+            "HCLPF": row[2],
+            "SIGMA_1": row[3],
+            "SIGMA_2": row[4],
+            "SIGMA_S_1_PZ": row[5],
+            "SIGMA_S_2_PZ": row[6], 
+            "SIGMA_S_S1_PZ": row[7],
+            "SIGMA_S_S2_PZ": row[8],
+            "SIGMA_S_1_MRZ": row[9],
+            "SIGMA_S_2_MRZ": row[10],
+            "SIGMA_S_S1_MRZ": row[11],
+            "SIGMA_S_S2_MRZ": row[12]
         }
         
         return {

@@ -80,6 +80,7 @@ class SaveAnalysisResultResponse(BaseModel):
 class SaveStressInputsParams(BaseModel):
     ek_id: int
     # Общие характеристики
+    natural_frequency: Optional[float] = None
     sigma_dop: Optional[float] = None
     hclpf: Optional[float] = None
     sigma_1: Optional[float] = None

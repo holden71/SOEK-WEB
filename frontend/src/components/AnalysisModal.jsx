@@ -1073,7 +1073,7 @@ const AnalysisModal = ({
     }
   };
 
-  const saveStressInputs = async (stressInputsData) => {
+  const saveStressInputs = async (stressInputsData, frequencyEnabled = null, frequencyValue = null) => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
       console.warn('Cannot save stress inputs: missing element ID');
       return;
@@ -1088,7 +1088,18 @@ const AnalysisModal = ({
         ek_id: ekId
       };
 
-      // Add all fields - enabled fields get their values, disabled fields get null
+      // Use provided frequency values or fallback to component state
+      const freqEnabled = frequencyEnabled !== null ? frequencyEnabled : isFrequencyEnabled;
+      const freqValue = frequencyValue !== null ? frequencyValue : naturalFrequency;
+
+      // Add natural frequency if enabled
+      if (freqEnabled && freqValue && !isNaN(parseFloat(freqValue))) {
+        stressData.natural_frequency = parseFloat(freqValue);
+      } else {
+        stressData.natural_frequency = null;
+      }
+
+      // Add all stress input fields - enabled fields get their values, disabled fields get null
       Object.keys(stressInputsData).forEach(key => {
         const field = stressInputsData[key];
         if (field && field.enabled) {
@@ -1107,8 +1118,6 @@ const AnalysisModal = ({
           stressData[key] = null;
         }
       });
-
-
 
       const response = await fetch('http://localhost:8000/api/save-stress-inputs', {
         method: 'POST',
@@ -1308,6 +1317,16 @@ const AnalysisModal = ({
       
       // Update stress inputs with values from database
       if (result.stress_values) {
+        // Handle natural frequency
+        const firstNatFreq = result.stress_values['FIRST_NAT_FREQ'];
+        if (firstNatFreq !== null && firstNatFreq !== undefined && firstNatFreq !== '') {
+          setIsFrequencyEnabled(true);
+          setNaturalFrequency(firstNatFreq.toString());
+        } else {
+          setIsFrequencyEnabled(false);
+          setNaturalFrequency('');
+        }
+
         // Start with fresh default values
         const newStressInputs = {
           // Общие характеристики
