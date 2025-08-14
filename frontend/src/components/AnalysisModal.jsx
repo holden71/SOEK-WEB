@@ -272,8 +272,8 @@ const AnalysisModal = ({
 
   // State for K coefficient results
   const [kResults, setKResults] = useState({
-    mrz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false },
-    pz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null },
+    mrz: { k1: null, k2: null, k3: null, kMin: null, n: null, canCalculate: false },
+    pz: { k1: null, k2: null, k3: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null },
     calculated: false
   });
   
@@ -1194,7 +1194,8 @@ const AnalysisModal = ({
       const newKResults = {
         pz: {
           k1: data.k1_pz,
-          k2: data.k2_pz,
+          k2: data.k2_value ?? null,
+          k3: data.k3_pz ?? null,
           kMin: data.k_min_pz,
           seismicCategory: data.seismic_category_pz,
           canCalculate: (data.k_min_pz !== null) || (data.n_pz !== null),
@@ -1203,7 +1204,8 @@ const AnalysisModal = ({
         },
         mrz: {
           k1: data.k1_mrz,
-          k2: data.k2_mrz,
+          k2: data.k2_value ?? null,
+          k3: data.k3_mrz ?? null,
           kMin: data.k_min_mrz,
           canCalculate: (data.k_min_mrz !== null) || (data.n_mrz !== null),
           n: data.n_mrz ?? null

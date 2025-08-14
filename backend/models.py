@@ -106,6 +106,11 @@ class SaveKResultsParams(BaseModel):
     # Сохраняем k1 значения в K1 поля
     k1_pz: Optional[float] = None      # Сохраняется в K1_PZ
     k1_mrz: Optional[float] = None     # Сохраняется в K1_MRZ
+    # Сохраняем k3 значения
+    k3_pz: Optional[float] = None      # Сохраняется в K3_PZ
+    k3_mrz: Optional[float] = None     # Сохраняется в K3_MRZ
+    # Сохраняем k2 (общая величина)
+    k2_value: Optional[float] = None   # Сохраняется в K2_
     # Параметр n
     n_pz: Optional[float] = None       # Сохраняется в N_PZ
     n_mrz: Optional[float] = None      # Сохраняется в N_MRZ

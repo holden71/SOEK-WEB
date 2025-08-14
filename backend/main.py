@@ -1689,11 +1689,16 @@ async def save_k_results(
         update_fields = []
         update_params = {"ek_id": params.ek_id}
         
-        # Map parameter names to database column names - сохраняем k1 и n
+        # Map parameter names to database column names - сохраняем k1, k2, k3, n
         field_mapping = {
             # Сохраняем k1 значения в K1 поля
             "k1_pz": "K1_PZ",
             "k1_mrz": "K1_MRZ",
+            # Сохраняем k3 значения
+            "k3_pz": "K3_PZ",
+            "k3_mrz": "K3_MRZ",
+            # Сохраняем k2 общее значение
+            "k2_value": "K2_",
             # Сохраняем n значения
             "n_pz": "N_PZ",
             "n_mrz": "N_MRZ",
@@ -1776,7 +1781,7 @@ async def get_k_results(
         
         # Get K and N values
         k_query = text("""
-            SELECT K1_PZ, K1_MRZ, N_PZ, N_MRZ
+            SELECT K1_PZ, K1_MRZ, K3_PZ, K3_MRZ, K2_, N_PZ, N_MRZ
             FROM SRTN_EK_SEISM_DATA 
             WHERE EK_ID = :ek_id
         """)
@@ -1793,14 +1798,15 @@ async def get_k_results(
         # Map database columns to response - возвращаем правильную структуру
         k_values = {
             "k1_pz": row[0],
-            "k2_pz": None,
+            "k2_value": row[4],
+            "k3_pz": row[2],
             "k_min_pz": row[0],
             "seismic_category_pz": None,
             "k1_mrz": row[1],
-            "k2_mrz": None,
+            "k3_mrz": row[3],
             "k_min_mrz": row[1],
-            "n_pz": row[2],
-            "n_mrz": row[3],
+            "n_pz": row[5],
+            "n_mrz": row[6],
             "calculated": has_k_data
         }
         

@@ -24,8 +24,8 @@ const SeismicAnalysisTab = ({
   clearCalculationResults = () => {},
   fetchCalculationResults = () => {},
   kResults = {
-    mrz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false },
-    pz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null },
+    mrz: { k1: null, k2: null, k3: null, kMin: null, n: null, canCalculate: false },
+    pz: { k1: null, k2: null, k3: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null },
     calculated: false
   },
   setKResults = () => {},
@@ -140,7 +140,7 @@ const SeismicAnalysisTab = ({
 
   // Функция для расчета коэффициента k для МРЗ
   const calculateKCoefficient = (sigmaData = null) => {
-    const result = { k1: null, k2: null, kMin: null, n: null, canCalculate: false };
+    const result = { k1: null, k2: null, k3: null, kMin: null, n: null, canCalculate: false };
     
     // Проверяем наличие основных данных
     const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
@@ -157,14 +157,14 @@ const SeismicAnalysisTab = ({
       
       // Рассчитываем k₁ если есть sigmaAlt1
       if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
-        result.k1 = (1.4 * sigmaDop) / sigmaAlt1;
-        calculatedValues.push(result.k1);
+        const v1 = (1.4 * sigmaDop) / sigmaAlt1;
+        calculatedValues.push(v1);
       }
       
       // Рассчитываем k₂ если есть sigmaAlt2
       if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
-        result.k2 = (1.8 * sigmaDop) / sigmaAlt2;
-        calculatedValues.push(result.k2);
+        const v2 = (1.8 * sigmaDop) / sigmaAlt2;
+        calculatedValues.push(v2);
       }
       
       // Если есть хотя бы одно значение
@@ -172,7 +172,9 @@ const SeismicAnalysisTab = ({
         result.canCalculate = true;
         // Если есть оба - берем минимальное, если одно - берем его
         result.kMin = Math.min(...calculatedValues);
-        result.n = result.kMin; // n определяется как минимальное из формул (В3–В4)
+        result.n = result.kMin; // n определяется как минимальное из формул (Д.4–Д.5)
+        result.k1 = result.kMin; // k1 по Д.4–Д.5 (минимум)
+        // k3 будет рассчитан ниже по m2
       }
     }
     return result;
@@ -194,7 +196,7 @@ const SeismicAnalysisTab = ({
 
   // Функция для расчета коэффициента k для ПЗ
   const calculateKCoefficientPZ = (sigmaData = null) => {
-    const result = { k1: null, k2: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null };
+    const result = { k1: null, k2: null, k3: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null };
     
     // Определяем категорию сейсмостойкости
     const { category: seismicCategory, coeff1, coeff2 } = determineSeismicCategory();
@@ -220,14 +222,14 @@ const SeismicAnalysisTab = ({
       
       // Рассчитываем k₁ если есть sigmaAlt1
       if (sigmaAlt1 !== undefined && sigmaAlt1 > 0) {
-        result.k1 = (coeff1 * sigmaDop) / sigmaAlt1;
-        calculatedValues.push(result.k1);
+        const v1 = (coeff1 * sigmaDop) / sigmaAlt1;
+        calculatedValues.push(v1);
       }
       
       // Рассчитываем k₂ если есть sigmaAlt2
       if (sigmaAlt2 !== undefined && sigmaAlt2 > 0) {
-        result.k2 = (coeff2 * sigmaDop) / sigmaAlt2;
-        calculatedValues.push(result.k2);
+        const v2 = (coeff2 * sigmaDop) / sigmaAlt2;
+        calculatedValues.push(v2);
       }
       
       // Если есть хотя бы одно значение
@@ -235,7 +237,8 @@ const SeismicAnalysisTab = ({
         result.canCalculate = true;
         // Если есть оба - берем минимальное, если одно - берем его
         result.kMin = Math.min(...calculatedValues);
-        result.n = result.kMin; // n определяется как минимальное из формул (В5–В8)
+        result.n = result.kMin; // n определяется как минимальное из формул (Д.6–Д.9)
+        result.k1 = result.kMin; // k1 по Д.6–Д.9 (минимум)
       }
     }
     return result;
@@ -248,11 +251,35 @@ const SeismicAnalysisTab = ({
   const calculateAllKCoefficients = async (sigmaData = null) => {
     const mrzResult = calculateKCoefficient(sigmaData);
     const pzResult = calculateKCoefficientPZ(sigmaData);
+
+    // Рассчитываем k3 = n / m2 (Д.13) при наличии m2 для каждого типа
+    const m2Pz = allAnalysisResults?.['ПЗ']?.m2;
+    const m2Mrz = allAnalysisResults?.['МРЗ']?.m2;
+    if (pzResult?.n && m2Pz && !isNaN(m2Pz) && m2Pz > 0) {
+      pzResult.k3 = pzResult.n / m2Pz;
+    }
+    if (mrzResult?.n && m2Mrz && !isNaN(m2Mrz) && m2Mrz > 0) {
+      mrzResult.k3 = mrzResult.n / m2Mrz;
+    }
+
+    // k2 по Д.12 требует HCLPF, m1, F_mu, PGA_RLE. Сейчас считаем только при наличии всех параметров.
+    const hclpfVal = stressInputs.hclpf?.enabled && stressInputs.hclpf?.value && !isNaN(parseFloat(stressInputs.hclpf.value)) ? parseFloat(stressInputs.hclpf.value) : null;
+    const m1Pz = allAnalysisResults?.['ПЗ']?.m1;
+    const m1Mrz = allAnalysisResults?.['МРЗ']?.m1;
+    const m1Val = (m1Pz ?? m1Mrz); // если известен один из m1
+    // F_mu и PGA_RLE пока не заданы в интерфейсе → k2 оставляем null
+    let k2Value = null;
+    if (hclpfVal && m1Val && !isNaN(m1Val) && false) {
+      // placeholder: формула k2 = HCLPF / (m1 * F_mu * PGA_RLE)
+    }
+    pzResult.k2 = k2Value;
+    mrzResult.k2 = k2Value;
     
     const newKResults = {
       mrz: mrzResult,
       pz: pzResult,
-      calculated: true
+      calculated: true,
+      k2_value: k2Value ?? null
     };
     
     setKResults(newKResults);
@@ -754,7 +781,7 @@ const SeismicAnalysisTab = ({
                   </div>
                 </div>
                 
-                 {/* Коэффициенты k и параметр n для ПЗ */}
+                 {/* Коефіцієнти та параметр n для ПЗ */}
                 <div className="k-coefficients-section">
                   <h5 className="k-section-title">
                     Коефіцієнти k
@@ -791,6 +818,14 @@ const SeismicAnalysisTab = ({
                           <span className="k-result-formula">k мінімальне:</span>
                           <span className="k-result-value k-min-value">
                             {kResults.pz.kMin.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                      {kResults.pz.k3 !== null && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">k₃ = n/m₂:</span>
+                          <span className="k-result-value">
+                            {kResults.pz.k3.toFixed(4)}
                           </span>
                         </div>
                       )}
@@ -860,7 +895,7 @@ const SeismicAnalysisTab = ({
                   </div>
                 </div>
                 
-                 {/* Коэффициенты k и параметр n для МРЗ */}
+                 {/* Коефіцієнти та параметр n для МРЗ */}
                 <div className="k-coefficients-section">
                   <h5 className="k-section-title">Коефіцієнти k</h5>
                   {kResults.calculated && kResults.mrz.canCalculate ? (
@@ -894,6 +929,14 @@ const SeismicAnalysisTab = ({
                           <span className="k-result-formula">k мінімальне:</span>
                           <span className="k-result-value k-min-value">
                             {kResults.mrz.kMin.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                      {kResults.mrz.k3 !== null && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">k₃ = n/m₂:</span>
+                          <span className="k-result-value">
+                            {kResults.mrz.k3.toFixed(4)}
                           </span>
                         </div>
                       )}
