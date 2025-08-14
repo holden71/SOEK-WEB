@@ -797,33 +797,25 @@ const SeismicAnalysisTab = ({
                           </span>
                         </div>
                       )}
-                      {kResults.pz.k1 !== null && kResults.pz.coefficients && (
+                      {kResults.pz.k1 !== null && (
                         <div className="k-result-item">
-                          <span className="k-result-formula">k₁ = {kResults.pz.coefficients.coeff1}[σ]/(σₛ)₁:</span>
+                          <span className="k-result-formula">k₁ {kResults.pz.seismicCategory === 'I' ? '(Д.6–Д.7)' : (kResults.pz.seismicCategory === 'II' ? '(Д.8–Д.9)' : '')}:</span>
                           <span className="k-result-value">
                             {kResults.pz.k1.toFixed(4)}
                           </span>
                         </div>
                       )}
-                      {kResults.pz.k2 !== null && kResults.pz.coefficients && (
+                      {kResults.pz.k2 !== null && (
                         <div className="k-result-item">
-                          <span className="k-result-formula">k₂ = {kResults.pz.coefficients.coeff2}[σ]/(σₛ)₂:</span>
+                          <span className="k-result-formula">k₂ (Д.12):</span>
                           <span className="k-result-value">
                             {kResults.pz.k2.toFixed(4)}
                           </span>
                         </div>
                       )}
-                      {kResults.pz.kMin !== null && (
-                        <div className="k-result-item k-min-result">
-                          <span className="k-result-formula">k мінімальне:</span>
-                          <span className="k-result-value k-min-value">
-                            {kResults.pz.kMin.toFixed(4)}
-                          </span>
-                        </div>
-                      )}
                       {kResults.pz.k3 !== null && (
                         <div className="k-result-item">
-                          <span className="k-result-formula">k₃ = n/m₂:</span>
+                          <span className="k-result-formula">k₃ (Д.13):</span>
                           <span className="k-result-value">
                             {kResults.pz.k3.toFixed(4)}
                           </span>
@@ -910,7 +902,7 @@ const SeismicAnalysisTab = ({
                       )}
                       {kResults.mrz.k1 !== null && (
                         <div className="k-result-item">
-                          <span className="k-result-formula">k₁ = 1.4[σ]/(σₛ)₁:</span>
+                          <span className="k-result-formula">k₁ (Д.4–Д.5):</span>
                           <span className="k-result-value">
                             {kResults.mrz.k1.toFixed(4)}
                           </span>
@@ -918,23 +910,15 @@ const SeismicAnalysisTab = ({
                       )}
                       {kResults.mrz.k2 !== null && (
                         <div className="k-result-item">
-                          <span className="k-result-formula">k₂ = 1.8[σ]/(σₛ)₂:</span>
+                          <span className="k-result-formula">k₂ (Д.12):</span>
                           <span className="k-result-value">
                             {kResults.mrz.k2.toFixed(4)}
                           </span>
                         </div>
                       )}
-                      {kResults.mrz.kMin !== null && (
-                        <div className="k-result-item k-min-result">
-                          <span className="k-result-formula">k мінімальне:</span>
-                          <span className="k-result-value k-min-value">
-                            {kResults.mrz.kMin.toFixed(4)}
-                          </span>
-                        </div>
-                      )}
                       {kResults.mrz.k3 !== null && (
                         <div className="k-result-item">
-                          <span className="k-result-formula">k₃ = n/m₂:</span>
+                          <span className="k-result-formula">k₃ (Д.13):</span>
                           <span className="k-result-value">
                             {kResults.mrz.k3.toFixed(4)}
                           </span>
