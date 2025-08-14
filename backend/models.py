@@ -121,3 +121,60 @@ class SaveKResultsResponse(BaseModel):
     success: bool
     message: str
     updated_fields: Dict[str, Any] 
+
+
+# Request/response models moved from main.py for better modularity
+class LocationCheck(BaseModel):
+    plant_id: int
+    unit_id: int
+    building: str
+    room: str
+
+
+class BuildingCheck(BaseModel):
+    plant_id: int
+    unit_id: int
+    building: str
+
+
+class AccelDataItem(BaseModel):
+    dempf: Optional[float] = None
+    data: Dict[str, List[Any]]
+
+
+class AccelData(BaseModel):
+    plant_id: int
+    unit_id: int
+    building: str
+    room: Optional[str] = None
+    lev: Optional[float] = None
+    lev1: Optional[float] = None
+    lev2: Optional[float] = None
+    pga: Optional[float] = None
+    calc_type: str
+    set_type: str = "ВИМОГИ"
+    sheets: Dict[str, AccelDataItem]
+
+
+class LoadAnalysisParams(BaseModel):
+    element_id: int
+    material: Optional[str] = None
+    doc_code_analytics: Optional[str] = None
+    doc_code_operation: Optional[str] = None
+    p1_pz: Optional[float] = None
+    temp1_pz: Optional[float] = None
+    p2_pz: Optional[float] = None
+    temp2_pz: Optional[float] = None
+    sigma_dop_a_pz: Optional[float] = None
+    ratio_e_pz: Optional[float] = None
+    p1_mrz: Optional[float] = None
+    temp1_mrz: Optional[float] = None
+    p2_mrz: Optional[float] = None
+    temp2_mrz: Optional[float] = None
+    sigma_dop_a_mrz: Optional[float] = None
+    ratio_e_mrz: Optional[float] = None
+    # Результаты расчетов
+    delta_t_pz: Optional[float] = None
+    ratio_p_pz: Optional[float] = None
+    delta_t_mrz: Optional[float] = None
+    ratio_p_mrz: Optional[float] = None
