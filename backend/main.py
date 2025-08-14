@@ -18,9 +18,9 @@ from routes.load_analysis import router as load_analysis_router
 async def lifespan(_app: FastAPI):
     DbSessionManager.initialize()
     try:
-    yield
+        yield
     finally:
-    DbSessionManager.dispose()
+        DbSessionManager.dispose()
 
 
 app = FastAPI(lifespan=lifespan)

@@ -262,18 +262,31 @@ const SeismicAnalysisTab = ({
       mrzResult.k3 = mrzResult.n / m2Mrz;
     }
 
-    // k2 по Д.12 требует HCLPF, m1, F_mu, PGA_RLE. Сейчас считаем только при наличии всех параметров.
+    // k2 по Д.12: k = HCLPF / (m1 * F_mu * PGA_RLE)
     const hclpfVal = stressInputs.hclpf?.enabled && stressInputs.hclpf?.value && !isNaN(parseFloat(stressInputs.hclpf.value)) ? parseFloat(stressInputs.hclpf.value) : null;
     const m1Pz = allAnalysisResults?.['ПЗ']?.m1;
     const m1Mrz = allAnalysisResults?.['МРЗ']?.m1;
-    const m1Val = (m1Pz ?? m1Mrz); // если известен один из m1
-    // F_mu и PGA_RLE пока не заданы в интерфейсе → k2 оставляем null
+    const m1Val = (m1Pz ?? m1Mrz);
+    const fMuVal = elementData?.F_MU ?? elementData?.f_mu ?? null;
+    const pgaVal = elementData?.PGA_ ?? elementData?.pga_ ?? elementData?.PGA ?? elementData?.pga ?? null;
     let k2Value = null;
-    if (hclpfVal && m1Val && !isNaN(m1Val) && false) {
-      // placeholder: формула k2 = HCLPF / (m1 * F_mu * PGA_RLE)
+    const missingK2 = [];
+    if (hclpfVal === null || isNaN(hclpfVal) || hclpfVal <= 0) missingK2.push('HCLPF');
+    if (m1Val === null || m1Val === undefined || isNaN(m1Val) || m1Val <= 0) missingK2.push('m₁');
+    if (fMuVal === null || isNaN(fMuVal) || fMuVal <= 0) missingK2.push('Fμ');
+    if (pgaVal === null || isNaN(pgaVal) || pgaVal <= 0) missingK2.push('PGA');
+    if (
+      hclpfVal !== null && !isNaN(hclpfVal) && hclpfVal > 0 &&
+      m1Val !== null && m1Val !== undefined && !isNaN(m1Val) && m1Val > 0 &&
+      fMuVal !== null && !isNaN(fMuVal) && fMuVal > 0 &&
+      pgaVal !== null && !isNaN(pgaVal) && pgaVal > 0
+    ) {
+      k2Value = hclpfVal / (m1Val * fMuVal * pgaVal);
     }
     pzResult.k2 = k2Value;
     mrzResult.k2 = k2Value;
+    pzResult.k2Missing = missingK2;
+    mrzResult.k2Missing = missingK2;
     
     const newKResults = {
       mrz: mrzResult,
@@ -805,14 +818,20 @@ const SeismicAnalysisTab = ({
                           </span>
                         </div>
                       )}
-                      {kResults.pz.k2 !== null && (
-                        <div className="k-result-item">
-                          <span className="k-result-formula">k₂ (Д.12):</span>
-                          <span className="k-result-value">
-                            {kResults.pz.k2.toFixed(4)}
-                          </span>
-                        </div>
-                      )}
+                      <div className="k-result-item">
+                        <span className="k-result-formula">k₂ (Д.12):</span>
+                        <span className="k-result-value">
+                          {kResults.pz.k2 !== null
+                            ? kResults.pz.k2.toFixed(4)
+                            : (
+                              <span className="no-data-message">
+                                {Array.isArray(kResults.pz.k2Missing) && kResults.pz.k2Missing.length > 0
+                                  ? `Відсутні дані: ${kResults.pz.k2Missing.join(', ')}`
+                                  : 'Відсутні дані'}
+                              </span>
+                            )}
+                        </span>
+                      </div>
                       {kResults.pz.k3 !== null && (
                         <div className="k-result-item">
                           <span className="k-result-formula">k₃ (Д.13):</span>
@@ -908,14 +927,20 @@ const SeismicAnalysisTab = ({
                           </span>
                         </div>
                       )}
-                      {kResults.mrz.k2 !== null && (
-                        <div className="k-result-item">
-                          <span className="k-result-formula">k₂ (Д.12):</span>
-                          <span className="k-result-value">
-                            {kResults.mrz.k2.toFixed(4)}
-                          </span>
-                        </div>
-                      )}
+                      <div className="k-result-item">
+                        <span className="k-result-formula">k₂ (Д.12):</span>
+                        <span className="k-result-value">
+                          {kResults.mrz.k2 !== null
+                            ? kResults.mrz.k2.toFixed(4)
+                            : (
+                              <span className="no-data-message">
+                                {Array.isArray(kResults.mrz.k2Missing) && kResults.mrz.k2Missing.length > 0
+                                  ? `Відсутні дані: ${kResults.mrz.k2Missing.join(', ')}`
+                                  : 'Відсутні дані'}
+                              </span>
+                            )}
+                        </span>
+                      </div>
                       {kResults.mrz.k3 !== null && (
                         <div className="k-result-item">
                           <span className="k-result-formula">k₃ (Д.13):</span>

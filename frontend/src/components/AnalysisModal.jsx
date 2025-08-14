@@ -1432,6 +1432,10 @@ const AnalysisModal = ({
               
               if (hasRequirementsData) {
                 newAllRequirementsData[type] = data;
+                // store PGA value (if provided) for k2 calculation
+                if (data && data.pga !== undefined && data.pga !== null) {
+                  try { elementData.PGA_ = data.pga; } catch (_) {}
+                }
                 console.log(`✓ Данные требований успешно получены для типа спектру: ${type}`);
               } else {
                 console.warn(`Відсутні дані для вимог типу спектру: ${type}`);

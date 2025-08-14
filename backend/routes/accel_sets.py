@@ -479,6 +479,25 @@ async def get_spectral_data(
             response_data["pz_y"] = y_accel if y_accel else None
             response_data["pz_z"] = z_accel if z_accel else None
 
+        # Attach PGA value (PGA or PGA_*) for k2 (Д.12)
+        try:
+            inspector = inspect(db.get_bind())
+            columns = inspector.get_columns('SRTN_ACCEL_SET')
+            pga_column = None
+            for col in columns:
+                name = col['name']
+                if name.upper() == 'PGA' or name.upper().startswith('PGA_'):
+                    pga_column = name
+                    break
+            if pga_column:
+                pga_query = text(f"SELECT {pga_column} FROM SRTN_ACCEL_SET WHERE ACCEL_SET_ID = :set_id")
+                pga_result = db.execute(pga_query, {"set_id": set_row[0]})
+                pga_row = pga_result.fetchone()
+                if pga_row and pga_row[0] is not None:
+                    response_data["pga"] = float(pga_row[0])
+        except Exception:
+            pass
+
         return SpectralDataResult(**response_data)
     except HTTPException:
         raise
