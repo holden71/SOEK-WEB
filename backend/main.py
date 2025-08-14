@@ -1689,11 +1689,14 @@ async def save_k_results(
         update_fields = []
         update_params = {"ek_id": params.ek_id}
         
-        # Map parameter names to database column names - сохраняем k1 в K1 поля
+        # Map parameter names to database column names - сохраняем k1 и n
         field_mapping = {
             # Сохраняем k1 значения в K1 поля
-            "k1_pz": "K1_PZ",      # k1 для ПЗ в K1_PZ
-            "k1_mrz": "K1_MRZ"     # k1 для МРЗ в K1_MRZ
+            "k1_pz": "K1_PZ",
+            "k1_mrz": "K1_MRZ",
+            # Сохраняем n значения
+            "n_pz": "N_PZ",
+            "n_mrz": "N_MRZ",
         }
         
         # Add all fields (including null values to clear them)
@@ -1771,9 +1774,9 @@ async def get_k_results(
         if check_result.scalar() == 0:
             raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
         
-        # Get K coefficient values - только K1_PZ, K1_MRZ
+        # Get K and N values
         k_query = text("""
-            SELECT K1_PZ, K1_MRZ
+            SELECT K1_PZ, K1_MRZ, N_PZ, N_MRZ
             FROM SRTN_EK_SEISM_DATA 
             WHERE EK_ID = :ek_id
         """)
@@ -1789,13 +1792,15 @@ async def get_k_results(
         
         # Map database columns to response - возвращаем правильную структуру
         k_values = {
-            "k1_pz": row[0],      # K1_PZ содержит k1 для ПЗ
-            "k2_pz": None,        # K2_PZ не используется
-            "k_min_pz": row[0],   # K1_PZ - минимальное значение для ПЗ
-            "seismic_category_pz": None,  # Не сохраняем в БД
-            "k1_mrz": row[1],     # K1_MRZ содержит k1 для МРЗ
-            "k2_mrz": None,       # K2_MRZ не используется
-            "k_min_mrz": row[1],  # K1_MRZ - минимальное значение для МРЗ
+            "k1_pz": row[0],
+            "k2_pz": None,
+            "k_min_pz": row[0],
+            "seismic_category_pz": None,
+            "k1_mrz": row[1],
+            "k2_mrz": None,
+            "k_min_mrz": row[1],
+            "n_pz": row[2],
+            "n_mrz": row[3],
             "calculated": has_k_data
         }
         

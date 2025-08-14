@@ -106,6 +106,9 @@ class SaveKResultsParams(BaseModel):
     # Сохраняем k1 значения в K1 поля
     k1_pz: Optional[float] = None      # Сохраняется в K1_PZ
     k1_mrz: Optional[float] = None     # Сохраняется в K1_MRZ
+    # Параметр n
+    n_pz: Optional[float] = None       # Сохраняется в N_PZ
+    n_mrz: Optional[float] = None      # Сохраняется в N_MRZ
     # Общий флаг
     calculated: Optional[bool] = None
 

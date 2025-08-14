@@ -272,8 +272,8 @@ const AnalysisModal = ({
 
   // State for K coefficient results
   const [kResults, setKResults] = useState({
-    mrz: { k1: null, k2: null, kMin: null, canCalculate: false },
-    pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
+    mrz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false },
+    pz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null },
     calculated: false
   });
   
@@ -1044,9 +1044,11 @@ const AnalysisModal = ({
       const kData = {
         ek_id: ekId,
         // ПЗ результаты
-        k1_pz: kResultsData.pz?.k1 || null,
+        k1_pz: kResultsData.pz?.k1 ?? null,
+        n_pz: kResultsData.pz?.n ?? null,
         // МРЗ результаты  
-        k1_mrz: kResultsData.mrz?.k1 || null,
+        k1_mrz: kResultsData.mrz?.k1 ?? null,
+        n_mrz: kResultsData.mrz?.n ?? null,
         // Общий флаг что расчет выполнен
         calculated: kResultsData.calculated || false
       };
@@ -1195,14 +1197,16 @@ const AnalysisModal = ({
           k2: data.k2_pz,
           kMin: data.k_min_pz,
           seismicCategory: data.seismic_category_pz,
-          canCalculate: data.k_min_pz !== null,
-          coefficients: null // Will be calculated based on seismic category
+          canCalculate: (data.k_min_pz !== null) || (data.n_pz !== null),
+          coefficients: null, // Will be calculated based on seismic category
+          n: data.n_pz ?? null
         },
         mrz: {
           k1: data.k1_mrz,
           k2: data.k2_mrz,
           kMin: data.k_min_mrz,
-          canCalculate: data.k_min_mrz !== null
+          canCalculate: (data.k_min_mrz !== null) || (data.n_mrz !== null),
+          n: data.n_mrz ?? null
         },
         calculated: data.calculated || false
       };

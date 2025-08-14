@@ -24,8 +24,8 @@ const SeismicAnalysisTab = ({
   clearCalculationResults = () => {},
   fetchCalculationResults = () => {},
   kResults = {
-    mrz: { k1: null, k2: null, kMin: null, canCalculate: false },
-    pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
+    mrz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false },
+    pz: { k1: null, k2: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null },
     calculated: false
   },
   setKResults = () => {},
@@ -140,7 +140,7 @@ const SeismicAnalysisTab = ({
 
   // Функция для расчета коэффициента k для МРЗ
   const calculateKCoefficient = (sigmaData = null) => {
-    const result = { k1: null, k2: null, kMin: null, canCalculate: false };
+    const result = { k1: null, k2: null, kMin: null, n: null, canCalculate: false };
     
     // Проверяем наличие основных данных
     const sigmaDop = stressInputs.sigma_dop?.enabled && stressInputs.sigma_dop?.value && 
@@ -172,6 +172,7 @@ const SeismicAnalysisTab = ({
         result.canCalculate = true;
         // Если есть оба - берем минимальное, если одно - берем его
         result.kMin = Math.min(...calculatedValues);
+        result.n = result.kMin; // n определяется как минимальное из формул (В3–В4)
       }
     }
     return result;
@@ -193,7 +194,7 @@ const SeismicAnalysisTab = ({
 
   // Функция для расчета коэффициента k для ПЗ
   const calculateKCoefficientPZ = (sigmaData = null) => {
-    const result = { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null };
+    const result = { k1: null, k2: null, kMin: null, n: null, canCalculate: false, seismicCategory: null, coefficients: null };
     
     // Определяем категорию сейсмостойкости
     const { category: seismicCategory, coeff1, coeff2 } = determineSeismicCategory();
@@ -234,6 +235,7 @@ const SeismicAnalysisTab = ({
         result.canCalculate = true;
         // Если есть оба - берем минимальное, если одно - берем его
         result.kMin = Math.min(...calculatedValues);
+        result.n = result.kMin; // n определяется как минимальное из формул (В5–В8)
       }
     }
     return result;
@@ -752,7 +754,7 @@ const SeismicAnalysisTab = ({
                   </div>
                 </div>
                 
-                {/* Коэффициенты k для ПЗ */}
+                 {/* Коэффициенты k и параметр n для ПЗ */}
                 <div className="k-coefficients-section">
                   <h5 className="k-section-title">
                     Коефіцієнти k
@@ -760,6 +762,14 @@ const SeismicAnalysisTab = ({
                   </h5>
                   {kResults.calculated && kResults.pz.canCalculate ? (
                     <div className="k-results-grid">
+                      {kResults.pz.n !== null && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">n:</span>
+                          <span className="k-result-value">
+                            {kResults.pz.n.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
                       {kResults.pz.k1 !== null && kResults.pz.coefficients && (
                         <div className="k-result-item">
                           <span className="k-result-formula">k₁ = {kResults.pz.coefficients.coeff1}[σ]/(σₛ)₁:</span>
@@ -850,11 +860,19 @@ const SeismicAnalysisTab = ({
                   </div>
                 </div>
                 
-                {/* Коэффициенты k для МРЗ */}
+                 {/* Коэффициенты k и параметр n для МРЗ */}
                 <div className="k-coefficients-section">
                   <h5 className="k-section-title">Коефіцієнти k</h5>
                   {kResults.calculated && kResults.mrz.canCalculate ? (
                     <div className="k-results-grid">
+                      {kResults.mrz.n !== null && (
+                        <div className="k-result-item">
+                          <span className="k-result-formula">n:</span>
+                          <span className="k-result-value">
+                            {kResults.mrz.n.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
                       {kResults.mrz.k1 !== null && (
                         <div className="k-result-item">
                           <span className="k-result-formula">k₁ = 1.4[σ]/(σₛ)₁:</span>
