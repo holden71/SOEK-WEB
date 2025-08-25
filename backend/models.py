@@ -161,6 +161,7 @@ class LoadAnalysisParams(BaseModel):
     material: Optional[str] = None
     doc_code_analytics: Optional[str] = None
     doc_code_operation: Optional[str] = None
+    sigma_alt_dop: Optional[float] = None
     p1_pz: Optional[float] = None
     temp1_pz: Optional[float] = None
     p2_pz: Optional[float] = None
@@ -181,3 +182,6 @@ class LoadAnalysisParams(BaseModel):
     # Новые частоты
     first_freq_alt_pz: Optional[float] = None
     first_freq_alt_mrz: Optional[float] = None
+    # deltaSigma
+    ration_sigma_dop_pz: Optional[float] = None
+    ration_sigma_dop_mrz: Optional[float] = None

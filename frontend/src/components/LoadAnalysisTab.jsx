@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/LoadAnalysisTab.css';
 
-const LoadAnalysisTab = ({ 
-  isFrequencyEnabled, 
-  setIsFrequencyEnabled, 
-  naturalFrequency, 
+const LoadAnalysisTab = ({
+  isFrequencyEnabled,
+  setIsFrequencyEnabled,
+  naturalFrequency,
   setNaturalFrequency,
   allSpectralData,
   allRequirementsData,
@@ -15,15 +15,18 @@ const LoadAnalysisTab = ({
     pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
     calculated: false
   },
-  elementData = null
+  elementData = null,
+  stressInputs = {}
 }) => {
   console.log('LoadAnalysisTab rendering with elementData:', elementData);
   console.log('naturalFrequency prop:', naturalFrequency);
+  console.log('elementData.SIGMA_DOP:', elementData?.SIGMA_DOP);
+  console.log('elementData.sigma_dop:', elementData?.sigma_dop);
   
   // Состояние для результатов расчета
   const [loadCalculationResults, setLoadCalculationResults] = useState({
-    pz: { deltaT: null, deltaP: null, firstFreqAlt: null },
-    mrz: { deltaT: null, deltaP: null, firstFreqAlt: null },
+    pz: { deltaT: null, deltaP: null, firstFreqAlt: null, deltaSigma: null },
+    mrz: { deltaT: null, deltaP: null, firstFreqAlt: null, deltaSigma: null },
     calculationAttempted: false,
     missingData: { pz: [], mrz: [] }
   });
@@ -34,6 +37,7 @@ const LoadAnalysisTab = ({
     material: { enabled: true, value: '' },
     doc_code_analytics: { enabled: true, value: '' },
     doc_code_operation: { enabled: true, value: '' },
+    sigma_alt_dop: { enabled: true, value: '' },
     
     // Параметры для ПЗ
     p1_pz: { enabled: true, value: '' },
@@ -103,21 +107,28 @@ const LoadAnalysisTab = ({
           console.log('Загруженные данные из базы:', savedParams);
           console.log('first_freq_alt_pz из базы:', savedParams.first_freq_alt_pz);
           console.log('first_freq_alt_mrz из базы:', savedParams.first_freq_alt_mrz);
+          console.log('ration_sigma_dop_pz из базы:', savedParams.ration_sigma_dop_pz);
+          console.log('ration_sigma_dop_mrz из базы:', savedParams.ration_sigma_dop_mrz);
+          console.log('sigma_alt_dop из базы:', savedParams.sigma_alt_dop);
 
           // Обновляем состояние с сохраненными значениями
           setLoadInputs(prev => ({
             ...prev,
-            material: { 
-              enabled: true, 
-              value: savedParams.material || '' 
+            material: {
+              enabled: true,
+              value: savedParams.material || ''
             },
-            doc_code_analytics: { 
-              enabled: true, 
-              value: savedParams.doc_code_analytics || '' 
+            doc_code_analytics: {
+              enabled: true,
+              value: savedParams.doc_code_analytics || ''
             },
-            doc_code_operation: { 
-              enabled: true, 
-              value: savedParams.doc_code_operation || '' 
+            doc_code_operation: {
+              enabled: true,
+              value: savedParams.doc_code_operation || ''
+            },
+            sigma_alt_dop: {
+              enabled: true,
+              value: savedParams.sigma_alt_dop ? savedParams.sigma_alt_dop.toString() : ''
             },
             p1_pz: { 
               enabled: true, 
@@ -180,21 +191,28 @@ const LoadAnalysisTab = ({
 
           if (savedParams.delta_t_pz !== null || savedParams.ratio_p_pz !== null ||
               savedParams.delta_t_mrz !== null || savedParams.ratio_p_mrz !== null ||
-              savedParams.first_freq_alt_pz !== null || savedParams.first_freq_alt_mrz !== null) {
+              savedParams.first_freq_alt_pz !== null || savedParams.first_freq_alt_mrz !== null ||
+              savedParams.ration_sigma_dop_pz !== null || savedParams.ration_sigma_dop_mrz !== null) {
             console.log('Устанавливаем сохраненные результаты расчетов:');
             console.log('first_freq_alt_pz:', savedParams.first_freq_alt_pz);
             console.log('first_freq_alt_mrz:', savedParams.first_freq_alt_mrz);
+            console.log('ration_sigma_dop_pz:', savedParams.ration_sigma_dop_pz);
+            console.log('ration_sigma_dop_mrz:', savedParams.ration_sigma_dop_mrz);
 
             setLoadCalculationResults({
               pz: {
                 deltaT: savedParams.delta_t_pz,
                 deltaP: savedParams.ratio_p_pz,
-                firstFreqAlt: savedParams.first_freq_alt_pz
+                firstFreqAlt: savedParams.first_freq_alt_pz,
+                deltaSigma: savedParams.ration_sigma_dop_pz !== null && savedParams.ration_sigma_dop_pz !== undefined ?
+                           savedParams.ration_sigma_dop_pz : null
               },
               mrz: {
                 deltaT: savedParams.delta_t_mrz,
                 deltaP: savedParams.ratio_p_mrz,
-                firstFreqAlt: savedParams.first_freq_alt_mrz
+                firstFreqAlt: savedParams.first_freq_alt_mrz,
+                deltaSigma: savedParams.ration_sigma_dop_mrz !== null && savedParams.ration_sigma_dop_mrz !== undefined ?
+                           savedParams.ration_sigma_dop_mrz : null
               },
               calculationAttempted: true,
               missingData: { pz: [], mrz: [] }
@@ -219,8 +237,8 @@ const LoadAnalysisTab = ({
   // Функция для расчета delta T и delta P
   const performLoadCalculation = () => {
     const results = {
-      pz: { deltaT: null, deltaP: null, firstFreqAlt: null },
-      mrz: { deltaT: null, deltaP: null, firstFreqAlt: null },
+      pz: { deltaT: null, deltaP: null, firstFreqAlt: null, deltaSigma: null },
+      mrz: { deltaT: null, deltaP: null, firstFreqAlt: null, deltaSigma: null },
       calculationAttempted: true,
       missingData: { pz: [], mrz: [] }
     };
@@ -280,6 +298,40 @@ const LoadAnalysisTab = ({
     }
 
     results.missingData.mrz = mrzMissingData;
+
+    // Расчет deltaSigma
+    console.log('Расчет deltaSigma:');
+    console.log('loadInputs.sigma_alt_dop:', loadInputs.sigma_alt_dop);
+    console.log('elementData:', elementData);
+
+    let deltaSigma = null;
+    if (loadInputs.sigma_alt_dop?.enabled && loadInputs.sigma_alt_dop?.value) {
+      const sigmaAltDop = parseFloat(loadInputs.sigma_alt_dop.value);
+      console.log('sigmaAltDop parsed:', sigmaAltDop);
+
+      if (sigmaAltDop > 0) {
+        // Получаем SIGMA_DOP из таблицы базы данных (elementData)
+        const sigmaDop = elementData?.SIGMA_DOP ?? elementData?.sigma_dop ?? null;
+        console.log('sigmaDop from elementData:', sigmaDop);
+
+        if (sigmaDop !== null && sigmaDop !== undefined && !isNaN(sigmaDop) && sigmaDop > 0) {
+          deltaSigma = sigmaDop / sigmaAltDop;
+          console.log('deltaSigma рассчитан:', deltaSigma, '= sigmaDop', sigmaDop, '/ sigmaAltDop', sigmaAltDop);
+        } else {
+          console.log('SIGMA_DOP из базы данных не доступен или <= 0');
+          // Если sigma_alt_dop введено, но sigma_dop недоступен, показываем специальное сообщение
+          deltaSigma = 'sigma_dop_not_available';
+        }
+      } else {
+        console.log('sigma_alt_dop <= 0 или не число');
+      }
+    } else {
+      console.log('sigma_alt_dop не заполнен или отключен');
+    }
+
+    results.pz.deltaSigma = deltaSigma;
+    results.mrz.deltaSigma = deltaSigma; // Одно и то же значение для обоих
+    console.log('Final deltaSigma in results:', deltaSigma);
 
     // Расчет новых собственных частот
     console.log('Расчет новых частот:');
@@ -378,6 +430,7 @@ const LoadAnalysisTab = ({
         material: loadInputs.material.enabled ? loadInputs.material.value : null,
         doc_code_analytics: loadInputs.doc_code_analytics.enabled ? loadInputs.doc_code_analytics.value : null,
         doc_code_operation: loadInputs.doc_code_operation.enabled ? loadInputs.doc_code_operation.value : null,
+        sigma_alt_dop: loadInputs.sigma_alt_dop.enabled ? parseFloat(loadInputs.sigma_alt_dop.value) || null : null,
         
         // Параметры ПЗ
         p1_pz: loadInputs.p1_pz.enabled ? parseFloat(loadInputs.p1_pz.value) || null : null,
@@ -399,16 +452,21 @@ const LoadAnalysisTab = ({
         delta_t_pz: calculationResults.pz.deltaT,
         ratio_p_pz: calculationResults.pz.deltaP,
         first_freq_alt_pz: calculationResults.pz.firstFreqAlt,
+        ration_sigma_dop_pz: calculationResults.pz.deltaSigma,
 
         // Результаты расчетов МРЗ
         delta_t_mrz: calculationResults.mrz.deltaT,
         ratio_p_mrz: calculationResults.mrz.deltaP,
-        first_freq_alt_mrz: calculationResults.mrz.firstFreqAlt
+        first_freq_alt_mrz: calculationResults.mrz.firstFreqAlt,
+        ration_sigma_dop_mrz: calculationResults.mrz.deltaSigma
       };
 
       console.log('Сохраняем параметры анализа навантаження:', dataToSave);
       console.log('first_freq_alt_pz:', dataToSave.first_freq_alt_pz);
       console.log('first_freq_alt_mrz:', dataToSave.first_freq_alt_mrz);
+      console.log('ration_sigma_dop_pz:', dataToSave.ration_sigma_dop_pz);
+      console.log('ration_sigma_dop_mrz:', dataToSave.ration_sigma_dop_mrz);
+      console.log('sigma_alt_dop:', dataToSave.sigma_alt_dop);
       
       // Проверяем, что хотя бы одно поле заполнено
       const hasData = Object.values(dataToSave).some(value => value !== null && value !== '');
@@ -596,6 +654,26 @@ const LoadAnalysisTab = ({
                       disabled={!loadInputs.doc_code_operation?.enabled || !isFormEnabled}
                       placeholder="Шифр документа"
                       className={`load-analysis-input-control ${(!loadInputs.doc_code_operation?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
+                    />
+                  </div>
+                  <div className="load-analysis-input-field">
+                    <label className="load-analysis-checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={loadInputs.sigma_alt_dop?.enabled || false}
+                        onChange={() => handleInputToggle('sigma_alt_dop')}
+                        disabled={!isFormEnabled}
+                      />
+                      <span className="load-analysis-checkmark"></span>
+                      <span className="load-analysis-input-label">σ*, мПа</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loadInputs.sigma_alt_dop?.value || ''}
+                      onChange={(e) => handleInputValueChange('sigma_alt_dop', e.target.value)}
+                      disabled={!loadInputs.sigma_alt_dop?.enabled || !isFormEnabled}
+                      placeholder="SIGMA_ALT_DOP"
+                      className={`load-analysis-input-control ${(!loadInputs.sigma_alt_dop?.enabled || !isFormEnabled) ? 'disabled' : ''}`}
                     />
                   </div>
                 </div>
@@ -946,6 +1024,22 @@ const LoadAnalysisTab = ({
                       </span>
                     )}
                   </div>
+                  <div className="result-item">
+                    <span className="result-label">Δσ:</span>
+                    {loadCalculationResults.pz?.deltaSigma !== null &&
+                     loadCalculationResults.pz?.deltaSigma !== undefined &&
+                     loadCalculationResults.pz?.deltaSigma !== 'sigma_dop_not_available' ? (
+                      <span className="result-value">{loadCalculationResults.pz.deltaSigma.toFixed(4)}</span>
+                    ) : loadCalculationResults.pz?.deltaSigma === 'sigma_dop_not_available' ? (
+                      <span className="no-data-message">
+                        Відсутнє значення SIGMA_DOP в таблиці бази даних
+                      </span>
+                    ) : (
+                      <span className="no-data-message">
+                        Відсутнє значення σ*
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Информация о недостающих данных для ПЗ */}
@@ -1006,6 +1100,22 @@ const LoadAnalysisTab = ({
                           'Відсутня базова частота' :
                           'Відсутнє значення ΔE'
                         }
+                      </span>
+                    )}
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">Δσ:</span>
+                    {loadCalculationResults.mrz?.deltaSigma !== null &&
+                     loadCalculationResults.mrz?.deltaSigma !== undefined &&
+                     loadCalculationResults.mrz?.deltaSigma !== 'sigma_dop_not_available' ? (
+                      <span className="result-value">{loadCalculationResults.mrz.deltaSigma.toFixed(4)}</span>
+                    ) : loadCalculationResults.mrz?.deltaSigma === 'sigma_dop_not_available' ? (
+                      <span className="no-data-message">
+                        Відсутнє значення SIGMA_DOP в таблиці бази даних
+                      </span>
+                    ) : (
+                      <span className="no-data-message">
+                        Відсутнє значення σ*
                       </span>
                     )}
                   </div>

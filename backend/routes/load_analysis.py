@@ -6,26 +6,49 @@ from models import LoadAnalysisParams
 
 
 def ensure_columns_exist(db):
-    """Ensure that FIRST_FREQ_ALT_PZ and FIRST_FREQ_ALT_MRZ columns exist in the table"""
+    """Ensure that required columns exist in the table"""
     try:
         # Check if columns exist
         check_columns_query = text("""
             SELECT COUNT(*)
             FROM user_tab_columns
             WHERE table_name = 'SRTN_EK_SEISM_DATA'
-            AND column_name IN ('FIRST_FREQ_ALT_PZ', 'FIRST_FREQ_ALT_MRZ')
+            AND column_name IN ('FIRST_FREQ_ALT_PZ', 'FIRST_FREQ_ALT_MRZ', 'RATION_SIGMA_DOP_PZ', 'RATION_SIGMA_DOP_MRZ', 'SIGMA_ALT_DOP')
         """)
         result = db.execute(check_columns_query)
         columns_count = result.scalar()
 
-        if columns_count < 2:
-            # Add missing columns
-            alter_query = text("""
-                ALTER TABLE SRTN_EK_SEISM_DATA
-                ADD (FIRST_FREQ_ALT_PZ NUMBER, FIRST_FREQ_ALT_MRZ NUMBER)
-            """)
-            db.execute(alter_query)
-            db.commit()
+        if columns_count < 5:
+            # Add missing columns one by one to avoid errors if some already exist
+            try:
+                db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD FIRST_FREQ_ALT_PZ NUMBER"))
+                db.commit()
+            except:
+                pass
+
+            try:
+                db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD FIRST_FREQ_ALT_MRZ NUMBER"))
+                db.commit()
+            except:
+                pass
+
+            try:
+                db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD RATION_SIGMA_DOP_PZ NUMBER"))
+                db.commit()
+            except:
+                pass
+
+            try:
+                db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD RATION_SIGMA_DOP_MRZ NUMBER"))
+                db.commit()
+            except:
+                pass
+
+            try:
+                db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD SIGMA_ALT_DOP NUMBER"))
+                db.commit()
+            except:
+                pass
     except Exception as e:
         # Log error but don't fail - columns might already exist
         print(f"Warning: Could not ensure columns exist: {e}")
@@ -51,6 +74,7 @@ async def save_load_analysis_params(db: DbSessionDep, params: LoadAnalysisParams
             "material": "MAT_NAME",
             "doc_code_analytics": "DOC_1",
             "doc_code_operation": "DOC_2",
+            "sigma_alt_dop": "SIGMA_ALT_DOP",
             "p1_pz": "P1_PZ",
             "temp1_pz": "TEMP1_PZ",
             "p2_pz": "P2_PZ",
@@ -69,6 +93,8 @@ async def save_load_analysis_params(db: DbSessionDep, params: LoadAnalysisParams
             "ratio_p_mrz": "RATIO_P_MRZ",
             "first_freq_alt_pz": "FIRST_FREQ_ALT_PZ",
             "first_freq_alt_mrz": "FIRST_FREQ_ALT_MRZ",
+            "ration_sigma_dop_pz": "RATION_SIGMA_DOP_PZ",
+            "ration_sigma_dop_mrz": "RATION_SIGMA_DOP_MRZ",
         }
         for param_name, db_column in field_mapping.items():
             param_value = getattr(params, param_name)
@@ -121,11 +147,12 @@ async def get_load_analysis_params(db: DbSessionDep, ek_id: int):
         params_query = text(
             """
             SELECT
-                MAT_NAME, DOC_1, DOC_2,
+                MAT_NAME, DOC_1, DOC_2, SIGMA_ALT_DOP,
                 P1_PZ, TEMP1_PZ, P2_PZ, TEMP2_PZ, SIGMA_DOP_A_PZ, RATIO_E_PZ,
                 P1_MRZ, TEMP1_MRZ, P2_MRZ, TEMP2_MRZ, SIGMA_DOP_A_MRZ, RATIO_E_MRZ,
                 DELTA_T_PZ, RATIO_P_PZ, DELTA_T_MRZ, RATIO_P_MRZ,
-                FIRST_FREQ_ALT_PZ, FIRST_FREQ_ALT_MRZ
+                FIRST_FREQ_ALT_PZ, FIRST_FREQ_ALT_MRZ,
+                RATION_SIGMA_DOP_PZ, RATION_SIGMA_DOP_MRZ
             FROM SRTN_EK_SEISM_DATA
             WHERE EK_ID = :ek_id
             """
@@ -138,24 +165,27 @@ async def get_load_analysis_params(db: DbSessionDep, ek_id: int):
             "material": row[0],
             "doc_code_analytics": row[1],
             "doc_code_operation": row[2],
-            "p1_pz": row[3],
-            "temp1_pz": row[4],
-            "p2_pz": row[5],
-            "temp2_pz": row[6],
-            "sigma_dop_a_pz": row[7],
-            "ratio_e_pz": row[8],
-            "p1_mrz": row[9],
-            "temp1_mrz": row[10],
-            "p2_mrz": row[11],
-            "temp2_mrz": row[12],
-            "sigma_dop_a_mrz": row[13],
-            "ratio_e_mrz": row[14],
-            "delta_t_pz": row[15],
-            "ratio_p_pz": row[16],
-            "delta_t_mrz": row[17],
-            "ratio_p_mrz": row[18],
-            "first_freq_alt_pz": row[19],
-            "first_freq_alt_mrz": row[20],
+            "sigma_alt_dop": row[3],
+            "p1_pz": row[4],
+            "temp1_pz": row[5],
+            "p2_pz": row[6],
+            "temp2_pz": row[7],
+            "sigma_dop_a_pz": row[8],
+            "ratio_e_pz": row[9],
+            "p1_mrz": row[10],
+            "temp1_mrz": row[11],
+            "p2_mrz": row[12],
+            "temp2_mrz": row[13],
+            "sigma_dop_a_mrz": row[14],
+            "ratio_e_mrz": row[15],
+            "delta_t_pz": row[16],
+            "ratio_p_pz": row[17],
+            "delta_t_mrz": row[18],
+            "ratio_p_mrz": row[19],
+            "first_freq_alt_pz": row[20],
+            "first_freq_alt_mrz": row[21],
+            "ration_sigma_dop_pz": row[22],
+            "ration_sigma_dop_mrz": row[23],
         }
         return {"success": True, "ek_id": ek_id, "load_params": load_params}
     except HTTPException:
