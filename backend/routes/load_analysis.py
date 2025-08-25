@@ -13,12 +13,12 @@ def ensure_columns_exist(db):
             SELECT COUNT(*)
             FROM user_tab_columns
             WHERE table_name = 'SRTN_EK_SEISM_DATA'
-            AND column_name IN ('FIRST_FREQ_ALT_PZ', 'FIRST_FREQ_ALT_MRZ', 'RATION_SIGMA_DOP_PZ', 'RATION_SIGMA_DOP_MRZ', 'SIGMA_ALT_DOP')
+            AND column_name IN ('FIRST_FREQ_ALT_PZ', 'FIRST_FREQ_ALT_MRZ', 'RATION_SIGMA_DOP_PZ', 'RATION_SIGMA_DOP_MRZ', 'SIGMA_ALT_DOP', 'M1_ALT_PZ', 'M1_ALT_MRZ', 'K1_ALT_PZ', 'K1_ALT_MRZ')
         """)
         result = db.execute(check_columns_query)
         columns_count = result.scalar()
 
-        if columns_count < 5:
+        if columns_count < 9:
             # Add missing columns one by one to avoid errors if some already exist
             try:
                 db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD FIRST_FREQ_ALT_PZ NUMBER"))
@@ -46,6 +46,18 @@ def ensure_columns_exist(db):
 
             try:
                 db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD SIGMA_ALT_DOP NUMBER"))
+                db.commit()
+            except:
+                pass
+
+            try:
+                db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD M1_ALT_PZ NUMBER"))
+                db.commit()
+            except:
+                pass
+
+            try:
+                db.execute(text("ALTER TABLE SRTN_EK_SEISM_DATA ADD M1_ALT_MRZ NUMBER"))
                 db.commit()
             except:
                 pass
@@ -95,6 +107,10 @@ async def save_load_analysis_params(db: DbSessionDep, params: LoadAnalysisParams
             "first_freq_alt_mrz": "FIRST_FREQ_ALT_MRZ",
             "ration_sigma_dop_pz": "RATION_SIGMA_DOP_PZ",
             "ration_sigma_dop_mrz": "RATION_SIGMA_DOP_MRZ",
+            "m1_alt_pz": "M1_ALT_PZ",
+            "m1_alt_mrz": "M1_ALT_MRZ",
+            "k1_alt_pz": "K1_ALT_PZ",
+            "k1_alt_mrz": "K1_ALT_MRZ",
         }
         for param_name, db_column in field_mapping.items():
             param_value = getattr(params, param_name)
@@ -152,7 +168,9 @@ async def get_load_analysis_params(db: DbSessionDep, ek_id: int):
                 P1_MRZ, TEMP1_MRZ, P2_MRZ, TEMP2_MRZ, SIGMA_DOP_A_MRZ, RATIO_E_MRZ,
                 DELTA_T_PZ, RATIO_P_PZ, DELTA_T_MRZ, RATIO_P_MRZ,
                 FIRST_FREQ_ALT_PZ, FIRST_FREQ_ALT_MRZ,
-                RATION_SIGMA_DOP_PZ, RATION_SIGMA_DOP_MRZ
+                RATION_SIGMA_DOP_PZ, RATION_SIGMA_DOP_MRZ,
+                M1_ALT_PZ, M1_ALT_MRZ,
+                K1_ALT_PZ, K1_ALT_MRZ
             FROM SRTN_EK_SEISM_DATA
             WHERE EK_ID = :ek_id
             """
@@ -186,6 +204,10 @@ async def get_load_analysis_params(db: DbSessionDep, ek_id: int):
             "first_freq_alt_mrz": row[21],
             "ration_sigma_dop_pz": row[22],
             "ration_sigma_dop_mrz": row[23],
+            "m1_alt_pz": row[24],
+            "m1_alt_mrz": row[25],
+            "k1_alt_pz": row[26],
+            "k1_alt_mrz": row[27],
         }
         return {"success": True, "ek_id": ek_id, "load_params": load_params}
     except HTTPException:

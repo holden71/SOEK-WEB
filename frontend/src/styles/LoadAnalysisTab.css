@@ -656,6 +656,12 @@
   color: #007bff !important;
 }
 
+.result-value .bold-value,
+.k-result-value .bold-value {
+  font-weight: bold !important;
+  color: #007bff !important;
+}
+
 .result-item .no-data-message {
   color: #e67e22 !important;
   font-size: 12px !important;

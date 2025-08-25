@@ -185,3 +185,9 @@ class LoadAnalysisParams(BaseModel):
     # deltaSigma
     ration_sigma_dop_pz: Optional[float] = None
     ration_sigma_dop_mrz: Optional[float] = None
+    # M1 альтернативные
+    m1_alt_pz: Optional[float] = None
+    m1_alt_mrz: Optional[float] = None
+    # K1 альтернативные
+    k1_alt_pz: Optional[float] = None
+    k1_alt_mrz: Optional[float] = None

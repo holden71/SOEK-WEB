@@ -885,6 +885,12 @@
   color: #007bff;
 }
 
+.result-value .bold-value,
+.k-result-value .bold-value {
+  font-weight: bold !important;
+  color: #007bff !important;
+}
+
 /* Единый стиль для сообщений об отсутствии данных в блоке k-коэффициентов */
 .k-result-item .no-data-message {
   font-style: italic;

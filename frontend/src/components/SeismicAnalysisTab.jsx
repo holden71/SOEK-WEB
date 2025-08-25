@@ -814,7 +814,7 @@ const SeismicAnalysisTab = ({
                         <div className="k-result-item">
                           <span className="k-result-formula">k₁ {kResults.pz.seismicCategory === 'I' ? '(Д.6–Д.7)' : (kResults.pz.seismicCategory === 'II' ? '(Д.8–Д.9)' : '')}:</span>
                           <span className="k-result-value">
-                            {kResults.pz.k1.toFixed(4)}
+                            <span className="bold-value">{kResults.pz.k1.toFixed(4)}</span>
                           </span>
                         </div>
                       )}
@@ -822,7 +822,7 @@ const SeismicAnalysisTab = ({
                         <span className="k-result-formula">k₂ (Д.12):</span>
                         <span className="k-result-value">
                           {kResults.pz.k2 !== null
-                            ? kResults.pz.k2.toFixed(4)
+                            ? <span className="bold-value">{kResults.pz.k2.toFixed(4)}</span>
                             : (
                               <span className="no-data-message">
                                 {Array.isArray(kResults.pz.k2Missing) && kResults.pz.k2Missing.length > 0
@@ -836,7 +836,7 @@ const SeismicAnalysisTab = ({
                         <div className="k-result-item">
                           <span className="k-result-formula">k₃ (Д.13):</span>
                           <span className="k-result-value">
-                            {kResults.pz.k3.toFixed(4)}
+                            <span className="bold-value">{kResults.pz.k3.toFixed(4)}</span>
                           </span>
                         </div>
                       )}
@@ -923,7 +923,7 @@ const SeismicAnalysisTab = ({
                         <div className="k-result-item">
                           <span className="k-result-formula">k₁ (Д.4–Д.5):</span>
                           <span className="k-result-value">
-                            {kResults.mrz.k1.toFixed(4)}
+                            <span className="bold-value">{kResults.mrz.k1.toFixed(4)}</span>
                           </span>
                         </div>
                       )}
@@ -931,7 +931,7 @@ const SeismicAnalysisTab = ({
                         <span className="k-result-formula">k₂ (Д.12):</span>
                         <span className="k-result-value">
                           {kResults.mrz.k2 !== null
-                            ? kResults.mrz.k2.toFixed(4)
+                            ? <span className="bold-value">{kResults.mrz.k2.toFixed(4)}</span>
                             : (
                               <span className="no-data-message">
                                 {Array.isArray(kResults.mrz.k2Missing) && kResults.mrz.k2Missing.length > 0
@@ -945,7 +945,7 @@ const SeismicAnalysisTab = ({
                         <div className="k-result-item">
                           <span className="k-result-formula">k₃ (Д.13):</span>
                           <span className="k-result-value">
-                            {kResults.mrz.k3.toFixed(4)}
+                            <span className="bold-value">{kResults.mrz.k3.toFixed(4)}</span>
                           </span>
                         </div>
                       )}
