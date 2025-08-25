@@ -178,3 +178,6 @@ class LoadAnalysisParams(BaseModel):
     ratio_p_pz: Optional[float] = None
     delta_t_mrz: Optional[float] = None
     ratio_p_mrz: Optional[float] = None
+    # Новые частоты
+    first_freq_alt_pz: Optional[float] = None
+    first_freq_alt_mrz: Optional[float] = None

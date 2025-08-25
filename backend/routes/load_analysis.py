@@ -5,12 +5,41 @@ from db import DbSessionDep
 from models import LoadAnalysisParams
 
 
+def ensure_columns_exist(db):
+    """Ensure that FIRST_FREQ_ALT_PZ and FIRST_FREQ_ALT_MRZ columns exist in the table"""
+    try:
+        # Check if columns exist
+        check_columns_query = text("""
+            SELECT COUNT(*)
+            FROM user_tab_columns
+            WHERE table_name = 'SRTN_EK_SEISM_DATA'
+            AND column_name IN ('FIRST_FREQ_ALT_PZ', 'FIRST_FREQ_ALT_MRZ')
+        """)
+        result = db.execute(check_columns_query)
+        columns_count = result.scalar()
+
+        if columns_count < 2:
+            # Add missing columns
+            alter_query = text("""
+                ALTER TABLE SRTN_EK_SEISM_DATA
+                ADD (FIRST_FREQ_ALT_PZ NUMBER, FIRST_FREQ_ALT_MRZ NUMBER)
+            """)
+            db.execute(alter_query)
+            db.commit()
+    except Exception as e:
+        # Log error but don't fail - columns might already exist
+        print(f"Warning: Could not ensure columns exist: {e}")
+
+
 router = APIRouter(prefix="/api", tags=["load-analysis"])
 
 
 @router.post("/save-load-analysis-params")
 async def save_load_analysis_params(db: DbSessionDep, params: LoadAnalysisParams = Body(...)):
     try:
+        # Ensure columns exist before saving
+        ensure_columns_exist(db)
+
         check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
         check_result = db.execute(check_query, {"ek_id": params.element_id})
         if check_result.scalar() == 0:
@@ -38,6 +67,8 @@ async def save_load_analysis_params(db: DbSessionDep, params: LoadAnalysisParams
             "ratio_p_pz": "RATIO_P_PZ",
             "delta_t_mrz": "DELTA_T_MRZ",
             "ratio_p_mrz": "RATIO_P_MRZ",
+            "first_freq_alt_pz": "FIRST_FREQ_ALT_PZ",
+            "first_freq_alt_mrz": "FIRST_FREQ_ALT_MRZ",
         }
         for param_name, db_column in field_mapping.items():
             param_value = getattr(params, param_name)
@@ -79,6 +110,9 @@ async def save_load_analysis_params(db: DbSessionDep, params: LoadAnalysisParams
 @router.get("/get-load-analysis-params/{ek_id}")
 async def get_load_analysis_params(db: DbSessionDep, ek_id: int):
     try:
+        # Ensure columns exist before reading
+        ensure_columns_exist(db)
+
         check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
         check_result = db.execute(check_query, {"ek_id": ek_id})
         if check_result.scalar() == 0:
@@ -86,12 +120,13 @@ async def get_load_analysis_params(db: DbSessionDep, ek_id: int):
 
         params_query = text(
             """
-            SELECT 
+            SELECT
                 MAT_NAME, DOC_1, DOC_2,
                 P1_PZ, TEMP1_PZ, P2_PZ, TEMP2_PZ, SIGMA_DOP_A_PZ, RATIO_E_PZ,
                 P1_MRZ, TEMP1_MRZ, P2_MRZ, TEMP2_MRZ, SIGMA_DOP_A_MRZ, RATIO_E_MRZ,
-                DELTA_T_PZ, RATIO_P_PZ, DELTA_T_MRZ, RATIO_P_MRZ
-            FROM SRTN_EK_SEISM_DATA 
+                DELTA_T_PZ, RATIO_P_PZ, DELTA_T_MRZ, RATIO_P_MRZ,
+                FIRST_FREQ_ALT_PZ, FIRST_FREQ_ALT_MRZ
+            FROM SRTN_EK_SEISM_DATA
             WHERE EK_ID = :ek_id
             """
         )
@@ -119,6 +154,8 @@ async def get_load_analysis_params(db: DbSessionDep, ek_id: int):
             "ratio_p_pz": row[16],
             "delta_t_mrz": row[17],
             "ratio_p_mrz": row[18],
+            "first_freq_alt_pz": row[19],
+            "first_freq_alt_mrz": row[20],
         }
         return {"success": True, "ek_id": ek_id, "load_params": load_params}
     except HTTPException:

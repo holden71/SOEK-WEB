@@ -18,11 +18,12 @@ const LoadAnalysisTab = ({
   elementData = null
 }) => {
   console.log('LoadAnalysisTab rendering with elementData:', elementData);
+  console.log('naturalFrequency prop:', naturalFrequency);
   
   // Состояние для результатов расчета
   const [loadCalculationResults, setLoadCalculationResults] = useState({
-    pz: { deltaT: null, deltaP: null },
-    mrz: { deltaT: null, deltaP: null },
+    pz: { deltaT: null, deltaP: null, firstFreqAlt: null },
+    mrz: { deltaT: null, deltaP: null, firstFreqAlt: null },
     calculationAttempted: false,
     missingData: { pz: [], mrz: [] }
   });
@@ -98,7 +99,11 @@ const LoadAnalysisTab = ({
         if (response.ok) {
           const data = await response.json();
           const savedParams = data.load_params;
-          
+
+          console.log('Загруженные данные из базы:', savedParams);
+          console.log('first_freq_alt_pz из базы:', savedParams.first_freq_alt_pz);
+          console.log('first_freq_alt_mrz из базы:', savedParams.first_freq_alt_mrz);
+
           // Обновляем состояние с сохраненными значениями
           setLoadInputs(prev => ({
             ...prev,
@@ -165,16 +170,31 @@ const LoadAnalysisTab = ({
           }));
 
           // Загружаем сохраненные результаты расчетов
-          if (savedParams.delta_t_pz !== null || savedParams.ratio_p_pz !== null || 
-              savedParams.delta_t_mrz !== null || savedParams.ratio_p_mrz !== null) {
+          console.log('Проверяем условие для загрузки результатов:');
+          console.log('delta_t_pz:', savedParams.delta_t_pz);
+          console.log('ratio_p_pz:', savedParams.ratio_p_pz);
+          console.log('delta_t_mrz:', savedParams.delta_t_mrz);
+          console.log('ratio_p_mrz:', savedParams.ratio_p_mrz);
+          console.log('first_freq_alt_pz:', savedParams.first_freq_alt_pz);
+          console.log('first_freq_alt_mrz:', savedParams.first_freq_alt_mrz);
+
+          if (savedParams.delta_t_pz !== null || savedParams.ratio_p_pz !== null ||
+              savedParams.delta_t_mrz !== null || savedParams.ratio_p_mrz !== null ||
+              savedParams.first_freq_alt_pz !== null || savedParams.first_freq_alt_mrz !== null) {
+            console.log('Устанавливаем сохраненные результаты расчетов:');
+            console.log('first_freq_alt_pz:', savedParams.first_freq_alt_pz);
+            console.log('first_freq_alt_mrz:', savedParams.first_freq_alt_mrz);
+
             setLoadCalculationResults({
-              pz: { 
-                deltaT: savedParams.delta_t_pz, 
-                deltaP: savedParams.ratio_p_pz 
+              pz: {
+                deltaT: savedParams.delta_t_pz,
+                deltaP: savedParams.ratio_p_pz,
+                firstFreqAlt: savedParams.first_freq_alt_pz
               },
-              mrz: { 
-                deltaT: savedParams.delta_t_mrz, 
-                deltaP: savedParams.ratio_p_mrz 
+              mrz: {
+                deltaT: savedParams.delta_t_mrz,
+                deltaP: savedParams.ratio_p_mrz,
+                firstFreqAlt: savedParams.first_freq_alt_mrz
               },
               calculationAttempted: true,
               missingData: { pz: [], mrz: [] }
@@ -199,8 +219,8 @@ const LoadAnalysisTab = ({
   // Функция для расчета delta T и delta P
   const performLoadCalculation = () => {
     const results = {
-      pz: { deltaT: null, deltaP: null },
-      mrz: { deltaT: null, deltaP: null },
+      pz: { deltaT: null, deltaP: null, firstFreqAlt: null },
+      mrz: { deltaT: null, deltaP: null, firstFreqAlt: null },
       calculationAttempted: true,
       missingData: { pz: [], mrz: [] }
     };
@@ -260,6 +280,40 @@ const LoadAnalysisTab = ({
     }
 
     results.missingData.mrz = mrzMissingData;
+
+    // Расчет новых собственных частот
+    console.log('Расчет новых частот:');
+    console.log('naturalFrequency:', naturalFrequency);
+    console.log('loadInputs.ratio_e_pz:', loadInputs.ratio_e_pz);
+    console.log('loadInputs.ratio_e_mrz:', loadInputs.ratio_e_mrz);
+
+    if (naturalFrequency !== null && naturalFrequency !== undefined && !isNaN(naturalFrequency)) {
+      // Расчет для ПЗ
+      const ratioEPz = loadInputs.ratio_e_pz?.enabled && loadInputs.ratio_e_pz?.value ?
+        parseFloat(loadInputs.ratio_e_pz.value) : null;
+      console.log('ratioEPz:', ratioEPz);
+
+      if (ratioEPz !== null && ratioEPz > 0) {
+        results.pz.firstFreqAlt = naturalFrequency / Math.sqrt(ratioEPz);
+        console.log('results.pz.firstFreqAlt:', results.pz.firstFreqAlt);
+      } else {
+        console.log('Не рассчитываем firstFreqAlt для ПЗ: ratioEPz null или <= 0');
+      }
+
+      // Расчет для МРЗ
+      const ratioEMrz = loadInputs.ratio_e_mrz?.enabled && loadInputs.ratio_e_mrz?.value ?
+        parseFloat(loadInputs.ratio_e_mrz.value) : null;
+      console.log('ratioEMrz:', ratioEMrz);
+
+      if (ratioEMrz !== null && ratioEMrz > 0) {
+        results.mrz.firstFreqAlt = naturalFrequency / Math.sqrt(ratioEMrz);
+        console.log('results.mrz.firstFreqAlt:', results.mrz.firstFreqAlt);
+      } else {
+        console.log('Не рассчитываем firstFreqAlt для МРЗ: ratioEMrz null или <= 0');
+      }
+    } else {
+      console.log('Не рассчитываем частоты: naturalFrequency null/undefined/NaN');
+    }
 
     setLoadCalculationResults(results);
     return results; // Возвращаем результаты для использования в handleCalculate
@@ -344,13 +398,17 @@ const LoadAnalysisTab = ({
         // Результаты расчетов ПЗ
         delta_t_pz: calculationResults.pz.deltaT,
         ratio_p_pz: calculationResults.pz.deltaP,
-        
+        first_freq_alt_pz: calculationResults.pz.firstFreqAlt,
+
         // Результаты расчетов МРЗ
         delta_t_mrz: calculationResults.mrz.deltaT,
-        ratio_p_mrz: calculationResults.mrz.deltaP
+        ratio_p_mrz: calculationResults.mrz.deltaP,
+        first_freq_alt_mrz: calculationResults.mrz.firstFreqAlt
       };
 
       console.log('Сохраняем параметры анализа навантаження:', dataToSave);
+      console.log('first_freq_alt_pz:', dataToSave.first_freq_alt_pz);
+      console.log('first_freq_alt_mrz:', dataToSave.first_freq_alt_mrz);
       
       // Проверяем, что хотя бы одно поле заполнено
       const hasData = Object.values(dataToSave).some(value => value !== null && value !== '');
@@ -360,16 +418,18 @@ const LoadAnalysisTab = ({
       }
       
       // Отправляем данные на сервер для сохранения
+      console.log('Отправляем запрос на сервер...');
       const response = await fetch('http://localhost:8000/api/save-load-analysis-params', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToSave)
       });
-      
+
+      console.log('Response status:', response.status);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
       console.log('Ответ сервера:', result);
     } catch (error) {
@@ -849,12 +909,12 @@ const LoadAnalysisTab = ({
                 <div className="results-grid">
                   <div className="result-item">
                     <span className="result-label">ΔT (T₂ - T₁):</span>
-                    {loadCalculationResults.pz.deltaT !== null ? (
+                    {loadCalculationResults.pz?.deltaT !== null ? (
                       <span className="result-value">{loadCalculationResults.pz.deltaT.toFixed(4)} °C</span>
                     ) : (
                       <span className="no-data-message">
-                        {loadCalculationResults.missingData?.pz?.filter(item => item.includes('T')).length > 0 ? 
-                          `Відсутні дані: ${loadCalculationResults.missingData.pz.filter(item => item.includes('T')).join(', ')}` : 
+                        {loadCalculationResults.missingData?.pz?.filter(item => item.includes('T')).length > 0 ?
+                          `Відсутні дані: ${loadCalculationResults.missingData.pz.filter(item => item.includes('T')).join(', ')}` :
                           'Недостатньо даних'
                         }
                       </span>
@@ -862,13 +922,26 @@ const LoadAnalysisTab = ({
                   </div>
                   <div className="result-item">
                     <span className="result-label">ΔP (P₂ / P₁):</span>
-                    {loadCalculationResults.pz.deltaP !== null ? (
+                    {loadCalculationResults.pz?.deltaP !== null ? (
                       <span className="result-value">{loadCalculationResults.pz.deltaP.toFixed(4)}</span>
                     ) : (
                       <span className="no-data-message">
-                        {loadCalculationResults.missingData?.pz?.filter(item => item.includes('P')).length > 0 ? 
-                          `Відсутні дані: ${loadCalculationResults.missingData.pz.filter(item => item.includes('P')).join(', ')}` : 
+                        {loadCalculationResults.missingData?.pz?.filter(item => item.includes('P')).length > 0 ?
+                          `Відсутні дані: ${loadCalculationResults.missingData.pz.filter(item => item.includes('P')).join(', ')}` :
                           'Недостатньо даних'
+                        }
+                      </span>
+                    )}
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">Власна частота*:</span>
+                    {loadCalculationResults.pz?.firstFreqAlt !== null && loadCalculationResults.pz?.firstFreqAlt !== undefined ? (
+                      <span className="result-value">{loadCalculationResults.pz.firstFreqAlt.toFixed(4)} Гц</span>
+                    ) : (
+                      <span className="no-data-message">
+                        {naturalFrequency === null || naturalFrequency === undefined || isNaN(naturalFrequency) ?
+                          'Відсутня базова частота' :
+                          'Відсутнє значення ΔE'
                         }
                       </span>
                     )}
@@ -882,10 +955,10 @@ const LoadAnalysisTab = ({
                       Для розрахунку необхідно:
                     </p>
                     <ul className="k-requirements-list">
-                      <li className={loadCalculationResults.pz.deltaT !== null ? 'requirement-met' : 'requirement-missing'}>
+                      <li className={loadCalculationResults.pz?.deltaT !== null ? 'requirement-met' : 'requirement-missing'}>
                         Ввести значення T₁ та T₂ для розрахунку ΔT
                       </li>
-                      <li className={loadCalculationResults.pz.deltaP !== null ? 'requirement-met' : 'requirement-missing'}>
+                      <li className={loadCalculationResults.pz?.deltaP !== null ? 'requirement-met' : 'requirement-missing'}>
                         Ввести значення P₁ та P₂ (P₁ ≠ 0) для розрахунку ΔP
                       </li>
                     </ul>
@@ -899,12 +972,12 @@ const LoadAnalysisTab = ({
                 <div className="results-grid">
                   <div className="result-item">
                     <span className="result-label">ΔT (T₂ - T₁):</span>
-                    {loadCalculationResults.mrz.deltaT !== null ? (
+                    {loadCalculationResults.mrz?.deltaT !== null ? (
                       <span className="result-value">{loadCalculationResults.mrz.deltaT.toFixed(4)} °C</span>
                     ) : (
                       <span className="no-data-message">
-                        {loadCalculationResults.missingData?.mrz?.filter(item => item.includes('T')).length > 0 ? 
-                          `Відсутні дані: ${loadCalculationResults.missingData.mrz.filter(item => item.includes('T')).join(', ')}` : 
+                        {loadCalculationResults.missingData?.mrz?.filter(item => item.includes('T')).length > 0 ?
+                          `Відсутні дані: ${loadCalculationResults.missingData.mrz.filter(item => item.includes('T')).join(', ')}` :
                           'Недостатньо даних'
                         }
                       </span>
@@ -912,13 +985,26 @@ const LoadAnalysisTab = ({
                   </div>
                   <div className="result-item">
                     <span className="result-label">ΔP (P₂ / P₁):</span>
-                    {loadCalculationResults.mrz.deltaP !== null ? (
+                    {loadCalculationResults.mrz?.deltaP !== null ? (
                       <span className="result-value">{loadCalculationResults.mrz.deltaP.toFixed(4)}</span>
                     ) : (
                       <span className="no-data-message">
-                        {loadCalculationResults.missingData?.mrz?.filter(item => item.includes('P')).length > 0 ? 
-                          `Відсутні дані: ${loadCalculationResults.missingData.mrz.filter(item => item.includes('P')).join(', ')}` : 
+                        {loadCalculationResults.missingData?.mrz?.filter(item => item.includes('P')).length > 0 ?
+                          `Відсутні дані: ${loadCalculationResults.missingData.mrz.filter(item => item.includes('P')).join(', ')}` :
                           'Недостатньо даних'
+                        }
+                      </span>
+                    )}
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">Власна частота*:</span>
+                    {loadCalculationResults.mrz?.firstFreqAlt !== null && loadCalculationResults.mrz?.firstFreqAlt !== undefined ? (
+                      <span className="result-value">{loadCalculationResults.mrz.firstFreqAlt.toFixed(4)} Гц</span>
+                    ) : (
+                      <span className="no-data-message">
+                        {naturalFrequency === null || naturalFrequency === undefined || isNaN(naturalFrequency) ?
+                          'Відсутня базова частота' :
+                          'Відсутнє значення ΔE'
                         }
                       </span>
                     )}
@@ -932,10 +1018,10 @@ const LoadAnalysisTab = ({
                       Для розрахунку необхідно:
                     </p>
                     <ul className="k-requirements-list">
-                      <li className={loadCalculationResults.mrz.deltaT !== null ? 'requirement-met' : 'requirement-missing'}>
+                      <li className={loadCalculationResults.mrz?.deltaT !== null ? 'requirement-met' : 'requirement-missing'}>
                         Ввести значення T₁ та T₂ для розрахунку ΔT
                       </li>
-                      <li className={loadCalculationResults.mrz.deltaP !== null ? 'requirement-met' : 'requirement-missing'}>
+                      <li className={loadCalculationResults.mrz?.deltaP !== null ? 'requirement-met' : 'requirement-missing'}>
                         Ввести значення P₁ та P₂ (P₁ ≠ 0) для розрахунку ΔP
                       </li>
                     </ul>
