@@ -191,3 +191,18 @@ class LoadAnalysisParams(BaseModel):
     # K1 альтернативные
     k1_alt_pz: Optional[float] = None
     k1_alt_mrz: Optional[float] = None
+
+
+class Model3DData(BaseModel):
+    data: Dict[str, Any]
+
+class FileData(BaseModel):
+    data: Dict[str, Any]
+
+class FileTypeData(BaseModel):
+    data: Dict[str, Any]
+
+class CreateFileTypeRequest(BaseModel):
+    name: str
+    descr: str
+    def_ext: str

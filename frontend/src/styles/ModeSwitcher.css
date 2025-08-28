@@ -1,0 +1,54 @@
+.mode-switcher {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 0 20px;
+  flex-wrap: wrap;
+}
+
+.mode-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mode-button:hover {
+  border-color: #007bff;
+  color: #007bff;
+  background: #f8f9ff;
+}
+
+.mode-button.active {
+  border-color: #007bff;
+  background: #007bff;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+.mode-button.active:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .mode-switcher {
+    padding: 0 10px;
+    gap: 4px;
+  }
+
+  .mode-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}

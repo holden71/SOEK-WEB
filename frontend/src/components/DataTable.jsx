@@ -11,16 +11,18 @@ import TableActions from './TableActions';
 import '../styles/DataTable.css';
 import '../styles/Pagination.css';
 
-const DataTable = ({ 
-  data, 
-  searching, 
-  hasSearched, 
-  onImportClick, 
+const DataTable = ({
+  data,
+  searching,
+  hasSearched,
+  onImportClick,
   onAnalysisClick,
+  onAddClick,
   globalFilter,
   setGlobalFilter,
   sorting,
-  setSorting
+  setSorting,
+  showActions = true
 }) => {
   const handleCopyContent = async (content) => {
     try {
@@ -32,69 +34,75 @@ const DataTable = ({
 
   const columns = useMemo(() => {
     if (data.length === 0) return [];
-    
-    return [
-      {
-        id: 'actions',
-        header: '',
-        size: 80,
-        maxSize: 80,
-        minSize: 80,
-        cell: ({ row }) => (
-          <TableActions 
-            row={row}
-            data={data}
-            onImportClick={onImportClick}
-            onAnalysisClick={onAnalysisClick}
-          />
-        ),
-      },
-      ...Object.keys(data[0]).map(key => ({
-        accessorKey: key,
-        header: key,
-        cell: info => {
-          const content = info.getValue()?.toString() || '';
-          
-          const handleMouseMove = (e) => {
-            const tooltip = e.currentTarget.querySelector('.cell-tooltip');
-            if (tooltip) {
-              const x = e.clientX;
-              const y = e.clientY;
-              tooltip.style.left = `${x + 10}px`;
-              tooltip.style.top = `${y - 10}px`;
-            }
-          };
 
-          const handleCopy = async (e) => {
-            const element = e.currentTarget;
-            await handleCopyContent(content);
-            element.classList.add('copied');
-            const label = document.createElement('span');
-            label.className = 'copy-label';
-            label.textContent = '📋';
-            element.appendChild(label);
-            setTimeout(() => {
-              element.classList.remove('copied');
-              element.removeChild(label);
-            }, 500);
-          };
+    const baseColumns = Object.keys(data[0]).map(key => ({
+      accessorKey: key,
+      header: key,
+      cell: info => {
+        const content = info.getValue()?.toString() || '';
 
-          return (
-            <div className="cell-content-wrapper">
-              <div 
-                className="cell-content"
-                onClick={handleCopy}
-                onMouseMove={handleMouseMove}
-              >
-                <span className="cell-text">{content}</span>
-                <span className="cell-tooltip">{content}</span>
-              </div>
+        const handleMouseMove = (e) => {
+          const tooltip = e.currentTarget.querySelector('.cell-tooltip');
+          if (tooltip) {
+            const x = e.clientX;
+            const y = e.clientY;
+            tooltip.style.left = `${x + 10}px`;
+            tooltip.style.top = `${y - 10}px`;
+          }
+        };
+
+        const handleCopy = async (e) => {
+          const element = e.currentTarget;
+          await handleCopyContent(content);
+          element.classList.add('copied');
+          const label = document.createElement('span');
+          label.className = 'copy-label';
+          label.textContent = '📋';
+          element.appendChild(label);
+          setTimeout(() => {
+            element.classList.remove('copied');
+            element.removeChild(label);
+          }, 500);
+        };
+
+        return (
+          <div className="cell-content-wrapper">
+            <div
+              className="cell-content"
+              onClick={handleCopy}
+              onMouseMove={handleMouseMove}
+            >
+              <span className="cell-text">{content}</span>
+              <span className="cell-tooltip">{content}</span>
             </div>
-          );
+          </div>
+        );
+      },
+    }));
+
+    if (showActions) {
+      return [
+        {
+          id: 'actions',
+          header: '',
+          size: 80,
+          maxSize: 80,
+          minSize: 80,
+          cell: ({ row }) => (
+            <TableActions
+              row={row}
+              data={data}
+              onImportClick={onImportClick}
+              onAnalysisClick={onAnalysisClick}
+            />
+          ),
         },
-      })),
-    ];
-  }, [data, onImportClick, onAnalysisClick]);
+        ...baseColumns
+      ];
+    }
+
+    return baseColumns;
+  }, [data, onImportClick, onAnalysisClick, showActions]);
 
   const table = useReactTable({
     data,
@@ -154,26 +162,39 @@ const DataTable = ({
 
   return (
     <>
-      <div className="table-search">
-        <input
-          type="text"
-          value={globalFilter ?? ''}
-          onChange={(e) => {
-            setGlobalFilter(e.target.value);
-          }}
-          placeholder="Пошук у таблиці..."
-          className="search-input"
-        />
-        {globalFilter && (
-          <button
-            onClick={() => setGlobalFilter('')}
-            className="clear-search"
-            title="Очистити пошук"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+      {(onAddClick || data.length > 0) && (
+        <div className="table-header">
+          <div className="table-search">
+            <input
+              type="text"
+              value={globalFilter ?? ''}
+              onChange={(e) => {
+                setGlobalFilter(e.target.value);
+              }}
+              placeholder="Пошук у таблиці..."
+              className="search-input"
+            />
+            {globalFilter && (
+              <button
+                onClick={() => setGlobalFilter('')}
+                className="clear-search"
+                title="Очистити пошук"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {onAddClick && (
+            <button
+              onClick={onAddClick}
+              className="add-button"
+              title="Додати новий запис"
+            >
+              ➕ Додати
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="results">
         <div className="table-container">

@@ -10,6 +10,9 @@
 @import './Pagination.css';
 @import './TableActions.css';
 @import './AnalysisModal.css';
+@import './ModeSwitcher.css';
+@import './AddModal.css';
+@import './UnifiedTable.css';
 
 /* Global utilities and remaining styles from Main.css */
 
@@ -597,4 +600,162 @@
   background-color: #6c757d;
   color: white;
   font-size: 16px;
+}
+
+/* Multimedia placeholder styles */
+.multimedia-placeholder {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.multimedia-placeholder h3 {
+  color: #6c757d;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.multimedia-placeholder p {
+  color: #868e96;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Standalone add button styles - same as Main.jsx search button */
+.no-results-with-add {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.add-button-standalone {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.add-button-standalone:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-button-standalone:active {
+  background-color: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Table header above styles - same layout as DataTable table-header */
+.table-header-above {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.table-header-above .table-search {
+  position: relative;
+  max-width: 400px;
+  flex: 1;
+  min-width: 250px;
+}
+
+.table-header-above .search-input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #495057;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.table-header-above .search-input:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.table-header-above .clear-search {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 2px;
+}
+
+.table-header-above .clear-search:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.table-header-above .add-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.table-header-above .add-button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-header-above .add-button:active {
+  background-color: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Responsive styles for table-header-above */
+@media (max-width: 768px) {
+  .table-header-above {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .table-header-above .table-search {
+    max-width: none;
+    min-width: auto;
+  }
+
+  .table-header-above .add-button {
+    width: 100%;
+    justify-content: center;
+  }
 } 

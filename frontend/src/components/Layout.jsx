@@ -13,32 +13,40 @@ function Layout() {
         </div>
         <ul className="menu">
           <li>
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className={location.pathname === '/' ? 'active' : ''}
             >
               📋 Перелік ЕК
             </Link>
           </li>
           <li>
-            <Link 
-              to="/import" 
+            <Link
+              to="/models-3d"
+              className={location.pathname === '/models-3d' ? 'active' : ''}
+            >
+              📊 3D моделі
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/import"
               className={location.pathname === '/import' ? 'active' : ''}
             >
               📥 Імпорт спектрів
             </Link>
           </li>
           <li>
-            <Link 
-              to="/about" 
+            <Link
+              to="/about"
               className={location.pathname === '/about' ? 'active' : ''}
             >
               ℹ️ About App
             </Link>
           </li>
           <li>
-            <Link 
-              to="/help" 
+            <Link
+              to="/help"
               className={location.pathname === '/help' ? 'active' : ''}
             >
               ❓ Help

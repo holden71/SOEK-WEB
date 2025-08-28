@@ -12,6 +12,9 @@ from routes.excel import router as excel_router
 from routes.locations import router as locations_router
 from routes.accel_sets import router as accel_router
 from routes.load_analysis import router as load_analysis_router
+from routes.models_3d import router as models_3d_router
+from routes.files import router as files_router
+from routes.file_types import router as file_types_router
 
 
 @asynccontextmanager
@@ -41,6 +44,9 @@ app.include_router(excel_router)
 app.include_router(locations_router)
 app.include_router(accel_router)
 app.include_router(load_analysis_router)
+app.include_router(models_3d_router)
+app.include_router(files_router)
+app.include_router(file_types_router)
 
 
 if __name__ == "__main__":

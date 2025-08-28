@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import PageHeader from '../components/PageHeader';
 import FilterSection from '../components/FilterSection';
-import DataTable from '../components/DataTable';
+import UnifiedTable from '../components/UnifiedTable';
 import ImportPopup from '../components/ImportPopup';
 import AnalysisModal from '../components/AnalysisModal';
+import TableActions from '../components/TableActions';
 import { useDataFetching } from '../hooks/useDataFetching';
 import '../styles/index.css';
 
@@ -113,6 +114,111 @@ function Main() {
     setGlobalFilter('');
   };
 
+  // Define custom columns for Main table
+  const customColumns = useMemo(() => {
+    if (data.length === 0) return [];
+
+    const baseColumns = [
+      {
+        id: 'actions',
+        header: '',
+        size: 80,
+        maxSize: 80,
+        minSize: 80,
+        cell: ({ row }) => (
+          <TableActions
+            row={row}
+            data={data}
+            onImportClick={handleImportClick}
+            onAnalysisClick={handleAnalysisClick}
+          />
+        ),
+      }
+    ];
+
+    // Add data columns
+    const dataColumns = Object.keys(data[0]).map(key => ({
+      accessorKey: key,
+      header: key,
+      cell: info => {
+        const content = info.getValue()?.toString() || '';
+
+        const handleCopy = async (e) => {
+          const element = e.currentTarget;
+          try {
+            await navigator.clipboard.writeText(content);
+            // Добавляем класс для анимации ячейки
+            setTimeout(() => {
+              element.classList.add('copied');
+
+              // Создаем label для уведомления
+              const label = document.createElement('span');
+              label.className = 'copy-label';
+              label.textContent = '📋 Скопійовано!';
+              label.style.position = 'fixed';
+              label.style.zIndex = '9999';
+
+              // Позиционируем label относительно курсора
+              const rect = element.getBoundingClientRect();
+              label.style.left = (rect.left + rect.width / 2) + 'px';
+              label.style.top = (rect.top - 40) + 'px';
+              label.style.transform = 'translateX(-50%)';
+
+              document.body.appendChild(label);
+
+              // Убираем анимацию через 800ms
+              setTimeout(() => {
+                element.classList.remove('copied');
+                if (document.body.contains(label)) {
+                  document.body.removeChild(label);
+                }
+              }, 800);
+            }, 10);
+          } catch (error) {
+            console.error('Failed to copy text:', error);
+            // Показываем ошибку копирования
+            setTimeout(() => {
+              element.classList.add('copy-error');
+
+              const label = document.createElement('span');
+              label.className = 'copy-label error';
+              label.textContent = '❌ Помилка';
+              label.style.position = 'fixed';
+              label.style.zIndex = '9999';
+
+              const rect = element.getBoundingClientRect();
+              label.style.left = (rect.left + rect.width / 2) + 'px';
+              label.style.top = (rect.top - 40) + 'px';
+              label.style.transform = 'translateX(-50%)';
+
+              document.body.appendChild(label);
+
+              setTimeout(() => {
+                element.classList.remove('copy-error');
+                if (document.body.contains(label)) {
+                  document.body.removeChild(label);
+                }
+              }, 1000);
+            }, 10);
+          }
+        };
+
+        return (
+          <div className="cell-content-wrapper">
+            <div
+              className="cell-content"
+              onClick={handleCopy}
+            >
+              <span className="cell-text">{content}</span>
+            </div>
+          </div>
+        );
+      },
+    }));
+
+    return [...baseColumns, ...dataColumns];
+  }, [data, handleImportClick, handleAnalysisClick]);
+
   if (loading) {
     return <div>Loading plants...</div>;
   }
@@ -142,23 +248,19 @@ function Main() {
           getTDefaultText={getTDefaultText}
         />
 
-        {(data.length > 0 || searching) && (
-          <DataTable
+        {(data.length > 0 || searching || loading) && (
+          <UnifiedTable
             data={data}
-            searching={searching}
-            hasSearched={hasSearched}
-            onImportClick={handleImportClick}
-            onAnalysisClick={handleAnalysisClick}
-            globalFilter={globalFilter}
-            setGlobalFilter={setGlobalFilter}
-            sorting={sorting}
-            setSorting={setSorting}
+            title="перелік ЕК"
+            loading={loading || searching}
+            customColumns={customColumns}
+            className="main-table"
           />
         )}
 
         {!data.length && !searching && !loading && !error && (
           <div className="no-results">
-            {!hasSearched 
+            {!hasSearched
               ? "Виберіть параметри та натисніть \"Пошук\" для відображення даних"
               : "Пошук не дав результатів"
             }
