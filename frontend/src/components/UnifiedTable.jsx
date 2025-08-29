@@ -18,17 +18,51 @@ const UnifiedTable = ({
   showActions = false,
   customColumns = null,
   className = '',
+  enableRowSelection = false,
+  onDeleteSelected,
   ...props
 }) => {
   // Table state
   const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [rowSelection, setRowSelection] = useState({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Generate columns from data if not provided
   const columns = useMemo(() => {
     if (customColumns) return customColumns;
 
     if (data.length === 0) return [];
+
+    // Add checkbox column if row selection is enabled
+    const checkboxColumn = enableRowSelection ? [{
+      id: 'select',
+      header: ({ table }) => {
+        const isAllSelected = table.getIsAllRowsSelected();
+        const isSomeSelected = table.getIsSomeRowsSelected();
+
+        return (
+          <input
+            type="checkbox"
+            checked={isAllSelected}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            ref={(el) => {
+              if (el) el.indeterminate = isSomeSelected && !isAllSelected;
+            }}
+          />
+        );
+      },
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+        />
+      ),
+      size: 40,
+      enableSorting: false,
+      enableFiltering: false,
+    }] : [];
 
     const baseColumns = Object.keys(data[0]).map(key => ({
       accessorKey: key,
@@ -109,8 +143,8 @@ const UnifiedTable = ({
       },
     }));
 
-    return baseColumns;
-  }, [data, customColumns]);
+    return [...checkboxColumn, ...baseColumns];
+  }, [data, customColumns, enableRowSelection]);
 
   const table = useReactTable({
     data,
@@ -118,9 +152,12 @@ const UnifiedTable = ({
     state: {
       sorting,
       globalFilter,
+      rowSelection,
     },
+    enableRowSelection: enableRowSelection,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: setRowSelection,
     globalFilterFn: (row, columnId, filterValue) => {
       const value = row.getValue(columnId);
       return value?.toString().toLowerCase().includes(filterValue.toLowerCase());
@@ -135,6 +172,24 @@ const UnifiedTable = ({
       },
     },
   });
+
+  // Handle delete selected rows
+  const handleDeleteSelected = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (onDeleteSelected) {
+      const selectedRows = table.getSelectedRowModel().rows.map(row => row.original);
+      await onDeleteSelected(selectedRows);
+      setRowSelection({});
+    }
+    setShowDeleteModal(false);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+  };
 
   const renderNoDataMessage = () => {
     const hasData = data && data.length > 0;
@@ -163,35 +218,65 @@ const UnifiedTable = ({
 
   return (
     <div className={`unified-table ${className}`}>
-      {/* Table Header with Search and Add Button */}
+      {/* Table Header with Search, Selection Info and Add Button */}
       <div className="table-header">
-        <div className="table-search">
-          <input
-            type="text"
-            value={globalFilter ?? ''}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder="Пошук у таблиці..."
-            className="search-input"
-          />
-          {globalFilter && (
+        <div className="table-header-content">
+          {/* Search always visible */}
+          <div className="table-search">
+            <input
+              type="text"
+              value={globalFilter ?? ''}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Пошук у таблиці..."
+              className="search-input"
+            />
+            {globalFilter && (
+              <button
+                onClick={() => setGlobalFilter('')}
+                className="clear-search"
+                title="Очистити пошук"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Selection info when rows are selected */}
+          {enableRowSelection && Object.keys(rowSelection).length > 0 && (
+            <div className="selection-info">
+              <span className="selected-count">
+                Вибрано {Object.keys(rowSelection).length} рядків
+              </span>
+              <div className="selection-actions">
+                <button
+                  onClick={handleDeleteSelected}
+                  className="delete-selected-button"
+                  title="Видалити вибрані рядки"
+                >
+                  🗑️ Видалити
+                </button>
+                <button
+                  onClick={() => setRowSelection({})}
+                  className="clear-selection-button"
+                  title="Очистити вибір"
+                >
+                  ✕ Скасувати
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Add button always visible if enabled */}
+          {showAddButton && onAddClick && (
             <button
-              onClick={() => setGlobalFilter('')}
-              className="clear-search"
-              title="Очистити пошук"
+              onClick={onAddClick}
+              className="add-button"
+              title="Додати новий запис"
             >
-              ✕
+              ➕ Додати
             </button>
           )}
         </div>
-        {showAddButton && onAddClick && (
-          <button
-            onClick={onAddClick}
-            className="add-button"
-            title="Додати новий запис"
-          >
-            ➕ Додати
-          </button>
-        )}
       </div>
 
       {/* Table */}
@@ -219,7 +304,10 @@ const UnifiedTable = ({
             {table.getRowModel().rows.length > 0 ? (
               <tbody>
                 {table.getRowModel().rows.map(row => (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    className={row.getIsSelected() ? 'selected-row' : ''}
+                  >
                     {row.getVisibleCells().map(cell => (
                       <td key={cell.id}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -330,6 +418,35 @@ const UnifiedTable = ({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="delete-modal-overlay">
+          <div className="delete-modal">
+            <div className="delete-modal-header">
+              <h3>Підтвердження видалення</h3>
+            </div>
+            <div className="delete-modal-body">
+              <p>Ви впевнені, що хочете видалити {Object.keys(rowSelection).length} вибраних рядків?</p>
+              <p className="delete-warning">Цю дію неможливо буде скасувати.</p>
+            </div>
+            <div className="delete-modal-footer">
+              <button
+                onClick={cancelDelete}
+                className="cancel-delete-button"
+              >
+                Скасувати
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="confirm-delete-button"
+              >
+                Видалити
+              </button>
             </div>
           </div>
         </div>

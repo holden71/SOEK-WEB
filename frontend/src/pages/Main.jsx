@@ -114,6 +114,13 @@ function Main() {
     setGlobalFilter('');
   };
 
+  // Handle delete selected items
+  const handleDeleteSelected = async (selectedRows) => {
+    // TODO: Implement delete functionality for main table
+    console.log('Selected rows to delete:', selectedRows);
+    alert(`Видалення елементів ЕК (${selectedRows.length} шт.) знаходиться в розробці`);
+  };
+
   // Define custom columns for Main table
   const customColumns = useMemo(() => {
     if (data.length === 0) return [];
@@ -254,6 +261,8 @@ function Main() {
             title="перелік ЕК"
             loading={loading || searching}
             customColumns={customColumns}
+            enableRowSelection={true}
+            onDeleteSelected={handleDeleteSelected}
             className="main-table"
           />
         )}

@@ -10,13 +10,16 @@
 
 /* Table Header with Search and Add Button */
 .table-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.table-header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  gap: 16px;
+  gap: 8px;
   flex-wrap: wrap;
-  border-bottom: 1px solid #e0e0e0;
 }
 
 .table-search {
@@ -434,6 +437,208 @@ tbody tr:last-child td {
   background-color: #218838;
 }
 
+/* Selection Info Styles */
+.selection-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.selection-info .selected-count {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Selection buttons - same style as add button but different shades of blue */
+.selection-info .delete-selected-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+  height: 36px;
+}
+
+.selection-info .delete-selected-button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.selection-info .delete-selected-button:active {
+  background-color: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Clear selection button - same gray as modal cancel button */
+.selection-info .clear-selection-button {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(108, 117, 125, 0.1);
+  height: 36px;
+}
+
+.selection-info .clear-selection-button:hover {
+  background-color: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.selection-info .clear-selection-button:active {
+  background-color: #545b62;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Checkbox Styles */
+th input[type="checkbox"],
+td input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #007bff;
+}
+
+th input[type="checkbox"] {
+  transform: scale(1.1);
+}
+
+/* Selected Row Styles */
+tbody tr.selected-row {
+  background-color: rgba(0, 123, 255, 0.1);
+  border-left: 3px solid #007bff;
+}
+
+tbody tr.selected-row:hover {
+  background-color: rgba(0, 123, 255, 0.15);
+}
+
+/* Delete Modal Styles */
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.delete-modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.delete-modal-header {
+  padding: 20px 20px 0 20px;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 16px;
+}
+
+.delete-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.delete-modal-body {
+  padding: 0 20px;
+  margin-bottom: 20px;
+}
+
+.delete-modal-body p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.delete-warning {
+  color: #dc3545;
+  font-weight: 500;
+}
+
+.delete-modal-footer {
+  padding: 0 20px 20px 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.cancel-delete-button {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-delete-button:hover {
+  background-color: #5a6268;
+  transform: translateY(-1px);
+}
+
+.confirm-delete-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirm-delete-button:hover {
+  background-color: #c82333;
+  transform: translateY(-1px);
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
   .table-header {
@@ -482,5 +687,59 @@ tbody tr:last-child td {
 
   .cell-text {
     max-width: 150px;
+  }
+
+  /* Header Content Responsive */
+  .table-header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .selection-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .selection-info .selected-count {
+    font-size: 13px;
+  }
+
+  .selection-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .selection-info .delete-selected-button,
+  .selection-info .clear-selection-button {
+    font-size: 13px;
+    padding: 8px 12px;
+    height: 34px;
+  }
+
+  /* Delete Modal Responsive */
+  .delete-modal {
+    width: 95%;
+    margin: 20px;
+  }
+
+  .delete-modal-header,
+  .delete-modal-body,
+  .delete-modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .delete-modal-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cancel-delete-button,
+  .confirm-delete-button {
+    width: 100%;
+    padding: 10px;
   }
 }

@@ -117,6 +117,26 @@ function Models3D() {
     await createFileType(fileTypeData);
   };
 
+  // Handle delete selected items
+  const handleDeleteSelected = async (selectedRows) => {
+    // TODO: Implement delete functionality for different modes
+    console.log('Selected rows to delete:', selectedRows);
+
+    switch (currentMode) {
+      case 'models_3d':
+        alert(`Видалення 3D моделей (${selectedRows.length} шт.) знаходиться в розробці`);
+        break;
+      case 'files':
+        alert(`Видалення файлів (${selectedRows.length} шт.) знаходиться в розробці`);
+        break;
+      case 'file_types':
+        alert(`Видалення типів файлів (${selectedRows.length} шт.) знаходиться в розробці`);
+        break;
+      default:
+        alert(`Видалення для "${getPageTitle()}" знаходиться в розробці`);
+    }
+  };
+
   if (loading) {
     return <div>Loading {getPageTitle().toLowerCase()}...</div>;
   }
@@ -148,6 +168,8 @@ function Models3D() {
               loading={loading}
               onAddClick={isAddAvailable() ? handleAddClick : null}
               showAddButton={isAddAvailable()}
+              enableRowSelection={true}
+              onDeleteSelected={handleDeleteSelected}
               className="models-table"
             />
           </>
