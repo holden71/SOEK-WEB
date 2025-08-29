@@ -69,12 +69,34 @@ export const useFileTypesFetching = () => {
     }
   };
 
+  const deleteFileType = async (fileTypeId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/file_types/${fileTypeId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete file type');
+      }
+
+      // Remove the deleted file type from local state
+      setData(prevData => prevData.filter(fileType => fileType.FILE_TYPE_ID !== fileTypeId));
+
+      return { success: true, message: 'Тип файлу успішно видалений' };
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
   return {
     data,
     loading,
     error,
     refreshData,
     setData,
-    createFileType
+    createFileType,
+    deleteFileType
   };
 };

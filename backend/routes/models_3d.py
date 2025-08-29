@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import inspect, text
 
 from db import DbSessionDep
@@ -69,3 +69,24 @@ async def get_3d_model_by_id(
         return Model3DData(data=row_dict)
 
     return None
+
+
+@router.delete("/models_3d/{model_id}")
+async def delete_3d_model(
+    db: DbSessionDep,
+    model_id: int,
+):
+    # Check if model exists
+    check_query = text("SELECT MODEL_ID FROM SRTN_3D_MODELS WHERE MODEL_ID = :model_id")
+    result = db.execute(check_query, {"model_id": model_id})
+    existing_model = result.fetchone()
+
+    if not existing_model:
+        raise HTTPException(status_code=404, detail="3D модель не знайдена")
+
+    # Delete the model
+    delete_query = text("DELETE FROM SRTN_3D_MODELS WHERE MODEL_ID = :model_id")
+    db.execute(delete_query, {"model_id": model_id})
+    db.commit()
+
+    return {"message": "3D модель успішно видалена"}

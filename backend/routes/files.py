@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import inspect, text
 
 from db import DbSessionDep
@@ -61,3 +61,24 @@ async def get_file_by_id(
         return FileData(data=row_dict)
 
     return None
+
+
+@router.delete("/files/{file_id}")
+async def delete_file(
+    db: DbSessionDep,
+    file_id: int,
+):
+    # Check if file exists
+    check_query = text("SELECT FILE_ID FROM SRTN_FILES WHERE FILE_ID = :file_id")
+    result = db.execute(check_query, {"file_id": file_id})
+    existing_file = result.fetchone()
+
+    if not existing_file:
+        raise HTTPException(status_code=404, detail="Файл не знайдений")
+
+    # Delete the file
+    delete_query = text("DELETE FROM SRTN_FILES WHERE FILE_ID = :file_id")
+    db.execute(delete_query, {"file_id": file_id})
+    db.commit()
+
+    return {"message": "Файл успішно видалений"}

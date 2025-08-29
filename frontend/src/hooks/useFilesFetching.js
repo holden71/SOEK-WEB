@@ -44,11 +44,33 @@ export const useFilesFetching = () => {
     }
   };
 
+  const deleteFile = async (fileId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/files/${fileId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete file');
+      }
+
+      // Remove the deleted file from local state
+      setData(prevData => prevData.filter(file => file.FILE_ID !== fileId));
+
+      return { success: true, message: 'Файл успішно видалений' };
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
   return {
     data,
     loading,
     error,
     refreshData,
-    setData
+    setData,
+    deleteFile
   };
 };

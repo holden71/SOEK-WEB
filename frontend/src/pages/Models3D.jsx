@@ -19,20 +19,26 @@ function Models3D() {
   const {
     data: modelsData,
     loading: modelsLoading,
-    error: modelsError
+    error: modelsError,
+    deleteModel,
+    refreshData: refreshModelsData
   } = use3DModelsFetching();
 
   const {
     data: filesData,
     loading: filesLoading,
-    error: filesError
+    error: filesError,
+    deleteFile,
+    refreshData: refreshFilesData
   } = useFilesFetching();
 
   const {
     data: fileTypesData,
     loading: fileTypesLoading,
     error: fileTypesError,
-    createFileType
+    createFileType,
+    deleteFileType,
+    refreshData: refreshFileTypesData
   } = useFileTypesFetching();
 
   // Modal states
@@ -119,21 +125,63 @@ function Models3D() {
 
   // Handle delete selected items
   const handleDeleteSelected = async (selectedRows) => {
-    // TODO: Implement delete functionality for different modes
-    console.log('Selected rows to delete:', selectedRows);
+    try {
+      let errorMessages = [];
 
-    switch (currentMode) {
-      case 'models_3d':
-        alert(`Видалення 3D моделей (${selectedRows.length} шт.) знаходиться в розробці`);
-        break;
-      case 'files':
-        alert(`Видалення файлів (${selectedRows.length} шт.) знаходиться в розробці`);
-        break;
-      case 'file_types':
-        alert(`Видалення типів файлів (${selectedRows.length} шт.) знаходиться в розробці`);
-        break;
-      default:
-        alert(`Видалення для "${getPageTitle()}" знаходиться в розробці`);
+      switch (currentMode) {
+        case 'models_3d':
+          for (const row of selectedRows) {
+            try {
+              await deleteModel(row.MODEL_ID);
+            } catch (error) {
+              errorMessages.push(`Помилка видалення моделі ${row.MODEL_ID}: ${error.message}`);
+            }
+          }
+          // Refresh data after successful deletions
+          await refreshModelsData();
+          break;
+
+        case 'files':
+          for (const row of selectedRows) {
+            try {
+              await deleteFile(row.FILE_ID);
+            } catch (error) {
+              errorMessages.push(`Помилка видалення файлу ${row.FILE_ID}: ${error.message}`);
+            }
+          }
+          // Refresh data after successful deletions
+          await refreshFilesData();
+          break;
+
+        case 'file_types':
+          for (const row of selectedRows) {
+            try {
+              // Try different possible field names
+              const id = row.FILE_TYPE_ID || row.file_type_id || row.id;
+              if (!id) {
+                throw new Error('Не вдалося знайти ID типу файлу');
+              }
+              await deleteFileType(id);
+            } catch (error) {
+              errorMessages.push(`Помилка видалення типу файлу: ${error.message}`);
+            }
+          }
+          // Refresh data after successful deletions
+          await refreshFileTypesData();
+          break;
+
+        default:
+          alert(`Видалення для "${getPageTitle()}" не підтримується`);
+          return;
+      }
+
+      // Show only error messages
+      if (errorMessages.length > 0) {
+        alert(`Помилки видалення:\n${errorMessages.join('\n')}`);
+      }
+
+    } catch (error) {
+      alert(`Критична помилка: ${error.message}`);
     }
   };
 

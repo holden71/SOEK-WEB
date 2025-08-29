@@ -44,11 +44,33 @@ export const use3DModelsFetching = () => {
     }
   };
 
+  const deleteModel = async (modelId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/models_3d/${modelId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete 3D model');
+      }
+
+      // Remove the deleted model from local state
+      setData(prevData => prevData.filter(model => model.MODEL_ID !== modelId));
+
+      return { success: true, message: '3D модель успішно видалена' };
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
   return {
     data,
     loading,
     error,
     refreshData,
-    setData
+    setData,
+    deleteModel
   };
 };

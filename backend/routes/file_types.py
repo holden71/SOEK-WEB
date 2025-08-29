@@ -102,3 +102,27 @@ async def create_file_type(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create file type: {str(e)}")
+
+
+@router.delete("/file_types/{file_type_id}")
+async def delete_file_type(
+    db: DbSessionDep,
+    file_type_id: int,
+):
+    # Check if file type exists
+    check_query = text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE FILE_TYPE_ID = :file_type_id")
+    result = db.execute(check_query, {"file_type_id": file_type_id})
+    existing_file_type = result.fetchone()
+
+    if not existing_file_type:
+        raise HTTPException(status_code=404, detail="Тип файлу не знайдений")
+
+    # Check if file type is used in files (optional - depending on business logic)
+    # You might want to add this check to prevent deletion of file types that are in use
+
+    # Delete the file type
+    delete_query = text("DELETE FROM SRTN_FILE_TYPES WHERE FILE_TYPE_ID = :file_type_id")
+    db.execute(delete_query, {"file_type_id": file_type_id})
+    db.commit()
+
+    return {"message": "Тип файлу успішно видалений"}
