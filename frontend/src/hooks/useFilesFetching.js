@@ -44,6 +44,31 @@ export const useFilesFetching = () => {
     }
   };
 
+  const createFile = async (fileData) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/files', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fileData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create file');
+      }
+
+      // После успешного создания перезагружаем все данные
+      await refreshData();
+
+      return response.json();
+    } catch (err) {
+      console.error('Error creating file:', err);
+      throw err;
+    }
+  };
+
   const deleteFile = async (fileId) => {
     try {
       const response = await fetch(`http://localhost:8000/api/files/${fileId}`, {
@@ -71,6 +96,7 @@ export const useFilesFetching = () => {
     error,
     refreshData,
     setData,
+    createFile,
     deleteFile
   };
 };

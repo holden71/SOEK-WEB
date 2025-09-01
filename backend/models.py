@@ -206,3 +206,11 @@ class CreateFileTypeRequest(BaseModel):
     name: str
     descr: str
     def_ext: str
+
+class CreateFileRequest(BaseModel):
+    file_type_id: int
+    file_name: str
+    orig_file_path: str
+    descr: Optional[str] = None  # Необязательное поле
+    sh_descr: Optional[str] = None  # Необязательное поле
+    file_content: List[int]  # Массив байтов для BLOB данных

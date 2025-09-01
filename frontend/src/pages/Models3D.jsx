@@ -3,6 +3,7 @@ import PageHeader from '../components/PageHeader';
 import UnifiedTable from '../components/UnifiedTable';
 import ModeSwitcher from '../components/ModeSwitcher';
 import AddFileTypeModal from '../components/AddFileTypeModal';
+import AddFileModal from '../components/AddFileModal';
 import { use3DModelsFetching } from '../hooks/use3DModelsFetching';
 import { useFilesFetching } from '../hooks/useFilesFetching';
 import { useFileTypesFetching } from '../hooks/useFileTypesFetching';
@@ -28,6 +29,7 @@ function Models3D() {
     data: filesData,
     loading: filesLoading,
     error: filesError,
+    createFile,
     deleteFile,
     refreshData: refreshFilesData
   } = useFilesFetching();
@@ -43,6 +45,7 @@ function Models3D() {
 
   // Modal states
   const [showAddFileTypeModal, setShowAddFileTypeModal] = useState(false);
+  const [showAddFileModal, setShowAddFileModal] = useState(false);
 
   // Define available modes
   const modes = [
@@ -102,8 +105,12 @@ function Models3D() {
       case 'file_types':
         setShowAddFileTypeModal(true);
         break;
-      case 'models_3d':
       case 'files':
+        // Refresh file types data before opening modal
+        refreshFileTypesData();
+        setShowAddFileModal(true);
+        break;
+      case 'models_3d':
       case 'multimedia':
         // TODO: Implement add functionality for other modes
         alert(`Функціонал додавання для "${getPageTitle()}" знаходиться в розробці`);
@@ -115,12 +122,17 @@ function Models3D() {
 
   // Check if add functionality is available for current mode
   const isAddAvailable = () => {
-    return currentMode === 'file_types'; // Пока только для типов файлов
+    return currentMode === 'file_types' || currentMode === 'files';
   };
 
   // Handle saving new file type
   const handleSaveFileType = async (fileTypeData) => {
     await createFileType(fileTypeData);
+  };
+
+  // Handle saving new file
+  const handleSaveFile = async (fileData) => {
+    await createFile(fileData);
   };
 
   // Handle delete selected items
@@ -230,6 +242,14 @@ function Models3D() {
         onClose={() => setShowAddFileTypeModal(false)}
         onSave={handleSaveFileType}
       />
+      <AddFileModal
+        isOpen={showAddFileModal}
+        onClose={() => setShowAddFileModal(false)}
+        onSave={handleSaveFile}
+        fileTypes={fileTypesData}
+      />
+
+
     </div>
   );
 }
