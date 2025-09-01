@@ -6,7 +6,6 @@ function AddFileModal({ isOpen, onClose, onSave, fileTypes }) {
   const [formData, setFormData] = useState({
     file_type_id: '',
     file_name: '',
-    orig_file_path: '',
     descr: '',
     sh_descr: '',
     selectedFile: null
@@ -35,8 +34,7 @@ function AddFileModal({ isOpen, onClose, onSave, fileTypes }) {
         ...prev,
         [name]: value,
         selectedFile: null,
-        file_name: '',
-        orig_file_path: ''
+        file_name: ''
       }));
     }
   };
@@ -103,7 +101,6 @@ function AddFileModal({ isOpen, onClose, onSave, fileTypes }) {
       const fileData = {
         file_type_id: parseInt(formData.file_type_id),
         file_name: formData.file_name,
-        orig_file_path: formData.orig_file_path,
         descr: formData.descr,
         sh_descr: formData.sh_descr,
         file_content: Array.from(new Uint8Array(fileContent)) // Convert to array for JSON serialization
@@ -115,7 +112,6 @@ function AddFileModal({ isOpen, onClose, onSave, fileTypes }) {
       setFormData({
         file_type_id: '',
         file_name: '',
-        orig_file_path: '',
         descr: '',
         sh_descr: '',
         selectedFile: null
@@ -174,7 +170,6 @@ function AddFileModal({ isOpen, onClose, onSave, fileTypes }) {
       setFormData({
         file_type_id: '',
         file_name: '',
-        orig_file_path: '',
         descr: '',
         sh_descr: '',
         selectedFile: null
@@ -233,16 +228,14 @@ function AddFileModal({ isOpen, onClose, onSave, fileTypes }) {
               setFormData(prev => ({
                 ...prev,
                 selectedFile: file,
-                file_name: file.name,
-                orig_file_path: file.name
+                file_name: file.name
               }));
             }}
             onRemove={() => {
               setFormData(prev => ({
                 ...prev,
                 selectedFile: null,
-                file_name: '',
-                orig_file_path: ''
+                file_name: ''
               }));
             }}
             placeholder={getFilePlaceholder()}
@@ -267,18 +260,7 @@ function AddFileModal({ isOpen, onClose, onSave, fileTypes }) {
             {errors.file_name && <span className="error-message">{errors.file_name}</span>}
           </div>
 
-          <div className="form-group">
-            <label htmlFor="orig_file_path">Початковий шлях до файлу</label>
-            <input
-              type="text"
-              id="orig_file_path"
-              name="orig_file_path"
-              value={formData.orig_file_path}
-              onChange={handleInputChange}
-              placeholder="Початковий шлях буде заповнено автоматично"
-              disabled={loading}
-            />
-          </div>
+
 
           <div className="form-group">
             <label htmlFor="descr">Опис файлу</label>

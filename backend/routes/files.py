@@ -60,7 +60,8 @@ def process_file_row(row, column_names: List[str]) -> dict:
 async def get_files(db: DbSessionDep):
     inspector = inspect(db.get_bind())
     columns = inspector.get_columns('SRTN_FILES')
-    column_names = [col['name'] for col in columns if col['name'].upper() != 'DATA']
+    # Исключаем DATA и ORIG_FILE_PATH колонки
+    column_names = [col['name'] for col in columns if col['name'].upper() not in ['DATA', 'ORIG_FILE_PATH']]
 
     query_sql = get_files_query(column_names)
     result = db.execute(text(query_sql))
@@ -77,7 +78,8 @@ async def get_files(db: DbSessionDep):
 async def get_file_by_id(db: DbSessionDep, file_id: int):
     inspector = inspect(db.get_bind())
     columns = inspector.get_columns('SRTN_FILES')
-    column_names = [col['name'] for col in columns if col['name'].upper() != 'DATA']
+    # Исключаем DATA и ORIG_FILE_PATH колонки
+    column_names = [col['name'] for col in columns if col['name'].upper() not in ['DATA', 'ORIG_FILE_PATH']]
 
     query_sql = get_files_query(column_names, "WHERE FILE_ID = :file_id")
     result = db.execute(text(query_sql), {"file_id": file_id})
@@ -121,15 +123,14 @@ async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
 
         # Insert new file
         insert_query = text("""
-            INSERT INTO SRTN_FILES (FILE_ID, FILE_TYPE_ID, FILE_NAME, ORIG_FILE_PATH, DESCR, DATA, SH_DESCR)
-            VALUES (:file_id, :file_type_id, :file_name, :orig_file_path, :descr, :data, :sh_descr)
+            INSERT INTO SRTN_FILES (FILE_ID, FILE_TYPE_ID, FILE_NAME, DESCR, DATA, SH_DESCR)
+            VALUES (:file_id, :file_type_id, :file_name, :descr, :data, :sh_descr)
         """)
 
         db.execute(insert_query, {
             "file_id": new_id,
             "file_type_id": file_data.file_type_id,
             "file_name": file_data.file_name,
-            "orig_file_path": file_data.orig_file_path,
             "descr": file_data.descr or None,
             "data": file_bytes,
             "sh_descr": file_data.sh_descr or None
@@ -142,7 +143,6 @@ async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
             "FILE_ID": new_id,
             "FILE_TYPE_ID": file_data.file_type_id,
             "FILE_NAME": file_data.file_name,
-            "ORIG_FILE_PATH": file_data.orig_file_path,
             "DESCR": file_data.descr,
             "DATA": format_data_field(file_size),
             "SH_DESCR": file_data.sh_descr
