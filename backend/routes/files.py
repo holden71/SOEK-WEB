@@ -1,4 +1,5 @@
 from typing import List
+import mimetypes
 
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response
@@ -100,13 +101,34 @@ async def download_file(db: DbSessionDep, file_id: int):
     row = result.fetchone()
     
     if not row:
-        raise HTTPException(status_code=404, detail="Файл не знайдений")
+        raise HTTPException(status_code=404, detail="File not found")
     
     file_name, file_data = row
+    
+    if file_data is None:
+        file_data = b""
+    
+    # Определяем MIME-тип по расширению файла
+    content_type, _ = mimetypes.guess_type(file_name)
+    if not content_type:
+        content_type = 'application/octet-stream'
+    
+    # Убеждаемся что file_data это bytes
+    if isinstance(file_data, str):
+        file_data = file_data.encode('utf-8')
+    elif not isinstance(file_data, bytes):
+        file_data = bytes(file_data) if file_data else b""
+    
+    # Используем простое ASCII имя для заголовка
+    safe_filename = f"file_{file_id}.txt"
+    
     return Response(
         content=file_data,
-        media_type='application/octet-stream',
-        headers={"Content-Disposition": f"attachment; filename={file_name}"}
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Content-Length": str(len(file_data))
+        }
     )
 
 

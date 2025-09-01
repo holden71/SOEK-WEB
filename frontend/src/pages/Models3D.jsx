@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import PageHeader from '../components/PageHeader';
 import UnifiedTable from '../components/UnifiedTable';
 import ModeSwitcher from '../components/ModeSwitcher';
 import AddFileTypeModal from '../components/AddFileTypeModal';
 import AddFileModal from '../components/AddFileModal';
+import FileDownloadButton from '../components/FileDownloadButton';
 import { use3DModelsFetching } from '../hooks/use3DModelsFetching';
 import { useFilesFetching } from '../hooks/useFilesFetching';
 import { useFileTypesFetching } from '../hooks/useFileTypesFetching';
@@ -52,25 +53,21 @@ function Models3D() {
     {
       key: 'models_3d',
       label: '3D Моделі',
-      icon: '🏗️',
       description: 'Перегляд та управління 3D моделями'
     },
     {
       key: 'files',
       label: 'Файли',
-      icon: '📁',
       description: 'Перегляд та управління файлами'
     },
     {
       key: 'file_types',
       label: 'Типи файлів',
-      icon: '🏷️',
       description: 'Перегляд та управління типами файлів'
     },
     {
       key: 'multimedia',
       label: 'Мультимедія',
-      icon: '🎬',
       description: 'Мультимедійні файли (в розробці)'
     }
   ];
@@ -125,6 +122,122 @@ function Models3D() {
     return currentMode === 'file_types' || currentMode === 'files';
   };
 
+  // Define custom columns for files table
+  const customFilesColumns = useMemo(() => {
+    if (currentMode !== 'files' || filesData.length === 0) return null;
+
+    // Add checkbox column for row selection
+    const checkboxColumn = {
+      id: 'select',
+      header: ({ table }) => {
+        const isAllSelected = table.getIsAllRowsSelected();
+        const isSomeSelected = table.getIsSomeRowsSelected();
+
+        return (
+          <input
+            type="checkbox"
+            checked={isAllSelected}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            ref={(el) => {
+              if (el) el.indeterminate = isSomeSelected && !isAllSelected;
+            }}
+          />
+        );
+      },
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+        />
+      ),
+      size: 40,
+      enableSorting: false,
+      enableFiltering: false,
+    };
+
+    const actionsColumn = {
+      id: 'actions',
+      header: '',
+      size: 60,
+      maxSize: 60,
+      minSize: 60,
+      cell: ({ row }) => {
+        const fileId = row.original.FILE_ID || row.original.file_id;
+        const fileName = row.original.FILE_NAME || row.original.file_name;
+        
+        return (
+          <div className="table-actions-container">
+            <FileDownloadButton 
+              fileId={fileId} 
+              fileName={fileName} 
+            />
+          </div>
+        );
+      },
+    };
+
+    const baseColumns = [checkboxColumn, actionsColumn];
+
+    // Add data columns
+    const dataColumns = Object.keys(filesData[0]).map(key => ({
+      accessorKey: key,
+      header: key,
+      cell: info => {
+        const content = info.getValue()?.toString() || '';
+
+        const handleCopy = async (e) => {
+          const element = e.currentTarget;
+          try {
+            await navigator.clipboard.writeText(content);
+            // Добавляем класс для анимации ячейки
+            setTimeout(() => {
+              element.classList.add('copied');
+
+              // Создаем label для уведомления
+              const label = document.createElement('span');
+              label.className = 'copy-label';
+              label.textContent = '📋 Скопійовано!';
+              label.style.position = 'fixed';
+              label.style.zIndex = '9999';
+
+              // Позиционируем label относительно курсора
+              const rect = element.getBoundingClientRect();
+              label.style.left = (rect.left + rect.width / 2) + 'px';
+              label.style.top = (rect.top - 40) + 'px';
+              label.style.transform = 'translateX(-50%)';
+
+              document.body.appendChild(label);
+
+              // Убираем анимацию через 800ms
+              setTimeout(() => {
+                element.classList.remove('copied');
+                if (document.body.contains(label)) {
+                  document.body.removeChild(label);
+                }
+              }, 800);
+            }, 10);
+          } catch (error) {
+            console.error('Failed to copy text:', error);
+          }
+        };
+
+        return (
+          <div className="cell-content-wrapper">
+            <div
+              className="cell-content"
+              onClick={handleCopy}
+            >
+              <span className="cell-text">{content}</span>
+            </div>
+          </div>
+        );
+      },
+    }));
+
+    return [...baseColumns, ...dataColumns];
+  }, [currentMode, filesData]);
+
   // Handle saving new file type
   const handleSaveFileType = async (fileTypeData) => {
     await createFileType(fileTypeData);
@@ -156,9 +269,15 @@ function Models3D() {
         case 'files':
           for (const row of selectedRows) {
             try {
-              await deleteFile(row.FILE_ID);
+              // Try different possible field names for FILE_ID
+              const fileId = row.FILE_ID || row.file_id || row.id;
+              if (!fileId) {
+                throw new Error(`Не вдалося знайти ID файлу. Доступні поля: ${Object.keys(row).join(', ')}`);
+              }
+              await deleteFile(fileId);
             } catch (error) {
-              errorMessages.push(`Помилка видалення файлу ${row.FILE_ID}: ${error.message}`);
+              const fileId = row.FILE_ID || row.file_id || row.id || 'невідомий';
+              errorMessages.push(`Помилка видалення файлу ${fileId}: ${error.message}`);
             }
           }
           // Refresh data after successful deletions
@@ -217,7 +336,7 @@ function Models3D() {
 
         {currentMode === 'multimedia' ? (
           <div className="multimedia-placeholder">
-            <h3>🎬 Мультимедія</h3>
+            <h3>Мультимедія</h3>
             <p>Цей розділ знаходиться в розробці</p>
           </div>
         ) : (
@@ -230,6 +349,7 @@ function Models3D() {
               showAddButton={isAddAvailable()}
               enableRowSelection={true}
               onDeleteSelected={handleDeleteSelected}
+              customColumns={currentMode === 'files' ? customFilesColumns : null}
               className="models-table"
             />
           </>
