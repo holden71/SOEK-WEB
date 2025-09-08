@@ -102,11 +102,8 @@ async def delete_3d_model(
 @router.post("/models_3d", response_model=Model3DData)
 async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
     try:
-        # Get next MODEL_ID
-        result = db.execute(text("SELECT NVL(MAX(MODEL_ID), 0) + 1 FROM SRTN_3D_MODELS"))
-        new_model_id = result.scalar()
-
-        # Get next FILE_ID for the model file
+        # Step 1: Create the file first
+        # Get next FILE_ID
         result = db.execute(text("SELECT NVL(MAX(FILE_ID), 0) + 1 FROM SRTN_FILES"))
         new_file_id = result.scalar()
 
@@ -122,7 +119,7 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
 
         file_type_id = file_type_row[0]
 
-        # Insert file first
+        # Insert file
         insert_file_query = text("""
             INSERT INTO SRTN_FILES (FILE_ID, FILE_TYPE_ID, FILE_NAME, DESCR, DATA, SH_DESCR)
             VALUES (:file_id, :file_type_id, :file_name, :descr, :data, :sh_descr)
@@ -137,6 +134,11 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
             "sh_descr": f"Файл 3D моделі: {model_data.sh_name}"
         })
 
+        # Step 2: Now create the 3D model with the confirmed FILE_ID
+        # Get next MODEL_ID
+        result = db.execute(text("SELECT NVL(MAX(MODEL_ID), 0) + 1 FROM SRTN_3D_MODELS"))
+        new_model_id = result.scalar()
+
         # Insert 3D model
         insert_model_query = text("""
             INSERT INTO SRTN_3D_MODELS (MODEL_ID, SH_NAME, DESCR, MODEL_FILE_ID)
@@ -147,18 +149,20 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
             "model_id": new_model_id,
             "sh_name": model_data.sh_name,
             "descr": model_data.descr or None,
-            "model_file_id": new_file_id
+            "model_file_id": new_file_id  # Use the confirmed FILE_ID
         })
 
         db.commit()
 
         # Return created model info
-        return Model3DData(data={
+        result_data = {
             "MODEL_ID": new_model_id,
             "SH_NAME": model_data.sh_name,
             "DESCR": model_data.descr,
             "MODEL_FILE_ID": new_file_id
-        })
+        }
+
+        return Model3DData(data=result_data)
 
     except HTTPException:
         raise

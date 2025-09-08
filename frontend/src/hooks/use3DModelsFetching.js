@@ -85,10 +85,13 @@ export const use3DModelsFetching = () => {
       }
 
       const result = await response.json();
+      console.log('Create model API response:', result);
       const createdModel = result.data;
+      console.log('Created model data:', createdModel);
 
-      // Add the created model to local state
-      setData(prevData => [...prevData, createdModel]);
+      // Instead of manually adding to local state, refresh data from server
+      // This ensures data consistency and proper formatting
+      await refreshData();
 
       return { success: true, message: '3D модель успішно створена', data: createdModel };
     } catch (err) {
