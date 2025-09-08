@@ -208,8 +208,15 @@ class CreateFileTypeRequest(BaseModel):
     def_ext: str
 
 class CreateFileRequest(BaseModel):
-    file_type_id: int
     file_name: str
     descr: Optional[str] = None  # Необязательное поле
     sh_descr: Optional[str] = None  # Необязательное поле
     file_content: List[int]  # Массив байтов для BLOB данных
+    file_extension: str  # Расширение файла для автоматического определения типа
+
+class CreateModel3DRequest(BaseModel):
+    sh_name: str  # Короткая название модели
+    descr: Optional[str] = None  # Описание модели
+    file_name: str  # Имя файла модели
+    file_content: List[int]  # Содержимое файла модели
+    file_extension: str  # Расширение файла для автоматического определения типа

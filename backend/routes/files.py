@@ -143,6 +143,15 @@ async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
         file_bytes = bytes(file_data.file_content) if file_data.file_content else None
         file_size = len(file_data.file_content) if file_data.file_content else 0
 
+        # Find file type by extension
+        file_type_result = db.execute(text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE DEF_EXT = :extension"), {"extension": file_data.file_extension})
+        file_type_row = file_type_result.fetchone()
+
+        if not file_type_row:
+            raise HTTPException(status_code=400, detail=f"Тип файлу з розширенням '{file_data.file_extension}' не знайдено в базі даних")
+
+        file_type_id = file_type_row[0]
+
         # Insert new file
         insert_query = text("""
             INSERT INTO SRTN_FILES (FILE_ID, FILE_TYPE_ID, FILE_NAME, DESCR, DATA, SH_DESCR)
@@ -151,7 +160,7 @@ async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
 
         db.execute(insert_query, {
             "file_id": new_id,
-            "file_type_id": file_data.file_type_id,
+            "file_type_id": file_type_id,
             "file_name": file_data.file_name,
             "descr": file_data.descr or None,
             "data": file_bytes,
@@ -163,16 +172,18 @@ async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
         # Return created file info
         return FileData(data={
             "FILE_ID": new_id,
-            "FILE_TYPE_ID": file_data.file_type_id,
+            "FILE_TYPE_ID": file_type_id,
             "FILE_NAME": file_data.file_name,
             "DESCR": file_data.descr,
             "DATA": format_data_field(file_size),
             "SH_DESCR": file_data.sh_descr
         })
 
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не вдалося створити файл: {str(e)}")
 
 
 @router.delete("/files/{file_id}")

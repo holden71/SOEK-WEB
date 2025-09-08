@@ -4,6 +4,7 @@ import UnifiedTable from '../components/UnifiedTable';
 import ModeSwitcher from '../components/ModeSwitcher';
 import AddFileTypeModal from '../components/AddFileTypeModal';
 import AddFileModal from '../components/AddFileModal';
+import AddModelModal from '../components/AddModelModal';
 import FileDownloadButton from '../components/FileDownloadButton';
 import { use3DModelsFetching } from '../hooks/use3DModelsFetching';
 import { useFilesFetching } from '../hooks/useFilesFetching';
@@ -23,6 +24,7 @@ function Models3D() {
     loading: modelsLoading,
     error: modelsError,
     deleteModel,
+    createModel,
     refreshData: refreshModelsData
   } = use3DModelsFetching();
 
@@ -44,9 +46,27 @@ function Models3D() {
     refreshData: refreshFileTypesData
   } = useFileTypesFetching();
 
+  // Refresh data when switching tabs
+  React.useEffect(() => {
+    switch (currentMode) {
+      case 'models_3d':
+        refreshModelsData();
+        break;
+      case 'files':
+        refreshFilesData();
+        break;
+      case 'file_types':
+        refreshFileTypesData();
+        break;
+      default:
+        break;
+    }
+  }, [currentMode]); // Only depend on currentMode to avoid infinite loops
+
   // Modal states
   const [showAddFileTypeModal, setShowAddFileTypeModal] = useState(false);
   const [showAddFileModal, setShowAddFileModal] = useState(false);
+  const [showAddModelModal, setShowAddModelModal] = useState(false);
 
   // Define available modes
   const modes = [
@@ -64,11 +84,6 @@ function Models3D() {
       key: 'file_types',
       label: 'Типи файлів',
       description: 'Перегляд та управління типами файлів'
-    },
-    {
-      key: 'multimedia',
-      label: 'Мультимедія',
-      description: 'Мультимедійні файли (в розробці)'
     }
   ];
 
@@ -81,8 +96,6 @@ function Models3D() {
         return { data: filesData, loading: filesLoading, error: filesError };
       case 'file_types':
         return { data: fileTypesData, loading: fileTypesLoading, error: fileTypesError };
-      case 'multimedia':
-        return { data: [], loading: false, error: null };
       default:
         return { data: modelsData, loading: modelsLoading, error: modelsError };
     }
@@ -103,14 +116,10 @@ function Models3D() {
         setShowAddFileTypeModal(true);
         break;
       case 'files':
-        // Refresh file types data before opening modal
-        refreshFileTypesData();
         setShowAddFileModal(true);
         break;
       case 'models_3d':
-      case 'multimedia':
-        // TODO: Implement add functionality for other modes
-        alert(`Функціонал додавання для "${getPageTitle()}" знаходиться в розробці`);
+        setShowAddModelModal(true);
         break;
       default:
         break;
@@ -119,7 +128,7 @@ function Models3D() {
 
   // Check if add functionality is available for current mode
   const isAddAvailable = () => {
-    return currentMode === 'file_types' || currentMode === 'files';
+    return currentMode === 'file_types' || currentMode === 'files' || currentMode === 'models_3d';
   };
 
   // Define custom columns for files table
@@ -248,6 +257,11 @@ function Models3D() {
     await createFile(fileData);
   };
 
+  // Handle saving new 3D model
+  const handleSaveModel = async (modelData) => {
+    await createModel(modelData);
+  };
+
   // Handle delete selected items
   const handleDeleteSelected = async (selectedRows) => {
     try {
@@ -257,9 +271,19 @@ function Models3D() {
         case 'models_3d':
           for (const row of selectedRows) {
             try {
-              await deleteModel(row.MODEL_ID);
+              console.log('Row data:', row); // Debug logging
+              console.log('Available fields:', Object.keys(row)); // Debug logging
+
+              // Try different possible field names for MODEL_ID
+              const modelId = row.MODEL_ID || row.model_id || row.id;
+              if (!modelId) {
+                throw new Error(`Не вдалося знайти ID моделі. Доступні поля: ${Object.keys(row).join(', ')}`);
+              }
+
+              await deleteModel(modelId);
             } catch (error) {
-              errorMessages.push(`Помилка видалення моделі ${row.MODEL_ID}: ${error.message}`);
+              const modelId = row.MODEL_ID || row.model_id || row.id || 'невідомий';
+              errorMessages.push(`Помилка видалення моделі ${modelId}: ${error.message}`);
             }
           }
           // Refresh data after successful deletions
@@ -334,26 +358,17 @@ function Models3D() {
           modes={modes}
         />
 
-        {currentMode === 'multimedia' ? (
-          <div className="multimedia-placeholder">
-            <h3>Мультимедія</h3>
-            <p>Цей розділ знаходиться в розробці</p>
-          </div>
-        ) : (
-          <>
-            <UnifiedTable
-              data={data}
-              title={getPageTitle()}
-              loading={loading}
-              onAddClick={isAddAvailable() ? handleAddClick : null}
-              showAddButton={isAddAvailable()}
-              enableRowSelection={true}
-              onDeleteSelected={handleDeleteSelected}
-              customColumns={currentMode === 'files' ? customFilesColumns : null}
-              className="models-table"
-            />
-          </>
-        )}
+        <UnifiedTable
+          data={data}
+          title={getPageTitle()}
+          loading={loading}
+          onAddClick={isAddAvailable() ? handleAddClick : null}
+          showAddButton={isAddAvailable()}
+          enableRowSelection={true}
+          onDeleteSelected={handleDeleteSelected}
+          customColumns={currentMode === 'files' ? customFilesColumns : null}
+          className="models-table"
+        />
       </div>
 
       {/* Modals */}
@@ -366,9 +381,12 @@ function Models3D() {
         isOpen={showAddFileModal}
         onClose={() => setShowAddFileModal(false)}
         onSave={handleSaveFile}
-        fileTypes={fileTypesData}
       />
-
+      <AddModelModal
+        isOpen={showAddModelModal}
+        onClose={() => setShowAddModelModal(false)}
+        onSave={handleSaveModel}
+      />
 
     </div>
   );

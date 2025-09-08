@@ -15,7 +15,11 @@ export const use3DModelsFetching = () => {
           throw new Error('Failed to fetch 3D models');
         }
         const result = await response.json();
+        console.log('Raw API response:', result); // Debug logging
+        console.log('First item structure:', result[0]); // Debug logging
         const processedData = result.map(item => item.data);
+        console.log('Processed data:', processedData); // Debug logging
+        console.log('First processed item:', processedData[0]); // Debug logging
         setData(processedData);
         setLoading(false);
       } catch (err) {
@@ -58,7 +62,35 @@ export const use3DModelsFetching = () => {
       // Remove the deleted model from local state
       setData(prevData => prevData.filter(model => model.MODEL_ID !== modelId));
 
-      return { success: true, message: '3D модель успішно видалена' };
+      return { success: true, message: '3D модель та пов\'язаний файл успішно видалені' };
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const createModel = async (modelData) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/models_3d', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(modelData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create 3D model');
+      }
+
+      const result = await response.json();
+      const createdModel = result.data;
+
+      // Add the created model to local state
+      setData(prevData => [...prevData, createdModel]);
+
+      return { success: true, message: '3D модель успішно створена', data: createdModel };
     } catch (err) {
       setError(err.message);
       throw err;
@@ -71,6 +103,7 @@ export const use3DModelsFetching = () => {
     error,
     refreshData,
     setData,
-    deleteModel
+    deleteModel,
+    createModel
   };
 };

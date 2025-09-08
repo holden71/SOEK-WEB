@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import FileInput from './FileInput';
 import '../styles/AddModal.css';
 
-function AddFileModal({ isOpen, onClose, onSave }) {
+function AddModelModal({ isOpen, onClose, onSave }) {
   const [formData, setFormData] = useState({
-    file_name: '',
+    sh_name: '',
     descr: '',
-    sh_descr: '',
+    file_name: '',
     selectedFile: null,
     file_type_id: null // Will be auto-detected
   });
@@ -27,29 +27,32 @@ function AddFileModal({ isOpen, onClose, onSave }) {
         [name]: ''
       }));
     }
+
+    // If file type changes, clear selected file
+    if (name === 'file_type_id') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        selectedFile: null,
+        file_name: ''
+      }));
+    }
   };
-
-
 
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData.sh_name.trim()) {
+      newErrors.sh_name = 'Коротка назва моделі обов\'язкова';
+    }
+
     if (!formData.selectedFile) {
-      newErrors.selectedFile = 'Файл обов\'язковий';
+      newErrors.selectedFile = 'Файл моделі обов\'язковий';
     }
 
     if (!formData.file_name.trim()) {
       newErrors.file_name = 'Ім\'я файлу обов\'язкове';
     }
-
-    // Описания теперь необязательные
-    // if (!formData.descr.trim()) {
-    //   newErrors.descr = 'Опис файлу обов\'язковий';
-    // }
-
-    // if (!formData.sh_descr.trim()) {
-    //   newErrors.sh_descr = 'Короткий опис обов\'язковий';
-    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -71,29 +74,29 @@ function AddFileModal({ isOpen, onClose, onSave }) {
       const fileName = formData.selectedFile.name.toLowerCase();
       const fileExtension = '.' + fileName.split('.').pop();
 
-      const fileData = {
-        file_name: formData.file_name,
+      const modelData = {
+        sh_name: formData.sh_name,
         descr: formData.descr,
-        sh_descr: formData.sh_descr,
+        file_name: formData.file_name,
         file_content: Array.from(new Uint8Array(fileContent)), // Convert to array for JSON serialization
         file_extension: fileExtension // Add file extension for backend validation
       };
 
-      await onSave(fileData);
+      await onSave(modelData);
 
       // Reset form on success
       setFormData({
-        file_name: '',
+        sh_name: '',
         descr: '',
-        sh_descr: '',
+        file_name: '',
         selectedFile: null,
         file_type_id: null
       });
       setErrors({});
       onClose();
     } catch (error) {
-      console.error('Error saving file:', error);
-      setErrors({ submit: 'Помилка при збереженні файлу' });
+      console.error('Error saving 3D model:', error);
+      setErrors({ submit: 'Помилка при збереженні 3D моделі' });
     } finally {
       setLoading(false);
     }
@@ -106,15 +109,15 @@ function AddFileModal({ isOpen, onClose, onSave }) {
 
   // Helper function to get placeholder text
   const getFilePlaceholder = () => {
-    return "Оберіть файл будь-якого типу";
+    return "Оберіть файл моделі будь-якого типу";
   };
 
   const handleClose = () => {
     if (!loading) {
       setFormData({
-        file_name: '',
+        sh_name: '',
         descr: '',
-        sh_descr: '',
+        file_name: '',
         selectedFile: null,
         file_type_id: null
       });
@@ -129,7 +132,7 @@ function AddFileModal({ isOpen, onClose, onSave }) {
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>📁 Додати файл</h2>
+          <h2>📐 Додати 3D модель</h2>
           <button
             className="close-button"
             onClick={handleClose}
@@ -140,9 +143,39 @@ function AddFileModal({ isOpen, onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label htmlFor="sh_name">Коротка назва моделі *</label>
+            <input
+              type="text"
+              id="sh_name"
+              name="sh_name"
+              value={formData.sh_name}
+              onChange={handleInputChange}
+              placeholder="Введіть коротку назву моделі"
+              className={errors.sh_name ? 'error' : ''}
+              disabled={loading}
+            />
+            {errors.sh_name && <span className="error-message">{errors.sh_name}</span>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="descr">Опис моделі</label>
+            <textarea
+              id="descr"
+              name="descr"
+              value={formData.descr}
+              onChange={handleInputChange}
+              placeholder="Введіть опис моделі (опціонально)"
+              rows="3"
+              className={errors.descr ? 'error' : ''}
+              disabled={loading}
+            />
+            {errors.descr && <span className="error-message">{errors.descr}</span>}
+          </div>
+
 
           <FileInput
-            label="Виберіть файл"
+            label="Виберіть файл моделі"
             accept={getAcceptedFileTypes()}
             value={formData.selectedFile}
             onChange={(file) => {
@@ -167,7 +200,7 @@ function AddFileModal({ isOpen, onClose, onSave }) {
           {errors.selectedFile && <span className="error-message">{errors.selectedFile}</span>}
 
           <div className="form-group">
-            <label htmlFor="file_name">Ім'я файлу *</label>
+            <label htmlFor="file_name">Ім'я файлу моделі *</label>
             <input
               type="text"
               id="file_name"
@@ -179,38 +212,6 @@ function AddFileModal({ isOpen, onClose, onSave }) {
               disabled={loading}
             />
             {errors.file_name && <span className="error-message">{errors.file_name}</span>}
-          </div>
-
-
-
-          <div className="form-group">
-            <label htmlFor="descr">Опис файлу</label>
-            <textarea
-              id="descr"
-              name="descr"
-              value={formData.descr}
-              onChange={handleInputChange}
-              placeholder="Введіть опис файлу (опціонально)"
-              rows="3"
-              className={errors.descr ? 'error' : ''}
-              disabled={loading}
-            />
-            {errors.descr && <span className="error-message">{errors.descr}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="sh_descr">Короткий опис</label>
-            <input
-              type="text"
-              id="sh_descr"
-              name="sh_descr"
-              value={formData.sh_descr}
-              onChange={handleInputChange}
-              placeholder="Введіть короткий опис файлу (опціонально)"
-              className={errors.sh_descr ? 'error' : ''}
-              disabled={loading}
-            />
-            {errors.sh_descr && <span className="error-message">{errors.sh_descr}</span>}
           </div>
 
           {errors.submit && (
@@ -240,4 +241,4 @@ function AddFileModal({ isOpen, onClose, onSave }) {
   );
 }
 
-export default AddFileModal;
+export default AddModelModal;
