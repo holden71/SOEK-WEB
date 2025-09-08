@@ -142,3 +142,70 @@ def insert_model_with_returning(db, sh_name: str, descr: str = None, model_file_
 
     print(f"SUCCESS: 3D Model inserted with MODEL_ID: {next_id}")
     return next_id
+
+
+def insert_multimedia_with_returning(db, sh_name: str, multimedia_file_id: int, model_id: int) -> int:
+    """
+    Insert multimedia relationship into SRTN_MULTIMED_3D_MODELS table and return the MULTIMED_3D_ID.
+    Uses Oracle Sequence for reliable ID generation.
+
+    Args:
+        db: Database session
+        sh_name: Short name of multimedia file
+        multimedia_file_id: ID of multimedia file in SRTN_FILES
+        model_id: ID of 3D model
+
+    Returns:
+        int: The MULTIMED_3D_ID assigned by the database
+    """
+
+    # STEP 1: Get next ID from Oracle Sequence
+    try:
+        # Try to get next value from sequence
+        print("DEBUG: Getting next MULTIMED_3D_ID from Oracle sequence...")
+        next_id_result = db.execute(text("SELECT SRTN_MULTIMED_3D_MODELS_SEQ.NEXTVAL FROM DUAL"))
+        next_id = next_id_result.scalar()
+        print(f"DEBUG: Got MULTIMED_3D_ID from sequence: {next_id}")
+
+    except Exception as e:
+        print(f"DEBUG: Sequence failed ({e}), creating sequence and retrying...")
+        try:
+            # Create sequence if it doesn't exist
+            max_id = db.execute(text("SELECT NVL(MAX(MULTIMED_3D_ID), 0) FROM SRTN_MULTIMED_3D_MODELS")).scalar()
+            db.execute(text(f"""
+                CREATE SEQUENCE SRTN_MULTIMED_3D_MODELS_SEQ
+                START WITH {max_id + 1}
+                INCREMENT BY 1
+                NOCACHE
+                NOCYCLE
+            """))
+            print(f"DEBUG: Created SRTN_MULTIMED_3D_MODELS_SEQ starting from {max_id + 1}")
+            
+            # Get next value from newly created sequence
+            next_id_result = db.execute(text("SELECT SRTN_MULTIMED_3D_MODELS_SEQ.NEXTVAL FROM DUAL"))
+            next_id = next_id_result.scalar()
+            print(f"DEBUG: Got MULTIMED_3D_ID from new sequence: {next_id}")
+
+        except Exception as e2:
+            print(f"DEBUG: Sequence creation failed ({e2}), using MAX+1 fallback...")
+            # Final fallback: MAX + 1 but with proper logic for empty tables
+            max_result = db.execute(text("SELECT NVL(MAX(MULTIMED_3D_ID), 0) FROM SRTN_MULTIMED_3D_MODELS")).scalar()
+            next_id = max_result + 1
+            print(f"DEBUG: Using MAX+1 fallback, MULTIMED_3D_ID: {next_id}")
+
+    # STEP 2: Insert multimedia relationship with explicit ID
+    print(f"DEBUG: Inserting multimedia relationship with MULTIMED_3D_ID: {next_id}, FILE_ID: {multimedia_file_id}, MODEL_ID: {model_id}")
+    insert_query = text("""
+        INSERT INTO SRTN_MULTIMED_3D_MODELS (MULTIMED_3D_ID, SH_NAME, MULTIMED_FILE_ID, MODEL_ID)
+        VALUES (:multimed_3d_id, :sh_name, :multimed_file_id, :model_id)
+    """)
+
+    db.execute(insert_query, {
+        "multimed_3d_id": next_id,
+        "sh_name": sh_name,
+        "multimed_file_id": multimedia_file_id,
+        "model_id": model_id
+    })
+
+    print(f"SUCCESS: Multimedia relationship inserted with MULTIMED_3D_ID: {next_id}")
+    return next_id

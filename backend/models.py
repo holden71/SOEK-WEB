@@ -214,9 +214,16 @@ class CreateFileRequest(BaseModel):
     file_content: List[int]  # Массив байтов для BLOB данных
     file_extension: str  # Расширение файла для автоматического определения типа
 
+class MultimediaFileRequest(BaseModel):
+    sh_name: str  # Короткая назва файлу мультімедіа
+    file_name: str  # Имя файла мультимедиа
+    file_content: List[int]  # Содержимое файла мультимедиа
+    file_extension: str  # Расширение файла для автоматического определения типа
+
 class CreateModel3DRequest(BaseModel):
     sh_name: str  # Короткая название модели
     descr: Optional[str] = None  # Описание модели
     file_name: str  # Имя файла модели
     file_content: List[int]  # Содержимое файла модели
     file_extension: str  # Расширение файла для автоматического определения типа
+    multimedia_files: Optional[List[MultimediaFileRequest]] = []  # Мультимедиа файлы

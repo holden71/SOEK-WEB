@@ -8,10 +8,27 @@ function AddModelModal({ isOpen, onClose, onSave }) {
     descr: '',
     file_name: '',
     selectedFile: null,
-    file_type_id: null // Will be auto-detected
+    file_type_id: null, // Will be auto-detected
+    multimediaFiles: [] // Array of multimedia files
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Handle multimedia file selection
+  const handleMultimediaFileAdd = (file) => {
+    setFormData(prev => ({
+      ...prev,
+      multimediaFiles: [...prev.multimediaFiles, file]
+    }));
+  };
+
+  // Remove multimedia file
+  const handleMultimediaFileRemove = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      multimediaFiles: prev.multimediaFiles.filter((_, i) => i !== index)
+    }));
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -79,7 +96,17 @@ function AddModelModal({ isOpen, onClose, onSave }) {
         descr: formData.descr,
         file_name: formData.file_name,
         file_content: Array.from(new Uint8Array(fileContent)), // Convert to array for JSON serialization
-        file_extension: fileExtension // Add file extension for backend validation
+        file_extension: fileExtension, // Add file extension for backend validation
+        multimedia_files: await Promise.all(formData.multimediaFiles.map(async (file) => {
+          const multimediaContent = await file.arrayBuffer();
+          const multimediaExtension = '.' + file.name.split('.').pop().toLowerCase();
+          return {
+            sh_name: file.name.split('.')[0], // Name without extension
+            file_name: file.name,
+            file_content: Array.from(new Uint8Array(multimediaContent)),
+            file_extension: multimediaExtension
+          };
+        }))
       };
 
       await onSave(modelData);
@@ -90,7 +117,8 @@ function AddModelModal({ isOpen, onClose, onSave }) {
         descr: '',
         file_name: '',
         selectedFile: null,
-        file_type_id: null
+        file_type_id: null,
+        multimediaFiles: []
       });
       setErrors({});
       onClose();
@@ -127,7 +155,8 @@ function AddModelModal({ isOpen, onClose, onSave }) {
         descr: '',
         file_name: '',
         selectedFile: null,
-        file_type_id: null
+        file_type_id: null,
+        multimediaFiles: []
       });
       setErrors({});
       onClose();
@@ -220,6 +249,71 @@ function AddModelModal({ isOpen, onClose, onSave }) {
               disabled={loading}
             />
             {errors.file_name && <span className="error-message">{errors.file_name}</span>}
+          </div>
+
+          {/* Multimedia Files Section */}
+          <div className="form-group">
+            <label>Мультімедіа файли (опціонально)</label>            
+            <div className="custom-file-input">
+              <input
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files);
+                  files.forEach(file => {
+                    handleMultimediaFileAdd(file);
+                  });
+                  e.target.value = ''; // Reset input
+                }}
+                disabled={loading}
+                className="hidden-file-input"
+                id="multimedia-files-input"
+              />
+              <button
+                type="button"
+                className="select-file-button"
+                onClick={() => document.getElementById('multimedia-files-input').click()}
+                disabled={loading}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                  <path d="M8.5 8.5V6.5h2a.5.5 0 0 1 0 1h-2v1.5h2a.5.5 0 0 1 0 1h-2v1.5H10a.5.5 0 0 1 0 1H8.5V14H10a.5.5 0 0 1 0 1H6a.5.5 0 0 1 0-1h1.5v-1.5H6a.5.5 0 0 1 0-1h1.5V10H6a.5.5 0 0 1 0-1h1.5V7.5H6a.5.5 0 0 1 0-1h2V5z"/>
+                </svg>
+                Вибрати файли
+              </button>
+              <div className="file-display">
+                {formData.multimediaFiles.length > 0 ? (
+                  <span className="no-file">
+                    Обрано файлів: {formData.multimediaFiles.length}
+                  </span>
+                ) : (
+                  <span className="no-file">
+                    {loading ? 'Необхідно обрати тип файлу' : 'Оберіть файли мультимедіа'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {formData.multimediaFiles.length > 0 && (
+              <div className="multimedia-files-list">
+                <h4>Обрані мультімедіа файли:</h4>
+                {formData.multimediaFiles.map((file, index) => (
+                  <div key={index} className="multimedia-file-item">
+                    <span className="file-name">{file.name}</span>
+                    <span className="file-size">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    <button
+                      type="button"
+                      onClick={() => handleMultimediaFileRemove(index)}
+                      className="remove-file-btn"
+                      disabled={loading}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {errors.submit && (

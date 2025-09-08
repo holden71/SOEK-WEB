@@ -5,7 +5,7 @@ from sqlalchemy import inspect, text
 
 from db import DbSessionDep
 from models import Model3DData, CreateModel3DRequest
-from database_utils import insert_file_with_returning, insert_model_with_returning
+from database_utils import insert_file_with_returning, insert_model_with_returning, insert_multimedia_with_returning
 
 
 router = APIRouter(prefix="/api", tags=["models_3d"])
@@ -144,6 +144,50 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
             model_file_id=new_file_id
         )
 
+        # STEP 3: Process multimedia files if any
+        multimedia_ids = []
+        if model_data.multimedia_files:
+            print(f"DEBUG: Processing {len(model_data.multimedia_files)} multimedia files...")
+            
+            for multimedia_file in model_data.multimedia_files:
+                # Convert file content back to bytes
+                multimedia_bytes = bytes(multimedia_file.file_content)
+                
+                # Check if file type exists
+                multimedia_type_query = text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE EXTENSION = :extension")
+                multimedia_type_row = db.execute(multimedia_type_query, {"extension": multimedia_file.file_extension}).fetchone()
+                
+                if not multimedia_type_row:
+                    raise HTTPException(status_code=400, detail=f"Тип мультімедіа файлу з розширенням '{multimedia_file.file_extension}' не знайдено в базі даних")
+                
+                multimedia_type_id = multimedia_type_row[0]
+                
+                # Insert multimedia file into SRTN_FILES
+                multimedia_file_id = insert_file_with_returning(
+                    db=db,
+                    file_type_id=multimedia_type_id,
+                    file_name=multimedia_file.file_name,
+                    file_bytes=multimedia_bytes,
+                    descr=f"Мультімедіа файл для 3D моделі: {model_data.sh_name}",
+                    sh_descr=multimedia_file.sh_name
+                )
+                
+                # Insert relationship into SRTN_MULTIMED_3D_MODELS
+                multimedia_relation_id = insert_multimedia_with_returning(
+                    db=db,
+                    sh_name=multimedia_file.sh_name,
+                    multimedia_file_id=multimedia_file_id,
+                    model_id=new_model_id
+                )
+                
+                multimedia_ids.append({
+                    "multimedia_file_id": multimedia_file_id,
+                    "multimedia_relation_id": multimedia_relation_id,
+                    "file_name": multimedia_file.file_name
+                })
+                
+                print(f"DEBUG: Multimedia file '{multimedia_file.file_name}' processed - FILE_ID: {multimedia_file_id}, RELATION_ID: {multimedia_relation_id}")
+
         db.commit()
 
         # Return created model info with confirmed IDs
@@ -151,8 +195,11 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
             "MODEL_ID": new_model_id,
             "SH_NAME": model_data.sh_name,
             "DESCR": model_data.descr,
-            "MODEL_FILE_ID": new_file_id
+            "MODEL_FILE_ID": new_file_id,
+            "MULTIMEDIA_FILES_COUNT": len(multimedia_ids) if multimedia_ids else 0
         }
+
+        print(f"SUCCESS: 3D Model created with MODEL_ID: {new_model_id}, FILE_ID: {new_file_id}, Multimedia files: {len(multimedia_ids) if multimedia_ids else 0}")
 
         return Model3DData(data=result_data)
 
