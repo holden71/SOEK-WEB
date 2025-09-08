@@ -96,7 +96,15 @@ function AddModelModal({ isOpen, onClose, onSave }) {
       onClose();
     } catch (error) {
       console.error('Error saving 3D model:', error);
-      setErrors({ submit: 'Помилка при збереженні 3D моделі' });
+
+      // Check if it's a file type not found error
+      let errorMessage = 'Помилка при збереженні 3D моделі';
+      if (error.message && error.message.includes('не знайдено в базі даних')) {
+        const extension = formData.selectedFile ? '.' + formData.selectedFile.name.split('.').pop() : '';
+        errorMessage = `Тип файлу з розширенням "${extension}" не знайдено в базі даних. Спочатку додайте відповідний тип файлу для 3D моделей.`;
+      }
+
+      setErrors({ submit: errorMessage });
     } finally {
       setLoading(false);
     }

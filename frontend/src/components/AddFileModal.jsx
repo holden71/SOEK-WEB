@@ -93,7 +93,15 @@ function AddFileModal({ isOpen, onClose, onSave }) {
       onClose();
     } catch (error) {
       console.error('Error saving file:', error);
-      setErrors({ submit: 'Помилка при збереженні файлу' });
+
+      // Check if it's a file type not found error
+      let errorMessage = 'Помилка при збереженні файлу';
+      if (error.message && error.message.includes('не знайдено в базі даних')) {
+        const extension = formData.selectedFile ? '.' + formData.selectedFile.name.split('.').pop() : '';
+        errorMessage = `Тип файлу з розширенням "${extension}" не знайдено в базі даних. Спочатку додайте відповідний тип файлу.`;
+      }
+
+      setErrors({ submit: errorMessage });
     } finally {
       setLoading(false);
     }
