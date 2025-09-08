@@ -5,6 +5,7 @@ from sqlalchemy import inspect, text
 
 from db import DbSessionDep
 from models import Model3DData, CreateModel3DRequest
+from database_utils import insert_file_with_returning, insert_model_with_returning
 
 
 router = APIRouter(prefix="/api", tags=["models_3d"])
@@ -85,28 +86,34 @@ async def delete_3d_model(
         raise HTTPException(status_code=404, detail="3D модель не знайдена")
 
     model_file_id = existing_model[0]
+    print(f"DEBUG: Deleting model {model_id} with associated file {model_file_id}")
 
     # Delete the associated file first
     if model_file_id:
-        delete_file_query = text("DELETE FROM SRTN_FILES WHERE FILE_ID = :file_id")
-        db.execute(delete_file_query, {"file_id": model_file_id})
+        # Check if file exists before deleting
+        file_check_query = text("SELECT FILE_ID FROM SRTN_FILES WHERE FILE_ID = :file_id")
+        file_result = db.execute(file_check_query, {"file_id": model_file_id})
+        if file_result.fetchone():
+            delete_file_query = text("DELETE FROM SRTN_FILES WHERE FILE_ID = :file_id")
+            db.execute(delete_file_query, {"file_id": model_file_id})
+            print(f"DEBUG: File {model_file_id} deleted successfully")
+        else:
+            print(f"WARNING: File {model_file_id} not found for deletion")
 
     # Delete the model
     delete_query = text("DELETE FROM SRTN_3D_MODELS WHERE MODEL_ID = :model_id")
     db.execute(delete_query, {"model_id": model_id})
+    print(f"DEBUG: Model {model_id} deleted successfully")
+
     db.commit()
 
-    return {"message": "3D модель та пов'язаний файл успішно видалені"}
+    return {"message": f"3D модель {model_id} та пов'язаний файл {model_file_id} успішно видалені"}
 
 
 @router.post("/models_3d", response_model=Model3DData)
 async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
     try:
-        # Step 1: Create the file first
-        # Get next FILE_ID
-        result = db.execute(text("SELECT NVL(MAX(FILE_ID), 0) + 1 FROM SRTN_FILES"))
-        new_file_id = result.scalar()
-
+        # Step 1: Create the file first using RETURNING INTO (MOST RELIABLE METHOD)
         # Convert file content
         file_bytes = bytes(model_data.file_content) if model_data.file_content else None
 
@@ -119,42 +126,27 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
 
         file_type_id = file_type_row[0]
 
-        # Insert file
-        insert_file_query = text("""
-            INSERT INTO SRTN_FILES (FILE_ID, FILE_TYPE_ID, FILE_NAME, DESCR, DATA, SH_DESCR)
-            VALUES (:file_id, :file_type_id, :file_name, :descr, :data, :sh_descr)
-        """)
+        # STEP 1: Insert file using utility function
+        new_file_id = insert_file_with_returning(
+            db=db,
+            file_type_id=file_type_id,
+            file_name=model_data.file_name,
+            file_bytes=file_bytes,
+            descr=model_data.descr,
+            sh_descr=f"Файл 3D моделі: {model_data.sh_name}"
+        )
 
-        db.execute(insert_file_query, {
-            "file_id": new_file_id,
-            "file_type_id": file_type_id,
-            "file_name": model_data.file_name,
-            "descr": model_data.descr or None,
-            "data": file_bytes,
-            "sh_descr": f"Файл 3D моделі: {model_data.sh_name}"
-        })
-
-        # Step 2: Now create the 3D model with the confirmed FILE_ID
-        # Get next MODEL_ID
-        result = db.execute(text("SELECT NVL(MAX(MODEL_ID), 0) + 1 FROM SRTN_3D_MODELS"))
-        new_model_id = result.scalar()
-
-        # Insert 3D model
-        insert_model_query = text("""
-            INSERT INTO SRTN_3D_MODELS (MODEL_ID, SH_NAME, DESCR, MODEL_FILE_ID)
-            VALUES (:model_id, :sh_name, :descr, :model_file_id)
-        """)
-
-        db.execute(insert_model_query, {
-            "model_id": new_model_id,
-            "sh_name": model_data.sh_name,
-            "descr": model_data.descr or None,
-            "model_file_id": new_file_id  # Use the confirmed FILE_ID
-        })
+        # STEP 2: Insert 3D model using utility function
+        new_model_id = insert_model_with_returning(
+            db=db,
+            sh_name=model_data.sh_name,
+            descr=model_data.descr,
+            model_file_id=new_file_id
+        )
 
         db.commit()
 
-        # Return created model info
+        # Return created model info with confirmed IDs
         result_data = {
             "MODEL_ID": new_model_id,
             "SH_NAME": model_data.sh_name,

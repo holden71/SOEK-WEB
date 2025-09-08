@@ -7,6 +7,7 @@ from sqlalchemy import inspect, text
 
 from db import DbSessionDep
 from models import FileData, CreateFileRequest
+from database_utils import insert_file_with_returning
 
 
 router = APIRouter(prefix="/api", tags=["files"])
@@ -135,10 +136,6 @@ async def download_file(db: DbSessionDep, file_id: int):
 @router.post("/files", response_model=FileData)
 async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
     try:
-        # Get next FILE_ID
-        result = db.execute(text("SELECT NVL(MAX(FILE_ID), 0) + 1 FROM SRTN_FILES"))
-        new_id = result.scalar()
-
         # Convert file content and get size
         file_bytes = bytes(file_data.file_content) if file_data.file_content else None
         file_size = len(file_data.file_content) if file_data.file_content else 0
@@ -152,20 +149,15 @@ async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
 
         file_type_id = file_type_row[0]
 
-        # Insert new file
-        insert_query = text("""
-            INSERT INTO SRTN_FILES (FILE_ID, FILE_TYPE_ID, FILE_NAME, DESCR, DATA, SH_DESCR)
-            VALUES (:file_id, :file_type_id, :file_name, :descr, :data, :sh_descr)
-        """)
-
-        db.execute(insert_query, {
-            "file_id": new_id,
-            "file_type_id": file_type_id,
-            "file_name": file_data.file_name,
-            "descr": file_data.descr or None,
-            "data": file_bytes,
-            "sh_descr": file_data.sh_descr or None
-        })
+        # Insert file using utility function
+        new_id = insert_file_with_returning(
+            db=db,
+            file_type_id=file_type_id,
+            file_name=file_data.file_name,
+            file_bytes=file_bytes,
+            descr=file_data.descr,
+            sh_descr=file_data.sh_descr
+        )
 
         db.commit()
 
