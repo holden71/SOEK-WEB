@@ -132,8 +132,8 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
             file_type_id=file_type_id,
             file_name=model_data.file_name,
             file_bytes=file_bytes,
-            descr=model_data.descr,
-            sh_descr=f"Файл 3D моделі: {model_data.sh_name}"
+            descr=f"Файл 3D моделі: {model_data.sh_name}",  # Auto-generated description like multimedia
+            sh_descr=None  # sh_descr should be null for 3D model files
         )
 
         # STEP 2: Insert 3D model using utility function
@@ -154,7 +154,7 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
                 multimedia_bytes = bytes(multimedia_file.file_content)
                 
                 # Check if file type exists
-                multimedia_type_query = text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE EXTENSION = :extension")
+                multimedia_type_query = text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE DEF_EXT = :extension")
                 multimedia_type_row = db.execute(multimedia_type_query, {"extension": multimedia_file.file_extension}).fetchone()
                 
                 if not multimedia_type_row:
@@ -169,7 +169,7 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
                     file_name=multimedia_file.file_name,
                     file_bytes=multimedia_bytes,
                     descr=f"Мультімедіа файл для 3D моделі: {model_data.sh_name}",
-                    sh_descr=multimedia_file.sh_name
+                    sh_descr=None  # sh_descr should be null for multimedia files
                 )
                 
                 # Insert relationship into SRTN_MULTIMED_3D_MODELS

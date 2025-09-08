@@ -6,7 +6,6 @@ function AddModelModal({ isOpen, onClose, onSave }) {
   const [formData, setFormData] = useState({
     sh_name: '',
     descr: '',
-    file_name: '',
     selectedFile: null,
     file_type_id: null, // Will be auto-detected
     multimediaFiles: [] // Array of multimedia files
@@ -50,8 +49,7 @@ function AddModelModal({ isOpen, onClose, onSave }) {
       setFormData(prev => ({
         ...prev,
         [name]: value,
-        selectedFile: null,
-        file_name: ''
+        selectedFile: null
       }));
     }
   };
@@ -65,10 +63,6 @@ function AddModelModal({ isOpen, onClose, onSave }) {
 
     if (!formData.selectedFile) {
       newErrors.selectedFile = 'Файл моделі обов\'язковий';
-    }
-
-    if (!formData.file_name.trim()) {
-      newErrors.file_name = 'Ім\'я файлу обов\'язкове';
     }
 
     setErrors(newErrors);
@@ -94,7 +88,7 @@ function AddModelModal({ isOpen, onClose, onSave }) {
       const modelData = {
         sh_name: formData.sh_name,
         descr: formData.descr,
-        file_name: formData.file_name,
+        file_name: formData.selectedFile.name, // Use selected file name automatically
         file_content: Array.from(new Uint8Array(fileContent)), // Convert to array for JSON serialization
         file_extension: fileExtension, // Add file extension for backend validation
         multimedia_files: await Promise.all(formData.multimediaFiles.map(async (file) => {
@@ -115,7 +109,6 @@ function AddModelModal({ isOpen, onClose, onSave }) {
       setFormData({
         sh_name: '',
         descr: '',
-        file_name: '',
         selectedFile: null,
         file_type_id: null,
         multimediaFiles: []
@@ -153,7 +146,6 @@ function AddModelModal({ isOpen, onClose, onSave }) {
       setFormData({
         sh_name: '',
         descr: '',
-        file_name: '',
         selectedFile: null,
         file_type_id: null,
         multimediaFiles: []
@@ -218,15 +210,13 @@ function AddModelModal({ isOpen, onClose, onSave }) {
             onChange={(file) => {
               setFormData(prev => ({
                 ...prev,
-                selectedFile: file,
-                file_name: file.name
+                selectedFile: file
               }));
             }}
             onRemove={() => {
               setFormData(prev => ({
                 ...prev,
-                selectedFile: null,
-                file_name: ''
+                selectedFile: null
               }));
             }}
             placeholder={getFilePlaceholder()}
@@ -235,21 +225,6 @@ function AddModelModal({ isOpen, onClose, onSave }) {
             error={!!errors.selectedFile}
           />
           {errors.selectedFile && <span className="error-message">{errors.selectedFile}</span>}
-
-          <div className="form-group">
-            <label htmlFor="file_name">Ім'я файлу моделі *</label>
-            <input
-              type="text"
-              id="file_name"
-              name="file_name"
-              value={formData.file_name}
-              onChange={handleInputChange}
-              placeholder="Ім'я файлу буде заповнено автоматично"
-              className={errors.file_name ? 'error' : ''}
-              disabled={loading}
-            />
-            {errors.file_name && <span className="error-message">{errors.file_name}</span>}
-          </div>
 
           {/* Multimedia Files Section */}
           <div className="form-group">

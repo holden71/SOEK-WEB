@@ -32,7 +32,6 @@ async def get_file_types(
     for row in result:
         row_dict = {column_names[i]: value for i, value in enumerate(row)}
         # Debug: print what we have
-        print(f"Processing row: {row_dict}")
 
         # Add display name with extension in parentheses
         name_key = None

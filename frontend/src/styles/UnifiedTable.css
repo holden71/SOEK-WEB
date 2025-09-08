@@ -223,7 +223,7 @@ tbody tr:last-child td {
 
 .cell-text {
   display: block;
-  max-width: 300px;
+  max-width: 500px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -273,6 +273,41 @@ tbody tr:last-child td {
   100% {
     box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.3);
   }
+}
+
+/* Tooltip Styles */
+.cell-tooltip {
+  visibility: hidden;
+  position: fixed;
+  background: #2c3e50;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: normal;
+  white-space: normal;
+  max-width: 300px;
+  width: max-content;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cell-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #2c3e50;
+}
+
+.cell-content:hover .cell-tooltip {
+  visibility: visible;
+  opacity: 1;
 }
 
 @keyframes copyLabelFade {

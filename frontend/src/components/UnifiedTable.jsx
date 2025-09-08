@@ -130,13 +130,26 @@ const UnifiedTable = ({
           }
         };
 
+        const handleMouseMove = (e) => {
+          const tooltip = e.currentTarget.querySelector('.cell-tooltip');
+          if (tooltip) {
+            const x = e.clientX;
+            const y = e.clientY;
+            tooltip.style.left = `${x + 10}px`;
+            tooltip.style.top = `${y - 10}px`;
+          }
+        };
+
         return (
           <div className="cell-content-wrapper">
             <div
               className="cell-content"
               onClick={handleCopy}
+              onMouseMove={handleMouseMove}
+              title={content}
             >
               <span className="cell-text">{content}</span>
+              <span className="cell-tooltip">{content}</span>
             </div>
           </div>
         );
