@@ -55,18 +55,18 @@ const Model3DDownloadButton = ({ modelData }) => {
       // Get filename from server's Content-Disposition header or use fallback
       let fileName;
       if (includeMultimedia) {
-        fileName = `3d_model_${modelId}_with_multimedia.zip`;
+        fileName = `model_${modelId}_with_multimedia.zip`;
       } else {
-        // Try to get filename from Content-Disposition header
+        // Try to get filename from Content-Disposition header first
         if (disposition) {
           const match = disposition.match(/filename="([^"]*)"/) || disposition.match(/filename=([^;]*)/);
           if (match && match[1]) {
             fileName = match[1];
           }
         }
-        // Fallback if server didn't provide filename
+        // Simple fallback if server didn't provide filename
         if (!fileName) {
-          fileName = `3d_model_${modelId}`;
+          fileName = `model_${modelId}`;
         }
       }
       

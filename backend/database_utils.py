@@ -129,15 +129,17 @@ def insert_model_with_returning(db, sh_name: str, descr: str = None, model_file_
     # STEP 2: Insert model with explicit ID
     print(f"DEBUG: Inserting 3D model with MODEL_ID: {next_id}, FILE_ID: {model_file_id}")
     insert_query = text("""
-        INSERT INTO SRTN_3D_MODELS (MODEL_ID, SH_NAME, DESCR, MODEL_FILE_ID)
-        VALUES (:model_id, :sh_name, :descr, :model_file_id)
+        INSERT INTO SRTN_3D_MODELS (MODEL_ID, SH_NAME, DESCR, MODEL_FILE_ID, MODEL_PREV1_ID, MODEL_PREV2_ID)
+        VALUES (:model_id, :sh_name, :descr, :model_file_id, :model_prev1_id, :model_prev2_id)
     """)
 
     db.execute(insert_query, {
         "model_id": next_id,
         "sh_name": sh_name,
         "descr": descr,
-        "model_file_id": model_file_id
+        "model_file_id": model_file_id,
+        "model_prev1_id": None,
+        "model_prev2_id": None
     })
 
     print(f"SUCCESS: 3D Model inserted with MODEL_ID: {next_id}")

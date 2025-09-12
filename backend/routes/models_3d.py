@@ -123,6 +123,16 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
             descr=f"Файл 3D моделі: {model_data.sh_name}",  # Auto-generated description like multimedia
             sh_descr=None  # sh_descr should be null for 3D model files
         )
+        
+        print(f"DEBUG: File created with ID: {new_file_id}")
+        
+        # Проверим, что файл действительно создан СРАЗУ ПОСЛЕ СОЗДАНИЯ
+        check_file = db.execute(text("SELECT FILE_ID FROM SRTN_FILES WHERE FILE_ID = :file_id"), {"file_id": new_file_id})
+        if not check_file.fetchone():
+            print(f"ERROR: File {new_file_id} not found immediately after creation!")
+            raise HTTPException(status_code=500, detail=f"Файл з ID {new_file_id} не створився")
+        else:
+            print(f"DEBUG: File {new_file_id} verified in same transaction")
 
         # STEP 2: Insert 3D model using utility function
         new_model_id = insert_model_with_returning(
@@ -187,6 +197,8 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
             "MULTIMEDIA_FILES_COUNT": len(multimedia_ids) if multimedia_ids else 0
         }
 
+        db.commit()
+
         print(f"SUCCESS: 3D Model created with MODEL_ID: {new_model_id}, FILE_ID: {new_file_id}, Multimedia files: {len(multimedia_ids) if multimedia_ids else 0}")
 
         return Model3DData(data=result_data)
@@ -211,8 +223,6 @@ async def download_3d_model(
     - include_multimedia: если True, включает все связанные мультимедийные файлы в ZIP архив
     """
     
-    print(f"DEBUG: download_3d_model called with model_id={model_id}, include_multimedia={include_multimedia}")
-    
     # Получаем информацию о 3D модели вместе с типом файла
     model_query = text("""
         SELECT m.MODEL_ID, m.SH_NAME, m.DESCR, m.MODEL_FILE_ID,
@@ -231,34 +241,24 @@ async def download_3d_model(
     
     model_id, sh_name, descr, model_file_id, model_file_name, model_file_data, file_extension = model_row
     
-    print(f"DEBUG: Found model - ID: {model_id}, name: {sh_name}, file_name: {model_file_name}, extension: {file_extension}")
-    print(f"DEBUG: File data type: {type(model_file_data)}, size: {len(model_file_data) if model_file_data else 0}")
-    
     # Проверяем наличие данных модели
     if model_file_data is None:
         model_file_data = b""
-        print("DEBUG: model_file_data was None, set to empty bytes")
     elif isinstance(model_file_data, str):
         model_file_data = model_file_data.encode('utf-8')
-        print("DEBUG: model_file_data was string, encoded to utf-8")
     elif not isinstance(model_file_data, bytes):
         model_file_data = bytes(model_file_data) if model_file_data else b""
-        print("DEBUG: model_file_data converted to bytes")
-    
-    print(f"DEBUG: Final model_file_data size: {len(model_file_data)} bytes")
-    print(f"DEBUG: include_multimedia = {include_multimedia}")
     
     if not include_multimedia:
-        print("DEBUG: Single file download mode")
         # Загружаем только файл 3D модели
         content_type, _ = mimetypes.guess_type(model_file_name)
         if not content_type:
             content_type = 'application/octet-stream'
         
-        # Просто используем оригинальное имя файла из базы
+        # Используем оригинальное имя файла из базы как есть
         filename = model_file_name or f"model_{model_id}.bin"
-        
-        print(f"DEBUG: Returning single file - content_type: {content_type}, filename: {filename}, size: {len(model_file_data)}")
+
+        print(f"DEBUG: Setting Content-Disposition header with filename: {filename}")
         
         return Response(
             content=model_file_data,
@@ -270,7 +270,6 @@ async def download_3d_model(
         )
     
     else:
-        print("DEBUG: ZIP archive with multimedia mode")
         # Создаем ZIP архив с моделью и мультимедийными файлами
         zip_buffer = io.BytesIO()
         
@@ -323,8 +322,8 @@ This archive contains:
         zip_buffer.seek(0)
         zip_data = zip_buffer.getvalue()
         
-        # Имя ZIP файла на основе названия модели
-        zip_filename = f"{sh_name or f'model_{model_id}'}_with_multimedia.zip"
+        # Простое ASCII имя для ZIP файла
+        zip_filename = f"model_{model_id}_with_multimedia.zip"
         
         return Response(
             content=zip_data,
