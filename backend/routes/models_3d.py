@@ -5,7 +5,7 @@ from sqlalchemy import inspect, text
 
 from db import DbSessionDep
 from models import Model3DData, CreateModel3DRequest
-from database_utils import insert_file_with_returning, insert_model_with_returning, insert_multimedia_with_returning
+from database_utils import insert_file_with_returning, insert_model_with_returning, insert_multimedia_with_returning, call_delete_3d_model_procedure
 
 
 router = APIRouter(prefix="/api", tags=["models_3d"])
@@ -77,37 +77,21 @@ async def delete_3d_model(
     db: DbSessionDep,
     model_id: int,
 ):
-    # Check if model exists and get file_id
-    check_query = text("SELECT MODEL_FILE_ID FROM SRTN_3D_MODELS WHERE MODEL_ID = :model_id")
+    # Check if model exists first
+    check_query = text("SELECT MODEL_ID FROM SRTN_3D_MODELS WHERE MODEL_ID = :model_id")
     result = db.execute(check_query, {"model_id": model_id})
     existing_model = result.fetchone()
 
     if not existing_model:
         raise HTTPException(status_code=404, detail="3D модель не знайдена")
 
-    model_file_id = existing_model[0]
-    print(f"DEBUG: Deleting model {model_id} with associated file {model_file_id}")
-
-    # Delete the associated file first
-    if model_file_id:
-        # Check if file exists before deleting
-        file_check_query = text("SELECT FILE_ID FROM SRTN_FILES WHERE FILE_ID = :file_id")
-        file_result = db.execute(file_check_query, {"file_id": model_file_id})
-        if file_result.fetchone():
-            delete_file_query = text("DELETE FROM SRTN_FILES WHERE FILE_ID = :file_id")
-            db.execute(delete_file_query, {"file_id": model_file_id})
-            print(f"DEBUG: File {model_file_id} deleted successfully")
-        else:
-            print(f"WARNING: File {model_file_id} not found for deletion")
-
-    # Delete the model
-    delete_query = text("DELETE FROM SRTN_3D_MODELS WHERE MODEL_ID = :model_id")
-    db.execute(delete_query, {"model_id": model_id})
-    print(f"DEBUG: Model {model_id} deleted successfully")
-
+    # Use stored procedure to delete model and all related data
+    result = call_delete_3d_model_procedure(db, model_id)
+    
+    # Commit the transaction
     db.commit()
-
-    return {"message": f"3D модель {model_id} та пов'язаний файл {model_file_id} успішно видалені"}
+    
+    return {"message": result["message"]}
 
 
 @router.post("/models_3d", response_model=Model3DData)

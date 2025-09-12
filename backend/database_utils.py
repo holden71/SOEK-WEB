@@ -209,3 +209,59 @@ def insert_multimedia_with_returning(db, sh_name: str, multimedia_file_id: int, 
 
     print(f"SUCCESS: Multimedia relationship inserted with MULTIMED_3D_ID: {next_id}")
     return next_id
+
+
+def call_delete_3d_model_procedure(db, model_id: int) -> dict:
+    """
+    Call DELETE_3D_MODEL stored procedure to delete a 3D model and all related data.
+    
+    Args:
+        db: Database session
+        model_id: ID of the 3D model to delete
+        
+    Returns:
+        dict: Result with success status and message
+        
+    Raises:
+        HTTPException: If deletion fails with error details
+    """
+    try:
+        print(f"DEBUG: Calling DELETE_3D_MODEL procedure for MODEL_ID: {model_id}")
+        
+        # Call the stored procedure and handle errors
+        db.execute(text("""
+            DECLARE
+                p_error_code NUMBER;
+                p_error_desc VARCHAR2(4000);
+            BEGIN
+                DELETE_3D_MODEL(
+                    MODEL_ID_ => :model_id,
+                    ERROR_CODE => p_error_code,
+                    ERROR_DESC => p_error_desc
+                );
+                
+                -- If there's an error, raise an exception
+                IF p_error_code IS NOT NULL AND p_error_code != 0 THEN
+                    RAISE_APPLICATION_ERROR(-20001, 'DELETE_3D_MODEL Error ' || p_error_code || ': ' || p_error_desc);
+                END IF;
+            END;
+        """), {"model_id": model_id})
+        
+        print(f"SUCCESS: DELETE_3D_MODEL procedure completed successfully for MODEL_ID: {model_id}")
+        
+        return {
+            "success": True,
+            "message": f"3D модель {model_id} та всі пов'язані дані успішно видалені"
+        }
+        
+    except Exception as e:
+        error_message = str(e)
+        print(f"ERROR: DELETE_3D_MODEL procedure failed for MODEL_ID {model_id}: {error_message}")
+        
+        # Extract meaningful error message
+        if "DELETE_3D_MODEL Error" in error_message:
+            # Extract the custom error message from the procedure
+            raise HTTPException(status_code=500, detail=f"Помилка видалення 3D моделі: {error_message}")
+        else:
+            # Generic database error
+            raise HTTPException(status_code=500, detail=f"Не вдалося видалити 3D модель {model_id}: {error_message}")
