@@ -6,6 +6,7 @@ import AddFileTypeModal from '../components/AddFileTypeModal';
 import AddFileModal from '../components/AddFileModal';
 import AddModelModal from '../components/AddModelModal';
 import FileDownloadButton from '../components/FileDownloadButton';
+import Model3DDownloadButton from '../components/Model3DDownloadButton';
 import { use3DModelsFetching } from '../hooks/use3DModelsFetching';
 import { useFilesFetching } from '../hooks/useFilesFetching';
 import { useFileTypesFetching } from '../hooks/useFileTypesFetching';
@@ -130,6 +131,131 @@ function Models3D() {
   const isAddAvailable = () => {
     return currentMode === 'file_types' || currentMode === 'files' || currentMode === 'models_3d';
   };
+
+  // Define custom columns for 3D models table
+  const customModelsColumns = useMemo(() => {
+    if (currentMode !== 'models_3d' || modelsData.length === 0) return null;
+
+    // Add checkbox column for row selection
+    const checkboxColumn = {
+      id: 'select',
+      header: ({ table }) => {
+        const isAllSelected = table.getIsAllRowsSelected();
+        const isSomeSelected = table.getIsSomeRowsSelected();
+
+        return (
+          <input
+            type="checkbox"
+            checked={isAllSelected}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            ref={(el) => {
+              if (el) el.indeterminate = isSomeSelected && !isAllSelected;
+            }}
+          />
+        );
+      },
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+        />
+      ),
+      size: 40,
+      enableSorting: false,
+      enableFiltering: false,
+    };
+
+    const actionsColumn = {
+      id: 'actions',
+      header: '',
+      size: 60,
+      maxSize: 60,
+      minSize: 60,
+      cell: ({ row }) => {
+        return (
+          <div className="table-actions-container">
+            <Model3DDownloadButton 
+              modelData={row.original} 
+            />
+          </div>
+        );
+      },
+    };
+
+    const baseColumns = [checkboxColumn, actionsColumn];
+
+    // Add data columns
+    const dataColumns = Object.keys(modelsData[0]).map(key => ({
+      accessorKey: key,
+      header: key,
+      cell: info => {
+        const content = info.getValue()?.toString() || '';
+
+        const handleCopy = async (e) => {
+          const element = e.currentTarget;
+          try {
+            await navigator.clipboard.writeText(content);
+            // Добавляем класс для анимации ячейки
+            setTimeout(() => {
+              element.classList.add('copied');
+
+              // Создаем label для уведомления
+              const label = document.createElement('span');
+              label.className = 'copy-label';
+              label.textContent = '📋 Скопійовано!';
+              label.style.position = 'fixed';
+              label.style.zIndex = '9999';
+
+              // Позиционируем label относительно курсора
+              const rect = element.getBoundingClientRect();
+              label.style.left = (rect.left + rect.width / 2) + 'px';
+              label.style.top = (rect.top - 40) + 'px';
+              label.style.transform = 'translateX(-50%)';
+
+              document.body.appendChild(label);
+
+              // Убираем анимацию через 800ms
+              setTimeout(() => {
+                element.classList.remove('copied');
+                if (document.body.contains(label)) {
+                  document.body.removeChild(label);
+                }
+              }, 800);
+            }, 10);
+          } catch (error) {
+            console.error('Failed to copy text:', error);
+          }
+        };
+
+        const handleMouseMove = (e) => {
+          const tooltip = e.currentTarget.querySelector('.cell-tooltip');
+          if (tooltip) {
+            const x = e.clientX;
+            const y = e.clientY;
+            tooltip.style.left = `${x + 10}px`;
+            tooltip.style.top = `${y - 10}px`;
+          }
+        };
+
+        return (
+          <div className="cell-content-wrapper">
+            <div
+              className="cell-content"
+              onClick={handleCopy}
+              onMouseMove={handleMouseMove}
+              title={content}
+            >
+              <span className="cell-text">{content}</span>
+              <span className="cell-tooltip">{content}</span>
+            </div>
+          </div>
+        );
+      },
+    }));
+
+    return [...baseColumns, ...dataColumns];
+  }, [currentMode, modelsData]);
 
   // Define custom columns for files table
   const customFilesColumns = useMemo(() => {
@@ -379,7 +505,13 @@ function Models3D() {
           showAddButton={isAddAvailable()}
           enableRowSelection={true}
           onDeleteSelected={handleDeleteSelected}
-          customColumns={currentMode === 'files' ? customFilesColumns : null}
+          customColumns={
+            currentMode === 'models_3d' 
+              ? customModelsColumns 
+              : currentMode === 'files' 
+                ? customFilesColumns 
+                : null
+          }
           className="models-table"
         />
       </div>

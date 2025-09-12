@@ -1,0 +1,226 @@
+/* Download Modal Overlay */
+.download-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Download Modal */
+.download-modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 420px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Download Modal Header */
+.download-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
+  background-color: #f8f9fa;
+}
+
+.download-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.close-button:hover {
+  background-color: #e5e5e5;
+  color: #333;
+}
+
+/* Download Modal Body */
+.download-modal-body {
+  padding: 20px;
+}
+
+.model-info {
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.model-info p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.model-info p:last-child {
+  margin-bottom: 0;
+}
+
+.model-info strong {
+  color: #333;
+}
+
+.download-question {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.download-question p {
+  margin: 0;
+  font-size: 15px;
+  color: #555;
+  font-weight: 500;
+}
+
+/* Download Options */
+.download-options {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.download-option-button {
+  flex: 1;
+  padding: 16px 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  position: relative;
+}
+
+.download-option-button:hover {
+  border-color: #007bff;
+  background-color: #f8f9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.download-option-button:active {
+  transform: translateY(0);
+}
+
+.download-option-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.download-option-button.model-only {
+  border-color: #28a745;
+}
+
+.download-option-button.model-only:hover {
+  border-color: #28a745;
+  background-color: #f0fff4;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.15);
+}
+
+.download-option-button.with-multimedia {
+  border-color: #17a2b8;
+}
+
+.download-option-button.with-multimedia:hover {
+  border-color: #17a2b8;
+  background-color: #f0feff;
+  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.15);
+}
+
+.button-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.button-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.button-text {
+  font-weight: 500;
+  color: #333;
+}
+
+/* Loading spinner */
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .download-modal {
+    width: 95vw;
+    margin: 20px;
+  }
+  
+  .download-options {
+    flex-direction: column;
+  }
+  
+  .download-option-button {
+    min-height: 50px;
+  }
+  
+  .button-content {
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .button-icon {
+    font-size: 20px;
+  }
+}

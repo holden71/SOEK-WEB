@@ -1,6 +1,10 @@
 from typing import List
+import mimetypes
+import zipfile
+import io
 
 from fastapi import APIRouter, Query, HTTPException
+from fastapi.responses import Response
 from sqlalchemy import inspect, text
 
 from db import DbSessionDep
@@ -192,3 +196,141 @@ async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Не вдалося створити 3D модель: {str(e)}")
+
+
+@router.get("/models_3d/{model_id}/download")
+async def download_3d_model(
+    db: DbSessionDep, 
+    model_id: int, 
+    include_multimedia: bool = False
+):
+    """
+    Загрузка 3D модели с опциональными мультимедийными файлами
+    
+    - model_id: ID 3D модели
+    - include_multimedia: если True, включает все связанные мультимедийные файлы в ZIP архив
+    """
+    
+    print(f"DEBUG: download_3d_model called with model_id={model_id}, include_multimedia={include_multimedia}")
+    
+    # Получаем информацию о 3D модели вместе с типом файла
+    model_query = text("""
+        SELECT m.MODEL_ID, m.SH_NAME, m.DESCR, m.MODEL_FILE_ID,
+               f.FILE_NAME, f.DATA, ft.DEF_EXT
+        FROM SRTN_3D_MODELS m
+        JOIN SRTN_FILES f ON m.MODEL_FILE_ID = f.FILE_ID
+        JOIN SRTN_FILE_TYPES ft ON f.FILE_TYPE_ID = ft.FILE_TYPE_ID
+        WHERE m.MODEL_ID = :model_id
+    """)
+    
+    model_result = db.execute(model_query, {"model_id": model_id})
+    model_row = model_result.fetchone()
+    
+    if not model_row:
+        raise HTTPException(status_code=404, detail="3D модель не знайдена")
+    
+    model_id, sh_name, descr, model_file_id, model_file_name, model_file_data, file_extension = model_row
+    
+    print(f"DEBUG: Found model - ID: {model_id}, name: {sh_name}, file_name: {model_file_name}, extension: {file_extension}")
+    print(f"DEBUG: File data type: {type(model_file_data)}, size: {len(model_file_data) if model_file_data else 0}")
+    
+    # Проверяем наличие данных модели
+    if model_file_data is None:
+        model_file_data = b""
+        print("DEBUG: model_file_data was None, set to empty bytes")
+    elif isinstance(model_file_data, str):
+        model_file_data = model_file_data.encode('utf-8')
+        print("DEBUG: model_file_data was string, encoded to utf-8")
+    elif not isinstance(model_file_data, bytes):
+        model_file_data = bytes(model_file_data) if model_file_data else b""
+        print("DEBUG: model_file_data converted to bytes")
+    
+    print(f"DEBUG: Final model_file_data size: {len(model_file_data)} bytes")
+    print(f"DEBUG: include_multimedia = {include_multimedia}")
+    
+    if not include_multimedia:
+        print("DEBUG: Single file download mode")
+        # Загружаем только файл 3D модели
+        content_type, _ = mimetypes.guess_type(model_file_name)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        
+        # Просто используем оригинальное имя файла из базы
+        filename = model_file_name or f"model_{model_id}.bin"
+        
+        print(f"DEBUG: Returning single file - content_type: {content_type}, filename: {filename}, size: {len(model_file_data)}")
+        
+        return Response(
+            content=model_file_data,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(model_file_data))
+            }
+        )
+    
+    else:
+        print("DEBUG: ZIP archive with multimedia mode")
+        # Создаем ZIP архив с моделью и мультимедийными файлами
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Добавляем основной файл 3D модели
+            model_filename = model_file_name or f"model_{model_id}"
+            zip_file.writestr(model_filename, model_file_data)
+            
+            # Получаем все связанные мультимедийные файлы
+            multimedia_query = text("""
+                SELECT mm.SH_NAME as MM_NAME, f.FILE_NAME, f.DATA
+                FROM SRTN_MULTIMED_3D_MODELS mm
+                JOIN SRTN_FILES f ON mm.MULTIMED_FILE_ID = f.FILE_ID
+                WHERE mm.MODEL_ID = :model_id
+            """)
+            
+            multimedia_result = db.execute(multimedia_query, {"model_id": model_id})
+            multimedia_files = multimedia_result.fetchall()
+            
+            # Добавляем мультимедийные файлы в архив
+            multimedia_count = 0
+            for mm_name, file_name, file_data in multimedia_files:
+                if file_data is None:
+                    file_data = b""
+                elif isinstance(file_data, str):
+                    file_data = file_data.encode('utf-8')
+                elif not isinstance(file_data, bytes):
+                    file_data = bytes(file_data) if file_data else b""
+                
+                # Создаем папку для мультимедийных файлов
+                multimedia_filename = f"multimedia/{file_name}" if file_name else f"multimedia/file_{multimedia_count}"
+                zip_file.writestr(multimedia_filename, file_data)
+                multimedia_count += 1
+            
+            # Создаем информационный файл
+            info_content = f"""3D Model Information
+============================
+Model Name: {sh_name or 'Unnamed'}
+Description: {descr or 'No description'}
+Model ID: {model_id}
+Model File: {model_filename}
+Multimedia Files: {multimedia_count}
+
+This archive contains:
+- Main 3D model file: {model_filename}
+- Multimedia files folder: multimedia/ ({multimedia_count} files)
+"""
+            zip_file.writestr("README.txt", info_content.encode('utf-8'))
+        
+        zip_buffer.seek(0)
+        zip_data = zip_buffer.getvalue()
+        
+        # Имя ZIP файла на основе названия модели
+        zip_filename = f"{sh_name or f'model_{model_id}'}_with_multimedia.zip"
+        
+        return Response(
+            content=zip_data,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{zip_filename}"',
+                "Content-Length": str(len(zip_data))
+            }
+        )
