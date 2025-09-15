@@ -10,6 +10,7 @@ import Model3DDownloadButton from '../components/Model3DDownloadButton';
 import { use3DModelsFetching } from '../hooks/use3DModelsFetching';
 import { useFilesFetching } from '../hooks/useFilesFetching';
 import { useFileTypesFetching } from '../hooks/useFileTypesFetching';
+import { useMultimediaFetching } from '../hooks/useMultimediaFetching';
 import '../styles/index.css';
 
 function Models3D() {
@@ -47,6 +48,14 @@ function Models3D() {
     refreshData: refreshFileTypesData
   } = useFileTypesFetching();
 
+  const {
+    data: multimediaData,
+    loading: multimediaLoading,
+    error: multimediaError,
+    deleteMultimedia,
+    refreshData: refreshMultimediaData
+  } = useMultimediaFetching();
+
   // Refresh data when switching tabs
   React.useEffect(() => {
     switch (currentMode) {
@@ -58,6 +67,9 @@ function Models3D() {
         break;
       case 'file_types':
         refreshFileTypesData();
+        break;
+      case 'multimedia':
+        refreshMultimediaData();
         break;
       default:
         break;
@@ -85,6 +97,11 @@ function Models3D() {
       key: 'file_types',
       label: 'Типи файлів',
       description: 'Перегляд та управління типами файлів'
+    },
+    {
+      key: 'multimedia',
+      label: 'Мультимедія',
+      description: 'Перегляд та управління мультімедіа файлами'
     }
   ];
 
@@ -97,6 +114,8 @@ function Models3D() {
         return { data: filesData, loading: filesLoading, error: filesError };
       case 'file_types':
         return { data: fileTypesData, loading: fileTypesLoading, error: fileTypesError };
+      case 'multimedia':
+        return { data: multimediaData, loading: multimediaLoading, error: multimediaError };
       default:
         return { data: modelsData, loading: modelsLoading, error: modelsError };
     }
@@ -130,6 +149,7 @@ function Models3D() {
   // Check if add functionality is available for current mode
   const isAddAvailable = () => {
     return currentMode === 'file_types' || currentMode === 'files' || currentMode === 'models_3d';
+    // Multimedia mode only for viewing and deleting, no adding
   };
 
   // Define custom columns for 3D models table
@@ -386,6 +406,105 @@ function Models3D() {
     return [...baseColumns, ...dataColumns];
   }, [currentMode, filesData]);
 
+  // Define custom columns for multimedia table - simplified version
+  const customMultimediaColumns = useMemo(() => {
+    if (currentMode !== 'multimedia') return null;
+    
+    // If no data, return empty array (table will show "No data" message)
+    if (!multimediaData || multimediaData.length === 0) {
+      return [];
+    }
+
+    // Add checkbox column for row selection
+    const checkboxColumn = {
+      id: 'select',
+      header: ({ table }) => {
+        const isAllSelected = table.getIsAllRowsSelected();
+        const isSomeSelected = table.getIsSomeRowsSelected();
+
+        return (
+          <input
+            type="checkbox"
+            checked={isAllSelected}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            ref={(el) => {
+              if (el) el.indeterminate = isSomeSelected && !isAllSelected;
+            }}
+          />
+        );
+      },
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+        />
+      ),
+      size: 40,
+      enableSorting: false,
+      enableFiltering: false,
+    };
+
+    // Simple data columns without actions column
+    const dataColumns = Object.keys(multimediaData[0]).map(key => ({
+      accessorKey: key,
+      header: key,
+      cell: info => {
+        const content = info.getValue()?.toString() || '';
+
+        const handleCopy = async (e) => {
+          const element = e.currentTarget;
+          try {
+            await navigator.clipboard.writeText(content);
+            // Добавляем класс для анимации ячейки
+            setTimeout(() => {
+              element.classList.add('copied');
+
+              // Создаем label для уведомления
+              const label = document.createElement('span');
+              label.className = 'copy-label';
+              label.textContent = '📋 Скопійовано!';
+              label.style.position = 'fixed';
+              label.style.zIndex = '9999';
+
+              // Позиционируем label относительно курсора
+              const rect = element.getBoundingClientRect();
+              label.style.left = (rect.left + rect.width / 2) + 'px';
+              label.style.top = (rect.top - 40) + 'px';
+              label.style.transform = 'translateX(-50%)';
+
+              document.body.appendChild(label);
+
+              // Убираем анимацию через 800ms
+              setTimeout(() => {
+                element.classList.remove('copied');
+                if (document.body.contains(label)) {
+                  document.body.removeChild(label);
+                }
+              }, 800);
+            }, 10);
+          } catch (error) {
+            console.error('Failed to copy text:', error);
+          }
+        };
+
+        return (
+          <div className="cell-content-wrapper">
+            <div
+              className="cell-content"
+              onClick={handleCopy}
+              title={content}
+            >
+              <span className="cell-text">{content}</span>
+            </div>
+          </div>
+        );
+      },
+    }));
+
+    return [checkboxColumn, ...dataColumns];
+  }, [currentMode, multimediaData]);
+
   // Handle saving new file type
   const handleSaveFileType = async (fileTypeData) => {
     await createFileType(fileTypeData);
@@ -464,6 +583,24 @@ function Models3D() {
           await refreshFileTypesData();
           break;
 
+        case 'multimedia':
+          for (const row of selectedRows) {
+            try {
+              // Try different possible field names for MULTIMED_3D_ID
+              const multimedId = row.MULTIMED_3D_ID || row.multimed_3d_id || row.id;
+              if (!multimedId) {
+                throw new Error(`Не вдалося знайти ID мультимедіа запису. Доступні поля: ${Object.keys(row).join(', ')}`);
+              }
+              await deleteMultimedia(multimedId);
+            } catch (error) {
+              const multimedId = row.MULTIMED_3D_ID || row.multimed_3d_id || row.id || 'невідомий';
+              errorMessages.push(`Помилка видалення мультимедіа ${multimedId}: ${error.message}`);
+            }
+          }
+          // Refresh data after successful deletions
+          await refreshMultimediaData();
+          break;
+
         default:
           alert(`Видалення для "${getPageTitle()}" не підтримується`);
           return;
@@ -510,7 +647,9 @@ function Models3D() {
               ? customModelsColumns 
               : currentMode === 'files' 
                 ? customFilesColumns 
-                : null
+                : currentMode === 'multimedia'
+                  ? customMultimediaColumns
+                  : null
           }
           className="models-table"
         />
