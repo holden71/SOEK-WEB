@@ -7,6 +7,7 @@ import AddFileModal from '../components/AddFileModal';
 import AddModelModal from '../components/AddModelModal';
 import FileDownloadButton from '../components/FileDownloadButton';
 import Model3DDownloadButton from '../components/Model3DDownloadButton';
+import MediaViewerButton from '../components/MediaViewerButton';
 import { use3DModelsFetching } from '../hooks/use3DModelsFetching';
 import { useFilesFetching } from '../hooks/useFilesFetching';
 import { useFileTypesFetching } from '../hooks/useFileTypesFetching';
@@ -189,12 +190,15 @@ function Models3D() {
     const actionsColumn = {
       id: 'actions',
       header: '',
-      size: 60,
-      maxSize: 60,
-      minSize: 60,
+      size: 100,
+      maxSize: 100,
+      minSize: 100,
       cell: ({ row }) => {
         return (
           <div className="table-actions-container">
+            <MediaViewerButton 
+              modelData={row.original} 
+            />
             <Model3DDownloadButton 
               modelData={row.original} 
             />
