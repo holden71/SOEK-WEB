@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from db import DbSessionDep
 from models import FileData
-from database_models import MultimediaModel, File
+from database_models import MultimediaModel
 
 router = APIRouter(prefix="/api", tags=["multimedia"])
 
