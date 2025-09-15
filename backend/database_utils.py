@@ -35,7 +35,14 @@ def get_file_type_by_extension(db: Session, extension: str) -> int:
     try:
         file_type = db.query(FileType).filter(FileType.DEF_EXT == extension).first()
         if not file_type:
-            raise HTTPException(status_code=400, detail=f"Тип файлу з розширенням '{extension}' не знайдено")
+            # Get available extensions for better error message
+            available_types = db.query(FileType).filter(FileType.DEF_EXT.isnot(None)).all()
+            available_extensions = [ft.DEF_EXT for ft in available_types]
+            available_list = ", ".join(sorted(available_extensions))
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Тип файлу з розширенням '{extension}' не дозволено. Дозволені розширення: {available_list}"
+            )
         return file_type.FILE_TYPE_ID
     except HTTPException:
         raise

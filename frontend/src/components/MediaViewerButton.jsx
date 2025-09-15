@@ -23,7 +23,7 @@ const MediaViewerButton = ({ modelData }) => {
         const response = await fetch(`${API_BASE_URL}/multimedia/model/${modelId}/check`);
         if (response.ok) {
           const result = await response.json();
-          setHasMultimedia(result.has_multimedia);
+          setHasMultimedia(result.has_multimedia && result.multimedia_count > 0);
         } else {
           setHasMultimedia(false);
         }

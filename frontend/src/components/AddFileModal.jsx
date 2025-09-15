@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import FileInput from './FileInput';
+import { useAllowedExtensions } from '../hooks/useAllowedExtensions';
 import '../styles/AddModal.css';
 
 function AddFileModal({ isOpen, onClose, onSave }) {
@@ -12,6 +13,9 @@ function AddFileModal({ isOpen, onClose, onSave }) {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // Get allowed extensions
+  const { allowedExtensions, acceptString, validateFileExtension, getExtensionInfo } = useAllowedExtensions();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -36,6 +40,12 @@ function AddFileModal({ isOpen, onClose, onSave }) {
 
     if (!formData.selectedFile) {
       newErrors.selectedFile = 'Файл обов\'язковий';
+    } else {
+      // Validate file extension
+      const validation = validateFileExtension(formData.selectedFile.name);
+      if (!validation.isValid) {
+        newErrors.selectedFile = validation.message;
+      }
     }
 
     if (!formData.file_name.trim()) {
@@ -109,12 +119,17 @@ function AddFileModal({ isOpen, onClose, onSave }) {
 
   // Helper function to get accepted file types
   const getAcceptedFileTypes = () => {
-    return "*"; // Accept all file types
+    return acceptString || "*";
   };
 
   // Helper function to get placeholder text
   const getFilePlaceholder = () => {
-    return "Оберіть файл будь-якого типу";
+    if (allowedExtensions.length === 0) {
+      return "Завантаження дозволених типів файлів...";
+    }
+    
+    const extList = allowedExtensions.map(ext => ext.extension).join(', ');
+    return `Оберіть файл з дозволеними розширеннями: ${extList}`;
   };
 
   const handleClose = () => {

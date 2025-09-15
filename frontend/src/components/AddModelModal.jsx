@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import FileInput from './FileInput';
+import { useAllowedExtensions } from '../hooks/useAllowedExtensions';
 import '../styles/AddModal.css';
 
 function AddModelModal({ isOpen, onClose, onSave }) {
@@ -12,9 +13,19 @@ function AddModelModal({ isOpen, onClose, onSave }) {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // Get allowed extensions
+  const { allowedExtensions, acceptString, validateFileExtension, getExtensionInfo } = useAllowedExtensions();
 
   // Handle multimedia file selection
   const handleMultimediaFileAdd = (file) => {
+    // Validate multimedia file extension before adding
+    const validation = validateFileExtension(file.name);
+    if (!validation.isValid) {
+      alert(validation.message);
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       multimediaFiles: [...prev.multimediaFiles, file]
@@ -63,6 +74,21 @@ function AddModelModal({ isOpen, onClose, onSave }) {
 
     if (!formData.selectedFile) {
       newErrors.selectedFile = 'Файл моделі обов\'язковий';
+    } else {
+      // Validate main model file extension
+      const validation = validateFileExtension(formData.selectedFile.name);
+      if (!validation.isValid) {
+        newErrors.selectedFile = validation.message;
+      }
+    }
+
+    // Validate multimedia files extensions
+    for (let i = 0; i < formData.multimediaFiles.length; i++) {
+      const file = formData.multimediaFiles[i];
+      const validation = validateFileExtension(file.name);
+      if (!validation.isValid) {
+        newErrors[`multimediaFile_${i}`] = `Мультимедіа файл "${file.name}": ${validation.message}`;
+      }
     }
 
     setErrors(newErrors);
@@ -133,12 +159,17 @@ function AddModelModal({ isOpen, onClose, onSave }) {
 
   // Helper function to get accepted file types
   const getAcceptedFileTypes = () => {
-    return "*"; // Accept all file types
+    return acceptString || "*";
   };
 
   // Helper function to get placeholder text
   const getFilePlaceholder = () => {
-    return "Оберіть файл моделі будь-якого типу";
+    if (allowedExtensions.length === 0) {
+      return "Завантаження дозволених типів файлів...";
+    }
+    
+    const extList = allowedExtensions.map(ext => ext.extension).join(', ');
+    return `Оберіть файл моделі з дозволеними розширеннями: ${extList}`;
   };
 
   const handleClose = () => {
@@ -226,13 +257,13 @@ function AddModelModal({ isOpen, onClose, onSave }) {
           />
           {errors.selectedFile && <span className="error-message">{errors.selectedFile}</span>}
 
-          {/* Multimedia Files Section */}
+          {/* Additional Files Section */}
           <div className="form-group">
             <label>Мультімедіа файли (опціонально)</label>            
             <div className="custom-file-input">
               <input
                 type="file"
-                accept="image/*,video/*"
+                accept={acceptString || "*"}
                 multiple
                 onChange={(e) => {
                   const files = Array.from(e.target.files);
@@ -264,7 +295,9 @@ function AddModelModal({ isOpen, onClose, onSave }) {
                   </span>
                 ) : (
                   <span className="no-file">
-                    {loading ? 'Необхідно обрати тип файлу' : 'Оберіть файли мультимедіа'}
+                    {allowedExtensions.length > 0 
+                      ? `Оберіть додаткові файли (${allowedExtensions.map(ext => ext.extension).join(', ')})`
+                      : "Завантаження дозволених типів файлів..."}
                   </span>
                 )}
               </div>

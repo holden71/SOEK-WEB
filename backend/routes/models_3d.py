@@ -101,6 +101,35 @@ async def delete_3d_model(
 async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
     """Simple and reliable 3D model creation using SQLAlchemy ORM"""
     try:
+        # Pre-validate all file extensions before creating anything
+        extensions_to_validate = [model_data.file_extension]
+        if model_data.multimedia_files:
+            extensions_to_validate.extend([mf.file_extension for mf in model_data.multimedia_files])
+        
+        # Validate all extensions at once
+        invalid_extensions = []
+        for extension in extensions_to_validate:
+            try:
+                get_file_type_by_extension(db, extension)
+            except HTTPException as e:
+                if e.status_code == 400:  # Extension not found
+                    invalid_extensions.append(extension)
+                else:
+                    raise
+        
+        if invalid_extensions:
+            # Get available extensions for comprehensive error message
+            from database_models import FileType
+            available_types = db.query(FileType).filter(FileType.DEF_EXT.isnot(None)).all()
+            available_extensions = [ft.DEF_EXT for ft in available_types]
+            available_list = ", ".join(sorted(available_extensions))
+            
+            invalid_list = ", ".join(invalid_extensions)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Недозволені розширення файлів: {invalid_list}. Дозволені розширення: {available_list}"
+            )
+
         # Step 1: Create main model file
         file_bytes = bytes(model_data.file_content) if model_data.file_content else None
 

@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import PDFViewer from './PDFViewer';
 import '../styles/MediaGalleryModal.css';
 
 const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
   const [multimediaFiles, setMultimediaFiles] = useState([]);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [pdfFiles, setPdfFiles] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedPdf, setSelectedPdf] = useState(null);
+  const [activeTab, setActiveTab] = useState('images'); // 'images' or 'pdfs'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -31,12 +36,31 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
       }
 
       const result = await response.json();
-      const imageFiles = result.multimedia_files.filter(file => file.IS_IMAGE);
-      setMultimediaFiles(imageFiles);
+      const allFiles = result.multimedia_files;
+      const images = allFiles.filter(file => file.IS_IMAGE);
+      const pdfs = allFiles.filter(file => file.IS_PDF);
+      
+      setMultimediaFiles(allFiles);
+      setImageFiles(images);
+      setPdfFiles(pdfs);
+      
+      // Set active tab based on available content
+      if (images.length > 0) {
+        setActiveTab('images');
+        setSelectedImage(images[0]);
+      } else if (pdfs.length > 0) {
+        setActiveTab('pdfs');
+        setSelectedPdf(pdfs[0]);
+      }
       
       // Set first image as selected if available
-      if (imageFiles.length > 0) {
-        setSelectedImage(imageFiles[0]);
+      if (images.length > 0) {
+        setSelectedImage(images[0]);
+      }
+      
+      // Set first PDF as selected if available
+      if (pdfs.length > 0) {
+        setSelectedPdf(pdfs[0]);
       }
     } catch (err) {
       console.error('Error fetching multimedia files:', err);
@@ -48,6 +72,14 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
 
   const handleImageSelect = (image) => {
     setSelectedImage(image);
+  };
+
+  const handlePdfSelect = (pdf) => {
+    setSelectedPdf(pdf);
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
   };
 
   const handleOverlayClick = (e) => {
@@ -114,6 +146,29 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
           )}
 
           {!loading && !error && multimediaFiles.length > 0 && (
+            <>
+              {/* Tabs */}
+              <div className="media-gallery-tabs">
+                {imageFiles.length > 0 && (
+                  <button
+                    className={`tab-button ${activeTab === 'images' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('images')}
+                  >
+                    Зображення ({imageFiles.length})
+                  </button>
+                )}
+                {pdfFiles.length > 0 && (
+                  <button
+                    className={`tab-button ${activeTab === 'pdfs' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('pdfs')}
+                  >
+                    PDF ({pdfFiles.length})
+                  </button>
+                )}
+              </div>
+
+              {/* Tab Content */}
+              {activeTab === 'images' && imageFiles.length > 0 && (
             <div className="media-gallery-layout">
               {/* Main image display */}
               <div className="main-image-container">
@@ -135,10 +190,10 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
               </div>
 
               {/* Thumbnail gallery */}
-              {multimediaFiles.length > 1 && (
+              {imageFiles.length > 1 && (
                 <div className="thumbnail-gallery">
                   <div className="thumbnail-grid">
-                    {multimediaFiles.map((file, index) => (
+                    {imageFiles.map((file, index) => (
                       <div
                         key={file.MULTIMED_3D_ID}
                         className={`thumbnail-item ${selectedImage?.MULTIMED_3D_ID === file.MULTIMED_3D_ID ? 'selected' : ''}`}
@@ -156,6 +211,46 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
                 </div>
               )}
             </div>
+              )}
+
+              {/* PDF Tab Content */}
+              {activeTab === 'pdfs' && pdfFiles.length > 0 && (
+                <div className="pdf-gallery-layout">
+                  {selectedPdf && (
+                    <PDFViewer 
+                      pdfFile={selectedPdf} 
+                      onClose={onClose}
+                    />
+                  )}
+                  
+                  {/* PDF list */}
+                  {pdfFiles.length > 1 && (
+                    <div className="pdf-list">
+                      <h4>Доступні PDF файли:</h4>
+                      <div className="pdf-items">
+                        {pdfFiles.map((file) => (
+                          <div
+                            key={file.MULTIMED_3D_ID}
+                            className={`pdf-item ${selectedPdf?.MULTIMED_3D_ID === file.MULTIMED_3D_ID ? 'selected' : ''}`}
+                            onClick={() => handlePdfSelect(file)}
+                          >
+                            <div className="pdf-icon">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                              </svg>
+                            </div>
+                            <div className="pdf-info">
+                              <div className="pdf-name">{file.MULTIMEDIA_NAME || file.FILE_NAME}</div>
+                              <div className="pdf-details">{file.FILE_NAME}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

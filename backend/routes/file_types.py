@@ -83,6 +83,38 @@ async def create_file_type(db: DbSessionDep, file_type_data: CreateFileTypeReque
         raise HTTPException(status_code=500, detail=f"Помилка створення типу файлу: {str(e)}")
 
 
+@router.get("/file_types/extensions/allowed")
+async def get_allowed_extensions(db: DbSessionDep):
+    """Get all allowed file extensions from file types table"""
+    try:
+        file_types_orm = get_all_file_types(db)
+        
+        extensions = []
+        for file_type in file_types_orm:
+            if file_type.DEF_EXT:
+                extensions.append({
+                    "extension": file_type.DEF_EXT,
+                    "name": file_type.NAME,
+                    "description": file_type.DESCR
+                })
+        
+        # Remove duplicates and sort
+        unique_extensions = {}
+        for ext in extensions:
+            if ext["extension"] not in unique_extensions:
+                unique_extensions[ext["extension"]] = ext
+        
+        sorted_extensions = sorted(unique_extensions.values(), key=lambda x: x["extension"])
+        
+        return {
+            "allowed_extensions": sorted_extensions,
+            "accept_string": ",".join([ext["extension"] for ext in sorted_extensions])
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Помилка отримання дозволених розширень: {str(e)}")
+
+
 @router.delete("/file_types/{file_type_id}")
 async def delete_file_type(db: DbSessionDep, file_type_id: int):
     """Delete file type using SQLAlchemy ORM"""

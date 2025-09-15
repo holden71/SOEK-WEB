@@ -116,6 +116,9 @@ async def get_multimedia_for_model(db: DbSessionDep, model_id: int):
             image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff']
             is_image = file_extension.lower() in image_extensions if file_extension else False
             
+            # Check if this is a PDF file
+            is_pdf = file_extension.lower() == '.pdf' if file_extension else False
+            
             multimedia_files.append({
                 "MULTIMED_3D_ID": multimed_id,
                 "MULTIMEDIA_NAME": multimedia_name,
@@ -125,7 +128,8 @@ async def get_multimedia_for_model(db: DbSessionDep, model_id: int):
                 "FILE_TYPE_NAME": file_type_name,
                 "FILE_EXTENSION": file_extension,
                 "FILE_CONTENT_BASE64": file_content_base64,
-                "IS_IMAGE": is_image
+                "IS_IMAGE": is_image,
+                "IS_PDF": is_pdf
             })
         
         return {
