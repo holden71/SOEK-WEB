@@ -9,7 +9,7 @@ from sqlalchemy import inspect, text
 
 from db import DbSessionDep
 from models import Model3DData, CreateModel3DRequest
-from database_utils import insert_file_with_returning, insert_model_with_returning, insert_multimedia_with_returning, call_delete_3d_model_procedure
+from database_utils import create_file_orm, create_model_orm, create_multimedia_relation_orm, get_file_type_by_extension, delete_model_with_files
 
 
 router = APIRouter(prefix="/api", tags=["models_3d"])
@@ -81,127 +81,105 @@ async def delete_3d_model(
     db: DbSessionDep,
     model_id: int,
 ):
-    # Check if model exists first
-    check_query = text("SELECT MODEL_ID FROM SRTN_3D_MODELS WHERE MODEL_ID = :model_id")
-    result = db.execute(check_query, {"model_id": model_id})
-    existing_model = result.fetchone()
-
-    if not existing_model:
-        raise HTTPException(status_code=404, detail="3D модель не знайдена")
-
-    # Use stored procedure to delete model and all related data
-    result = call_delete_3d_model_procedure(db, model_id)
+    try:
+        # Delete model and all related files using ORM
+        result = delete_model_with_files(db, model_id)
+        
+        # Commit the transaction
+        db.commit()
+        
+        return {"message": result["message"]}
     
-    # Commit the transaction
-    db.commit()
-    
-    return {"message": result["message"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Не вдалося видалити 3D модель: {str(e)}")
 
 
 @router.post("/models_3d", response_model=Model3DData)
 async def create_3d_model(db: DbSessionDep, model_data: CreateModel3DRequest):
+    """Simple and reliable 3D model creation using SQLAlchemy ORM"""
     try:
-        # Step 1: Create the file first using RETURNING INTO (MOST RELIABLE METHOD)
-        # Convert file content
+        # Step 1: Create main model file
         file_bytes = bytes(model_data.file_content) if model_data.file_content else None
 
-        # Find file type by extension
-        file_type_result = db.execute(text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE DEF_EXT = :extension"), {"extension": model_data.file_extension})
-        file_type_row = file_type_result.fetchone()
+        # Find file type by extension using ORM
+        file_type_id = get_file_type_by_extension(db, model_data.file_extension)
 
-        if not file_type_row:
-            raise HTTPException(status_code=400, detail=f"Тип файлу з розширенням '{model_data.file_extension}' не знайдено в базі даних")
-
-        file_type_id = file_type_row[0]
-
-        # STEP 1: Insert file using utility function
-        new_file_id = insert_file_with_returning(
+        # Create model file using ORM
+        model_file_id = create_file_orm(
             db=db,
             file_type_id=file_type_id,
             file_name=model_data.file_name,
             file_bytes=file_bytes,
-            descr=f"Файл 3D моделі: {model_data.sh_name}",  # Auto-generated description like multimedia
-            sh_descr=None  # sh_descr should be null for 3D model files
+            descr=f"Файл 3D моделі: {model_data.sh_name}",
+            sh_descr=None
         )
-        
-        print(f"DEBUG: File created with ID: {new_file_id}")
-        
-        # Проверим, что файл действительно создан СРАЗУ ПОСЛЕ СОЗДАНИЯ
-        check_file = db.execute(text("SELECT FILE_ID FROM SRTN_FILES WHERE FILE_ID = :file_id"), {"file_id": new_file_id})
-        if not check_file.fetchone():
-            print(f"ERROR: File {new_file_id} not found immediately after creation!")
-            raise HTTPException(status_code=500, detail=f"Файл з ID {new_file_id} не створився")
-        else:
-            print(f"DEBUG: File {new_file_id} verified in same transaction")
 
-        # STEP 2: Insert 3D model using utility function
-        new_model_id = insert_model_with_returning(
+        # Step 2: Create 3D model record using ORM
+        model_id = create_model_orm(
             db=db,
             sh_name=model_data.sh_name,
             descr=model_data.descr,
-            model_file_id=new_file_id
+            model_file_id=model_file_id
         )
 
-        # STEP 3: Process multimedia files if any
-        multimedia_ids = []
+        # Step 3: Process multimedia files if any
         if model_data.multimedia_files:
-            print(f"DEBUG: Processing {len(model_data.multimedia_files)} multimedia files...")
-            
             for multimedia_file in model_data.multimedia_files:
-                # Convert file content back to bytes
+                # Convert multimedia file content
                 multimedia_bytes = bytes(multimedia_file.file_content)
                 
-                # Check if file type exists
-                multimedia_type_query = text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE DEF_EXT = :extension")
-                multimedia_type_row = db.execute(multimedia_type_query, {"extension": multimedia_file.file_extension}).fetchone()
+                # Find multimedia file type using ORM
+                multimedia_type_id = get_file_type_by_extension(db, multimedia_file.file_extension)
                 
-                if not multimedia_type_row:
-                    raise HTTPException(status_code=400, detail=f"Тип мультімедіа файлу з розширенням '{multimedia_file.file_extension}' не знайдено в базі даних")
-                
-                multimedia_type_id = multimedia_type_row[0]
-                
-                # Insert multimedia file into SRTN_FILES
-                multimedia_file_id = insert_file_with_returning(
+                # Create multimedia file using ORM
+                multimedia_file_id = create_file_orm(
                     db=db,
                     file_type_id=multimedia_type_id,
                     file_name=multimedia_file.file_name,
                     file_bytes=multimedia_bytes,
                     descr=f"Мультімедіа файл для 3D моделі: {model_data.sh_name}",
-                    sh_descr=None  # sh_descr should be null for multimedia files
+                    sh_descr=None
                 )
                 
-                # Insert relationship into SRTN_MULTIMED_3D_MODELS
-                multimedia_relation_id = insert_multimedia_with_returning(
+                # Create multimedia relation using ORM
+                create_multimedia_relation_orm(
                     db=db,
                     sh_name=multimedia_file.sh_name,
                     multimedia_file_id=multimedia_file_id,
-                    model_id=new_model_id
+                    model_id=model_id
                 )
-                
-                multimedia_ids.append({
-                    "multimedia_file_id": multimedia_file_id,
-                    "multimedia_relation_id": multimedia_relation_id,
-                    "file_name": multimedia_file.file_name
-                })
-                
-                print(f"DEBUG: Multimedia file '{multimedia_file.file_name}' processed - FILE_ID: {multimedia_file_id}, RELATION_ID: {multimedia_relation_id}")
 
+        # Commit all changes
         db.commit()
 
-        # Return created model info with confirmed IDs
-        result_data = {
-            "MODEL_ID": new_model_id,
-            "SH_NAME": model_data.sh_name,
-            "DESCR": model_data.descr,
-            "MODEL_FILE_ID": new_file_id,
-            "MULTIMEDIA_FILES_COUNT": len(multimedia_ids) if multimedia_ids else 0
-        }
+        # Get created model data using raw SQL (keep for compatibility with existing format)
+        inspector = inspect(db.get_bind())
+        columns = inspector.get_columns('SRTN_3D_MODELS')
+        column_names = [col['name'] for col in columns]
 
-        db.commit()
+        # Exclude MODEL_PREV1_ID and MODEL_PREV2_ID
+        excluded_columns = ['MODEL_PREV1_ID', 'MODEL_PREV2_ID']
+        filtered_columns = [col for col in column_names if col not in excluded_columns]
 
-        print(f"SUCCESS: 3D Model created with MODEL_ID: {new_model_id}, FILE_ID: {new_file_id}, Multimedia files: {len(multimedia_ids) if multimedia_ids else 0}")
+        query = text(f"""
+            SELECT {', '.join(filtered_columns)}
+            FROM SRTN_3D_MODELS
+            WHERE MODEL_ID = :model_id
+        """)
 
-        return Model3DData(data=result_data)
+        result = db.execute(query, {"model_id": model_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=500, detail=f"Не вдалося отримати дані створеної моделі з ID {model_id}")
+        
+        # Create row dictionary
+        row_dict = {filtered_columns[i]: value for i, value in enumerate(row)}
+        
+        return Model3DData(data=row_dict)
 
     except HTTPException:
         raise

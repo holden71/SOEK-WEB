@@ -7,7 +7,7 @@ from sqlalchemy import inspect, text
 
 from db import DbSessionDep
 from models import FileData, CreateFileRequest
-from database_utils import insert_file_with_returning
+from database_utils import create_file_orm, get_file_type_by_extension
 
 
 router = APIRouter(prefix="/api", tags=["files"])
@@ -135,22 +135,17 @@ async def download_file(db: DbSessionDep, file_id: int):
 
 @router.post("/files", response_model=FileData)
 async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
+    """Simple and reliable file creation using SQLAlchemy ORM"""
     try:
-        # Convert file content and get size
+        # Convert file content
         file_bytes = bytes(file_data.file_content) if file_data.file_content else None
         file_size = len(file_data.file_content) if file_data.file_content else 0
 
-        # Find file type by extension
-        file_type_result = db.execute(text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE DEF_EXT = :extension"), {"extension": file_data.file_extension})
-        file_type_row = file_type_result.fetchone()
+        # Find file type by extension using ORM
+        file_type_id = get_file_type_by_extension(db, file_data.file_extension)
 
-        if not file_type_row:
-            raise HTTPException(status_code=400, detail=f"Тип файлу з розширенням '{file_data.file_extension}' не знайдено в базі даних")
-
-        file_type_id = file_type_row[0]
-
-        # Insert file using utility function
-        new_id = insert_file_with_returning(
+        # Create file using ORM
+        new_file_id = create_file_orm(
             db=db,
             file_type_id=file_type_id,
             file_name=file_data.file_name,
@@ -159,11 +154,12 @@ async def create_file(db: DbSessionDep, file_data: CreateFileRequest):
             sh_descr=file_data.sh_descr
         )
 
+        # Commit transaction
         db.commit()
 
         # Return created file info
         return FileData(data={
-            "FILE_ID": new_id,
+            "FILE_ID": new_file_id,
             "FILE_TYPE_ID": file_type_id,
             "FILE_NAME": file_data.file_name,
             "DESCR": file_data.descr,

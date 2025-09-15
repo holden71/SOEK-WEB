@@ -1,114 +1,69 @@
 from typing import List
 
-from fastapi import APIRouter, Query, HTTPException
-from sqlalchemy import inspect, text
+from fastapi import APIRouter, HTTPException
 
 from db import DbSessionDep
 from models import FileTypeData, CreateFileTypeRequest
+from database_utils import get_all_file_types, get_file_type_by_id, create_file_type_orm, delete_file_type_orm
 
 
 router = APIRouter(prefix="/api", tags=["file_types"])
 
 
 @router.get("/file_types", response_model=List[FileTypeData])
-async def get_file_types(
-    db: DbSessionDep,
-):
-    inspector = inspect(db.get_bind())
-    columns = inspector.get_columns('SRTN_FILE_TYPES')
-    column_names = [col['name'] for col in columns]
-
-    query = text(
-        f"""
-        SELECT {', '.join(column_names)}
-        FROM SRTN_FILE_TYPES
-        ORDER BY FILE_TYPE_ID
-        """
-    )
-
-    result = db.execute(query)
-
+async def get_file_types(db: DbSessionDep):
+    """Get all file types using SQLAlchemy ORM"""
+    file_types_orm = get_all_file_types(db)
+    
     file_types_data = []
-    for row in result:
-        row_dict = {column_names[i]: value for i, value in enumerate(row)}
-        # Debug: print what we have
-
-        # Add display name with extension in parentheses
-        name_key = None
-        def_ext_key = None
-
-        # Find the correct keys (they might be in different cases)
-        for key in row_dict.keys():
-            if key.upper() == 'NAME':
-                name_key = key
-            elif key.upper() == 'DEF_EXT':
-                def_ext_key = key
-
-        if name_key and def_ext_key and row_dict[def_ext_key]:
-            row_dict['DISPLAY_NAME'] = f"{row_dict[name_key]} ({row_dict[def_ext_key]})"
-        elif name_key:
-            row_dict['DISPLAY_NAME'] = row_dict[name_key]
-        else:
-            row_dict['DISPLAY_NAME'] = 'Unknown'
-
+    for file_type in file_types_orm:
+        # Create display name with extension
+        display_name = f"{file_type.NAME} ({file_type.DEF_EXT})" if file_type.DEF_EXT else file_type.NAME
+        
+        row_dict = {
+            "FILE_TYPE_ID": file_type.FILE_TYPE_ID,
+            "NAME": file_type.NAME,
+            "DESCR": file_type.DESCR,
+            "DEF_EXT": file_type.DEF_EXT,
+            "DISPLAY_NAME": display_name
+        }
         file_types_data.append(FileTypeData(data=row_dict))
-
+    
     return file_types_data
 
 
 @router.get("/file_types/{file_type_id}", response_model=FileTypeData)
-async def get_file_type_by_id(
-    db: DbSessionDep,
-    file_type_id: int,
-):
-    inspector = inspect(db.get_bind())
-    columns = inspector.get_columns('SRTN_FILE_TYPES')
-    column_names = [col['name'] for col in columns]
-
-    query = text(
-        f"""
-        SELECT {', '.join(column_names)}
-        FROM SRTN_FILE_TYPES
-        WHERE FILE_TYPE_ID = :file_type_id
-        """
-    )
-
-    result = db.execute(query, {"file_type_id": file_type_id})
-
-    row = result.fetchone()
-    if row:
-        row_dict = {column_names[i]: value for i, value in enumerate(row)}
-        return FileTypeData(data=row_dict)
-
-    return None
+async def get_file_type_by_id(db: DbSessionDep, file_type_id: int):
+    """Get file type by ID using SQLAlchemy ORM"""
+    file_type = get_file_type_by_id(db, file_type_id)
+    
+    if not file_type:
+        return None
+        
+    row_dict = {
+        "FILE_TYPE_ID": file_type.FILE_TYPE_ID,
+        "NAME": file_type.NAME,
+        "DESCR": file_type.DESCR,
+        "DEF_EXT": file_type.DEF_EXT,
+        "DISPLAY_NAME": f"{file_type.NAME} ({file_type.DEF_EXT})" if file_type.DEF_EXT else file_type.NAME
+    }
+    
+    return FileTypeData(data=row_dict)
 
 
 @router.post("/file_types", response_model=FileTypeData)
-async def create_file_type(
-    db: DbSessionDep,
-    file_type_data: CreateFileTypeRequest,
-):
+async def create_file_type(db: DbSessionDep, file_type_data: CreateFileTypeRequest):
+    """Create file type using SQLAlchemy ORM"""
     try:
-        # Get next FILE_TYPE_ID
-        get_max_id_query = text("SELECT NVL(MAX(FILE_TYPE_ID), 0) + 1 FROM SRTN_FILE_TYPES")
-        result = db.execute(get_max_id_query)
-        new_id = result.scalar()
-
-        # Insert new file type
-        insert_query = text(
-            """
-            INSERT INTO SRTN_FILE_TYPES (FILE_TYPE_ID, NAME, DESCR, DEF_EXT)
-            VALUES (:file_type_id, :name, :descr, :def_ext)
-            """
+        # Create file type using ORM
+        new_id = create_file_type_orm(
+            db=db,
+            name=file_type_data.name,
+            descr=file_type_data.descr,
+            def_ext=file_type_data.def_ext
         )
 
-        db.execute(insert_query, {
-            "file_type_id": new_id,
-            "name": file_type_data.name,
-            "descr": file_type_data.descr,
-            "def_ext": file_type_data.def_ext
-        })
-
+        # Commit transaction
         db.commit()
 
         # Return the created file type
@@ -121,30 +76,27 @@ async def create_file_type(
             "DISPLAY_NAME": display_name
         })
 
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create file type: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Помилка створення типу файлу: {str(e)}")
 
 
 @router.delete("/file_types/{file_type_id}")
-async def delete_file_type(
-    db: DbSessionDep,
-    file_type_id: int,
-):
-    # Check if file type exists
-    check_query = text("SELECT FILE_TYPE_ID FROM SRTN_FILE_TYPES WHERE FILE_TYPE_ID = :file_type_id")
-    result = db.execute(check_query, {"file_type_id": file_type_id})
-    existing_file_type = result.fetchone()
-
-    if not existing_file_type:
-        raise HTTPException(status_code=404, detail="Тип файлу не знайдений")
-
-    # Check if file type is used in files (optional - depending on business logic)
-    # You might want to add this check to prevent deletion of file types that are in use
-
-    # Delete the file type
-    delete_query = text("DELETE FROM SRTN_FILE_TYPES WHERE FILE_TYPE_ID = :file_type_id")
-    db.execute(delete_query, {"file_type_id": file_type_id})
-    db.commit()
-
-    return {"message": "Тип файлу успішно видалений"}
+async def delete_file_type(db: DbSessionDep, file_type_id: int):
+    """Delete file type using SQLAlchemy ORM"""
+    try:
+        # Delete file type using ORM
+        delete_file_type_orm(db, file_type_id)
+        
+        # Commit transaction
+        db.commit()
+        
+        return {"message": "Тип файлу успішно видалений"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Помилка видалення типу файлу: {str(e)}")

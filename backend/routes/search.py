@@ -1,10 +1,10 @@
 from typing import List
 
 from fastapi import APIRouter, Query
-from sqlalchemy import inspect, text
 
 from db import DbSessionDep
 from models import SearchData
+from database_utils import search_ek_seism_data
 
 
 router = APIRouter(prefix="/api", tags=["search"])
@@ -17,29 +17,24 @@ async def search_data(
     unit_id: int = Query(..., description="ID of the unit"),
     t_id: int = Query(..., description="Term ID (EKLIST_ID)"),
 ):
-    inspector = inspect(db.get_bind())
-    columns = inspector.get_columns('SRTN_EK_SEISM_DATA')
-    column_names = [col['name'] for col in columns]
-
-    query = text(
-        f"""
-        SELECT {', '.join(column_names)}
-        FROM SRTN_EK_SEISM_DATA
-        WHERE PLANT_ID = :plant_id
-        AND UNIT_ID = :unit_id
-        AND EKLIST_ID = :t_id
-        """
+    """Search seismic data using SQLAlchemy ORM with correct model"""
+    # Search data using ORM with correct model
+    seism_data_list = search_ek_seism_data(
+        db=db,
+        plant_id=plant_id,
+        unit_id=unit_id,
+        eklist_id=t_id
     )
 
-    result = db.execute(query, {
-        "plant_id": plant_id,
-        "unit_id": unit_id,
-        "t_id": t_id,
-    })
-
+    # Convert ORM objects to response format
     search_results = []
-    for row in result:
-        row_dict = {column_names[i]: value for i, value in enumerate(row)}
+    for seism_data in seism_data_list:
+        # Convert ORM object to dictionary using all table columns
+        row_dict = {}
+        for column in seism_data.__table__.columns:
+            value = getattr(seism_data, column.name)
+            row_dict[column.name] = value
+        
         search_results.append(SearchData(data=row_dict))
 
     return search_results
