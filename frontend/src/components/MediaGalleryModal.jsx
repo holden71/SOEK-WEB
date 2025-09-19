@@ -84,6 +84,31 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
     return `data:${mimeType};base64,${base64Data}`;
   };
 
+  const createPdfDataUrl = (base64Data) => {
+    if (!base64Data) return null;
+    return `data:application/pdf;base64,${base64Data}`;
+  };
+
+  const downloadFile = (file) => {
+    if (!file.FILE_CONTENT_BASE64) return;
+    
+    let dataUrl;
+    if (file.IS_IMAGE) {
+      dataUrl = createImageDataUrl(file.FILE_CONTENT_BASE64, file.FILE_EXTENSION);
+    } else if (file.IS_PDF) {
+      dataUrl = createPdfDataUrl(file.FILE_CONTENT_BASE64);
+    } else {
+      return;
+    }
+    
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = file.FILE_NAME || 'multimedia_file';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -127,26 +152,41 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
               <div className="main-content-container">
                 {selectedFile && (
                   <div className="main-content-wrapper">
-                    {selectedFile.IS_IMAGE ? (
-                      <>
+                    <div className="media-viewer">
+                      {selectedFile.IS_IMAGE ? (
                         <img
                           src={createImageDataUrl(selectedFile.FILE_CONTENT_BASE64, selectedFile.FILE_EXTENSION)}
                           alt={selectedFile.MULTIMEDIA_NAME || selectedFile.FILE_NAME}
                           className="main-image"
                         />
-                        <div className="main-content-info">
-                          <h4>{selectedFile.MULTIMEDIA_NAME || selectedFile.FILE_NAME}</h4>
-                          <p className="content-details">
-                            {selectedFile.FILE_NAME} • {selectedFile.FILE_TYPE_NAME}
-                          </p>
-                        </div>
-                      </>
-                    ) : selectedFile.IS_PDF ? (
-                      <PDFViewer 
-                        pdfFile={selectedFile} 
-                        onClose={onClose}
-                      />
-                    ) : null}
+                      ) : selectedFile.IS_PDF ? (
+                        <PDFViewer 
+                          pdfFile={selectedFile}
+                        />
+                      ) : null}
+                    </div>
+                    
+                    {/* Unified info and actions section */}
+                    <div className="media-info-actions">
+                      <div className="media-info">
+                        <h4>{selectedFile.MULTIMEDIA_NAME || selectedFile.FILE_NAME}</h4>
+                        <p className="media-details">
+                          {selectedFile.FILE_NAME} • {selectedFile.FILE_TYPE_NAME}
+                        </p>
+                      </div>
+                      <div className="media-actions">
+                        <button 
+                          className="media-action-btn download-btn"
+                          onClick={() => downloadFile(selectedFile)}
+                          title="Завантажити файл"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/>
+                          </svg>
+                          Завантажити
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

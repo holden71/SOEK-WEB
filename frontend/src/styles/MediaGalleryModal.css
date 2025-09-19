@@ -139,10 +139,19 @@
   height: 100%;
 }
 
-.main-image {
+/* Media viewer container */
+.media-viewer {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.main-image {
   max-width: 100%;
-  max-height: calc(100% - 60px);
+  max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -165,6 +174,74 @@
   margin: 0;
   font-size: 14px;
   color: #6c757d;
+}
+
+/* Unified media info and actions section */
+.media-info-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  gap: 16px;
+}
+
+.media-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.media-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-details {
+  margin: 0;
+  font-size: 14px;
+  color: #6c757d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.media-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.media-action-btn:hover {
+  background-color: #0056b3;
+}
+
+.download-btn {
+  background-color: #007bff;
+}
+
+.download-btn:hover {
+  background-color: #0056b3;
 }
 
 /* Legacy support for existing classes */
@@ -294,6 +371,28 @@
     padding: 16px;
   }
 
+  .media-info-actions {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .media-info h4 {
+    text-align: center;
+    font-size: 15px;
+    white-space: normal;
+  }
+
+  .media-details {
+    text-align: center;
+    white-space: normal;
+  }
+
+  .media-actions {
+    justify-content: center;
+  }
+
   .thumbnail-gallery {
     width: auto;
     height: 120px;
@@ -358,6 +457,23 @@
     padding: 12px;
   }
 
+  .media-info-actions {
+    padding: 10px 12px;
+  }
+
+  .media-info h4 {
+    font-size: 14px;
+  }
+
+  .media-details {
+    font-size: 12px;
+  }
+
+  .media-action-btn {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
   .thumbnail-gallery {
     padding: 12px;
   }
@@ -393,65 +509,15 @@
 }
 
 /* PDF Viewer Styles */
-.pdf-viewer-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.pdf-viewer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #dee2e6;
-  background-color: #f8f9fa;
-}
-
-.pdf-info h4 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-}
-
-.pdf-details {
-  margin: 0;
-  font-size: 14px;
-  color: #6c757d;
-}
-
-.pdf-controls {
-  display: flex;
-  gap: 8px;
-}
-
-.pdf-control-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.pdf-control-btn:hover {
-  background-color: #0056b3;
-}
-
 .pdf-viewer-content {
-  flex: 1;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
 }
+
 
 .pdf-loading,
 .pdf-error {
@@ -467,11 +533,6 @@
 .pdf-error p {
   color: #dc3545;
   margin-bottom: 16px;
-}
-
-.pdf-fallback-controls {
-  display: flex;
-  gap: 12px;
 }
 
 .pdf-iframe {
@@ -586,19 +647,7 @@
     min-width: 200px;
   }
 
-  .pdf-viewer-header {
-    padding: 12px 16px;
-  }
 
-  .pdf-controls {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .pdf-control-btn {
-    padding: 6px 10px;
-    font-size: 13px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -607,15 +656,5 @@
     padding: 12px;
   }
 
-  .pdf-viewer-header {
-    padding: 10px 12px;
-  }
 
-  .pdf-info h4 {
-    font-size: 14px;
-  }
-
-  .pdf-details {
-    font-size: 12px;
-  }
 }
