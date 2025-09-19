@@ -21,8 +21,8 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   max-width: 95vw;
   max-height: 95vh;
-  width: 1000px;
-  height: 700px;
+  width: 1400px;
+  height: 900px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -279,7 +279,7 @@
 
 /* Thumbnail Gallery */
 .thumbnail-gallery {
-  width: 160px;
+  width: 200px;
   border-left: 1px solid #dee2e6;
   background-color: #f8f9fa;
   padding: 20px 16px;
@@ -300,8 +300,8 @@
 }
 
 .thumbnail-item {
-  width: 120px;
-  height: 80px;
+  width: 150px;
+  height: 100px;
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
@@ -344,7 +344,7 @@
 }
 
 .thumbnail-pdf-name {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: #333;
   margin-top: 4px;
@@ -411,8 +411,8 @@
 
   .thumbnail-item {
     flex-shrink: 0;
-    width: 80px;
-    height: 60px;
+    width: 100px;
+    height: 75px;
   }
 
   .thumbnail-pdf {
