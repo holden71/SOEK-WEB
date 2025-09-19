@@ -84,29 +84,44 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
     return `data:${mimeType};base64,${base64Data}`;
   };
 
-  const createPdfDataUrl = (base64Data) => {
+  const createPdfBlobUrl = (base64Data) => {
     if (!base64Data) return null;
-    return `data:application/pdf;base64,${base64Data}`;
+    
+    // Convert base64 to binary
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Create blob and URL
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    return URL.createObjectURL(blob);
   };
 
   const downloadFile = (file) => {
     if (!file.FILE_CONTENT_BASE64) return;
     
-    let dataUrl;
+    let url;
     if (file.IS_IMAGE) {
-      dataUrl = createImageDataUrl(file.FILE_CONTENT_BASE64, file.FILE_EXTENSION);
+      url = createImageDataUrl(file.FILE_CONTENT_BASE64, file.FILE_EXTENSION);
     } else if (file.IS_PDF) {
-      dataUrl = createPdfDataUrl(file.FILE_CONTENT_BASE64);
+      url = createPdfBlobUrl(file.FILE_CONTENT_BASE64);
     } else {
       return;
     }
     
     const link = document.createElement('a');
-    link.href = dataUrl;
+    link.href = url;
     link.download = file.FILE_NAME || 'multimedia_file';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Clean up blob URL
+    if (file.IS_PDF) {
+      URL.revokeObjectURL(url);
+    }
   };
 
   if (!isOpen) return null;
@@ -153,7 +168,30 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
                 {selectedFile && (
                   <div className="main-content-wrapper">
                     <div className="media-viewer">
-                      {selectedFile.IS_IMAGE ? (
+                      {!selectedFile.FILE_CONTENT_BASE64 ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
+                          flexDirection: 'column',
+                          gap: '20px',
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          padding: '40px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '48px', opacity: 0.5 }}>⚠️</div>
+                          <div>
+                            <h3 style={{ margin: '0 0 10px 0', color: '#dc3545' }}>
+                              Файл не містить данних
+                            </h3>
+                            <p style={{ margin: 0, color: '#6c757d' }}>
+                              Файл {selectedFile.FILE_NAME} не має вмісту для відображення
+                            </p>
+                          </div>
+                        </div>
+                      ) : selectedFile.IS_IMAGE ? (
                         <img
                           src={createImageDataUrl(selectedFile.FILE_CONTENT_BASE64, selectedFile.FILE_EXTENSION)}
                           alt={selectedFile.MULTIMEDIA_NAME || selectedFile.FILE_NAME}
@@ -163,7 +201,30 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
                         <PDFViewer 
                           pdfFile={selectedFile}
                         />
-                      ) : null}
+                      ) : (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
+                          flexDirection: 'column',
+                          gap: '20px',
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          padding: '40px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '48px', opacity: 0.5 }}>❓</div>
+                          <div>
+                            <h3 style={{ margin: '0 0 10px 0', color: '#ffc107' }}>
+                              Невідомий тип файлу
+                            </h3>
+                            <p style={{ margin: 0, color: '#6c757d' }}>
+                              Файл {selectedFile.FILE_NAME} має невідомий тип: {selectedFile.FILE_EXTENSION}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Unified info and actions section */}
@@ -185,6 +246,25 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
                           </svg>
                           Завантажити
                         </button>
+                        {selectedFile.IS_PDF && (
+                          <button 
+                            className="media-action-btn open-tab-btn"
+                            onClick={() => {
+                              const blobUrl = createPdfBlobUrl(selectedFile.FILE_CONTENT_BASE64);
+                              if (blobUrl) {
+                                window.open(blobUrl, '_blank');
+                                // Clean up after a delay to allow the browser to load
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                              }
+                            }}
+                            title="Відкрити PDF в новій вкладці"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
+                            </svg>
+                            Відкрити
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

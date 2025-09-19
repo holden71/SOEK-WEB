@@ -1,47 +1,52 @@
-import React, { useState } from 'react';
+import React, { useMemo, useEffect } from 'react';
 
 const PDFViewer = ({ pdfFile }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const pdfUrl = useMemo(() => {
+    if (!pdfFile.FILE_CONTENT_BASE64) return null;
+    
+    // Convert base64 to binary
+    const binaryString = atob(pdfFile.FILE_CONTENT_BASE64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Create blob and URL
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    return URL.createObjectURL(blob);
+  }, [pdfFile.FILE_CONTENT_BASE64]);
 
-  const createPdfDataUrl = (base64Data) => {
-    if (!base64Data) return null;
-    return `data:application/pdf;base64,${base64Data}`;
-  };
+  // Cleanup blob URL when component unmounts or file changes
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
 
-  const handleIframeLoad = () => {
-    setLoading(false);
-  };
-
-  const handleIframeError = () => {
-    setError('Не вдалося завантажити PDF файл');
-    setLoading(false);
-  };
+  if (!pdfFile.FILE_CONTENT_BASE64) {
+    return (
+      <div className="pdf-viewer-content">
+        <div className="pdf-error">
+          <p>PDF файл не містить данних для відображення</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pdf-viewer-content">
-      {loading && (
-        <div className="pdf-loading">
-          <div className="spinner"></div>
-          <p>Завантаження PDF...</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="pdf-error">
-          <p>{error}</p>
-        </div>
-      )}
-
-      {pdfFile.FILE_CONTENT_BASE64 && !error && (
-        <iframe
-          src={createPdfDataUrl(pdfFile.FILE_CONTENT_BASE64)}
-          className="pdf-iframe"
-          title={pdfFile.MULTIMEDIA_NAME || pdfFile.FILE_NAME}
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-        />
-      )}
+      <iframe
+        src={pdfUrl}
+        width="100%"
+        height="100%"
+        style={{
+          border: 'none',
+          minHeight: '600px'
+        }}
+        title={pdfFile.MULTIMEDIA_NAME || pdfFile.FILE_NAME}
+      />
     </div>
   );
 };

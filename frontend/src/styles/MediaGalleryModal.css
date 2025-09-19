@@ -122,6 +122,7 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* Main content container for unified display */
@@ -131,22 +132,35 @@
   flex-direction: column;
   padding: 20px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .main-content-wrapper {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 /* Media viewer container */
 .media-viewer {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
   margin-bottom: 16px;
+  min-height: 600px;
+  position: relative;
+}
+
+/* For images we need centering */
+.media-viewer img.main-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: #f8f9fa;
+  margin: auto;
 }
 
 .main-image {
@@ -185,6 +199,8 @@
   border-top: 1px solid #dee2e6;
   background-color: #f8f9fa;
   gap: 16px;
+  flex-shrink: 0;
+  min-height: 60px;
 }
 
 .media-info {
@@ -242,6 +258,14 @@
 
 .download-btn:hover {
   background-color: #0056b3;
+}
+
+.open-tab-btn {
+  background-color: #6c757d;
+}
+
+.open-tab-btn:hover {
+  background-color: #545b62;
 }
 
 /* Legacy support for existing classes */
@@ -359,48 +383,80 @@
 @media (max-width: 768px) {
   .media-gallery-modal {
     width: 95vw;
-    height: 90vh;
+    height: 95vh;
+    max-height: 95vh;
   }
 
   .media-gallery-layout {
     flex-direction: column;
+    height: 100%;
   }
 
-  .main-image-container,
   .main-content-container {
-    padding: 16px;
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
-  .media-info-actions {
-    padding: 12px 16px;
+  .main-content-wrapper {
+    flex: 1;
+    display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    min-height: 0;
+  }
+
+  .media-viewer {
+    flex: 1;
+    min-height: 300px;
+    margin-bottom: 12px;
+  }
+
+  /* Ensure info section is always visible */
+  .media-info-actions {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    margin-bottom: 0;
   }
 
   .media-info h4 {
-    text-align: center;
     font-size: 15px;
     white-space: normal;
+    word-wrap: break-word;
   }
 
   .media-details {
-    text-align: center;
+    font-size: 13px;
     white-space: normal;
+    word-wrap: break-word;
   }
 
   .media-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .media-action-btn {
+    flex: 1;
+    min-width: 120px;
     justify-content: center;
   }
 
+  /* Thumbnail gallery */
   .thumbnail-gallery {
     width: auto;
-    height: 120px;
+    height: 100px;
     border-left: none;
     border-top: 1px solid #dee2e6;
-    padding: 16px;
+    padding: 12px;
     overflow-x: auto;
     overflow-y: hidden;
+    flex-shrink: 0;
   }
 
   .thumbnail-grid {
@@ -411,8 +467,8 @@
 
   .thumbnail-item {
     flex-shrink: 0;
-    width: 100px;
-    height: 75px;
+    width: 80px;
+    height: 60px;
   }
 
   .thumbnail-pdf {
@@ -424,16 +480,9 @@
     margin-top: 2px;
   }
 
-  .main-image {
-    max-height: calc(100% - 40px);
-  }
-
-  .main-image-info h4 {
-    font-size: 14px;
-  }
-
-  .image-details {
-    font-size: 12px;
+  /* PDF viewer adjustments */
+  .pdf-viewer-content {
+    min-height: 300px;
   }
 }
 
@@ -442,40 +491,74 @@
     width: 100vw;
     height: 100vh;
     border-radius: 0;
+    max-height: 100vh;
   }
 
   .media-gallery-header {
-    padding: 12px 16px;
+    padding: 10px 12px;
+    flex-shrink: 0;
   }
 
   .media-gallery-header h3 {
-    font-size: 16px;
+    font-size: 14px;
   }
 
-  .main-image-container,
   .main-content-container {
-    padding: 12px;
+    padding: 8px;
+  }
+
+  .media-viewer {
+    min-height: 250px;
   }
 
   .media-info-actions {
-    padding: 10px 12px;
+    padding: 8px 12px;
+    flex-shrink: 0;
   }
 
   .media-info h4 {
     font-size: 14px;
+    margin-bottom: 4px;
   }
 
   .media-details {
     font-size: 12px;
   }
 
+  .media-actions {
+    margin-top: 6px;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .media-action-btn {
-    padding: 6px 10px;
+    width: 100%;
+    padding: 8px 12px;
     font-size: 13px;
+    justify-content: center;
   }
 
   .thumbnail-gallery {
-    padding: 12px;
+    height: 80px;
+    padding: 8px;
+  }
+
+  .thumbnail-item {
+    width: 60px;
+    height: 45px;
+  }
+
+  .thumbnail-pdf {
+    padding: 2px;
+  }
+
+  .thumbnail-pdf-name {
+    font-size: 7px;
+  }
+
+  /* PDF viewer adjustments */
+  .pdf-viewer-content {
+    min-height: 250px;
   }
 }
 
@@ -512,10 +595,8 @@
 .pdf-viewer-content {
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
+  min-height: 600px;
+  flex: 1;
 }
 
 
