@@ -6,9 +6,7 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
   const [multimediaFiles, setMultimediaFiles] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
   const [pdfFiles, setPdfFiles] = useState([]);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedPdf, setSelectedPdf] = useState(null);
-  const [activeTab, setActiveTab] = useState('images'); // 'images' or 'pdfs'
+  const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,23 +42,9 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
       setImageFiles(images);
       setPdfFiles(pdfs);
       
-      // Set active tab based on available content
-      if (images.length > 0) {
-        setActiveTab('images');
-        setSelectedImage(images[0]);
-      } else if (pdfs.length > 0) {
-        setActiveTab('pdfs');
-        setSelectedPdf(pdfs[0]);
-      }
-      
-      // Set first image as selected if available
-      if (images.length > 0) {
-        setSelectedImage(images[0]);
-      }
-      
-      // Set first PDF as selected if available
-      if (pdfs.length > 0) {
-        setSelectedPdf(pdfs[0]);
+      // Set first file as selected if available
+      if (allFiles.length > 0) {
+        setSelectedFile(allFiles[0]);
       }
     } catch (err) {
       console.error('Error fetching multimedia files:', err);
@@ -70,16 +54,8 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
     }
   };
 
-  const handleImageSelect = (image) => {
-    setSelectedImage(image);
-  };
-
-  const handlePdfSelect = (pdf) => {
-    setSelectedPdf(pdf);
-  };
-
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
+  const handleFileSelect = (file) => {
+    setSelectedFile(file);
   };
 
   const handleOverlayClick = (e) => {
@@ -146,111 +122,68 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
           )}
 
           {!loading && !error && multimediaFiles.length > 0 && (
-            <>
-              {/* Tabs */}
-              <div className="media-gallery-tabs">
-                {imageFiles.length > 0 && (
-                  <button
-                    className={`tab-button ${activeTab === 'images' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('images')}
-                  >
-                    Зображення ({imageFiles.length})
-                  </button>
-                )}
-                {pdfFiles.length > 0 && (
-                  <button
-                    className={`tab-button ${activeTab === 'pdfs' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('pdfs')}
-                  >
-                    PDF ({pdfFiles.length})
-                  </button>
-                )}
-              </div>
-
-              {/* Tab Content */}
-              {activeTab === 'images' && imageFiles.length > 0 && (
             <div className="media-gallery-layout">
-              {/* Main image display */}
-              <div className="main-image-container">
-                {selectedImage && (
-                  <div className="main-image-wrapper">
-                    <img
-                      src={createImageDataUrl(selectedImage.FILE_CONTENT_BASE64, selectedImage.FILE_EXTENSION)}
-                      alt={selectedImage.MULTIMEDIA_NAME || selectedImage.FILE_NAME}
-                      className="main-image"
-                    />
-                    <div className="main-image-info">
-                      <h4>{selectedImage.MULTIMEDIA_NAME || selectedImage.FILE_NAME}</h4>
-                      <p className="image-details">
-                        {selectedImage.FILE_NAME} • {selectedImage.FILE_TYPE_NAME}
-                      </p>
-                    </div>
+              {/* Main content display */}
+              <div className="main-content-container">
+                {selectedFile && (
+                  <div className="main-content-wrapper">
+                    {selectedFile.IS_IMAGE ? (
+                      <>
+                        <img
+                          src={createImageDataUrl(selectedFile.FILE_CONTENT_BASE64, selectedFile.FILE_EXTENSION)}
+                          alt={selectedFile.MULTIMEDIA_NAME || selectedFile.FILE_NAME}
+                          className="main-image"
+                        />
+                        <div className="main-content-info">
+                          <h4>{selectedFile.MULTIMEDIA_NAME || selectedFile.FILE_NAME}</h4>
+                          <p className="content-details">
+                            {selectedFile.FILE_NAME} • {selectedFile.FILE_TYPE_NAME}
+                          </p>
+                        </div>
+                      </>
+                    ) : selectedFile.IS_PDF ? (
+                      <PDFViewer 
+                        pdfFile={selectedFile} 
+                        onClose={onClose}
+                      />
+                    ) : null}
                   </div>
                 )}
               </div>
 
-              {/* Thumbnail gallery */}
-              {imageFiles.length > 1 && (
-                <div className="thumbnail-gallery">
+              {/* Unified thumbnail gallery */}
+              {multimediaFiles.length > 0 && (
+                <div className={`thumbnail-gallery ${multimediaFiles.length === 1 ? 'single-file' : ''}`}>
                   <div className="thumbnail-grid">
-                    {imageFiles.map((file, index) => (
+                    {multimediaFiles.map((file) => (
                       <div
                         key={file.MULTIMED_3D_ID}
-                        className={`thumbnail-item ${selectedImage?.MULTIMED_3D_ID === file.MULTIMED_3D_ID ? 'selected' : ''}`}
-                        onClick={() => handleImageSelect(file)}
+                        className={`thumbnail-item ${selectedFile?.MULTIMED_3D_ID === file.MULTIMED_3D_ID ? 'selected' : ''}`}
+                        onClick={() => handleFileSelect(file)}
                         title={file.MULTIMEDIA_NAME || file.FILE_NAME}
                       >
-                        <img
-                          src={createImageDataUrl(file.FILE_CONTENT_BASE64, file.FILE_EXTENSION)}
-                          alt={file.MULTIMEDIA_NAME || file.FILE_NAME}
-                          className="thumbnail-image"
-                        />
+                        {file.IS_IMAGE ? (
+                          <img
+                            src={createImageDataUrl(file.FILE_CONTENT_BASE64, file.FILE_EXTENSION)}
+                            alt={file.MULTIMEDIA_NAME || file.FILE_NAME}
+                            className="thumbnail-image"
+                          />
+                        ) : file.IS_PDF ? (
+                          <div className="thumbnail-pdf">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                            </svg>
+                            <div className="thumbnail-pdf-name">
+                              {file.MULTIMEDIA_NAME || file.FILE_NAME}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
-              )}
-
-              {/* PDF Tab Content */}
-              {activeTab === 'pdfs' && pdfFiles.length > 0 && (
-                <div className="pdf-gallery-layout">
-                  {selectedPdf && (
-                    <PDFViewer 
-                      pdfFile={selectedPdf} 
-                      onClose={onClose}
-                    />
-                  )}
-                  
-                  {/* PDF list */}
-                  {pdfFiles.length > 1 && (
-                    <div className="pdf-list">
-                      <h4>Доступні PDF файли:</h4>
-                      <div className="pdf-items">
-                        {pdfFiles.map((file) => (
-                          <div
-                            key={file.MULTIMED_3D_ID}
-                            className={`pdf-item ${selectedPdf?.MULTIMED_3D_ID === file.MULTIMED_3D_ID ? 'selected' : ''}`}
-                            onClick={() => handlePdfSelect(file)}
-                          >
-                            <div className="pdf-icon">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                              </svg>
-                            </div>
-                            <div className="pdf-info">
-                              <div className="pdf-name">{file.MULTIMEDIA_NAME || file.FILE_NAME}</div>
-                              <div className="pdf-details">{file.FILE_NAME}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
           )}
         </div>
       </div>
