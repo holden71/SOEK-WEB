@@ -7,7 +7,7 @@ const MediaViewerButton = ({ modelData }) => {
   const [hasMultimedia, setHasMultimedia] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  const API_BASE_URL = 'http://localhost:8000/api';
+  const API_BASE_URL = '/api';
 
   // Check if model has multimedia files
   useEffect(() => {

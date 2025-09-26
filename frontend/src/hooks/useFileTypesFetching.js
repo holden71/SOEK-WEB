@@ -10,7 +10,7 @@ export const useFileTypesFetching = () => {
     const fetchFileTypes = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8000/api/file_types');
+        const response = await fetch('/api/file_types');
         if (!response.ok) {
           throw new Error('Failed to fetch file types');
         }
@@ -30,7 +30,7 @@ export const useFileTypesFetching = () => {
   const refreshData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/file_types');
+      const response = await fetch('/api/file_types');
       if (!response.ok) {
         throw new Error('Failed to fetch file types');
       }
@@ -46,7 +46,7 @@ export const useFileTypesFetching = () => {
 
   const createFileType = async (fileTypeData) => {
     try {
-      const response = await fetch('http://localhost:8000/api/file_types', {
+      const response = await fetch('/api/file_types', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ export const useFileTypesFetching = () => {
 
   const deleteFileType = async (fileTypeId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/file_types/${fileTypeId}`, {
+      const response = await fetch(`/api/file_types/${fileTypeId}`, {
         method: 'DELETE',
       });
 

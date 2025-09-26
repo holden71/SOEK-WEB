@@ -53,7 +53,7 @@ function Import() {
   useEffect(() => {
     const fetchPlants = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/plants');
+        const response = await fetch('/api/plants');
         if (!response.ok) {
           throw new Error('Failed to fetch plants');
         }
@@ -78,7 +78,7 @@ function Import() {
       }
 
       try {
-        const response = await fetch(`http://localhost:8000/api/units?plant_id=${selectedPlant}`);
+        const response = await fetch(`/api/units?plant_id=${selectedPlant}`);
         if (!response.ok) {
           throw new Error('Failed to fetch units');
         }
@@ -139,7 +139,7 @@ function Import() {
       return;
     }
     try {
-      const response = await fetch('http://localhost:8000/api/check-building', {
+      const response = await fetch('/api/check-building', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ function Import() {
     }
     
     try {
-      const response = await fetch('http://localhost:8000/api/check-location', {
+      const response = await fetch('/api/check-location', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -237,7 +237,7 @@ function Import() {
       formData.append('file', fileToAnalyze);
       
       // Filter sheets to only show percentage values
-      const response = await fetch('http://localhost:8000/api/analyze-excel?filter_percentage_only=true', {
+      const response = await fetch('/api/analyze-excel?filter_percentage_only=true', {
         method: 'POST',
         body: formData,
       });
@@ -290,7 +290,7 @@ function Import() {
       formData.append('file', file);
       formData.append('sheet_name', sheetName);
       
-      const response = await fetch('http://localhost:8000/api/extract-sheet-data', {
+      const response = await fetch('/api/extract-sheet-data', {
         method: 'POST',
         body: formData,
       });
@@ -436,7 +436,7 @@ function Import() {
 
         console.log(`Checking for DEMPF ${dempf}%:`, checkParams);
 
-        const response = await fetch('http://localhost:8000/api/find-req-accel-set', {
+        const response = await fetch('/api/find-req-accel-set', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -494,7 +494,7 @@ function Import() {
         const formData = new FormData();
         formData.append('file', file);
         
-        const response = await fetch('http://localhost:8000/api/analyze-excel?filter_percentage_only=true', {
+        const response = await fetch('/api/analyze-excel?filter_percentage_only=true', {
           method: 'POST',
           body: formData,
         });
@@ -556,7 +556,7 @@ function Import() {
         set_id: setId
       };
 
-      const response = await fetch('http://localhost:8000/api/clear-accel-set-arrays', {
+      const response = await fetch('/api/clear-accel-set-arrays', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -690,7 +690,7 @@ function Import() {
       console.log('Sending data to save-accel-data:', JSON.stringify(transformedData, null, 2));
 
       // Send data to backend
-      const response = await fetch('http://localhost:8000/api/save-accel-data', {
+      const response = await fetch('/api/save-accel-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -750,7 +750,7 @@ function Import() {
         formData.append('file', file);
         formData.append('sheet_name', sheet.name);
         
-        const response = await fetch('http://localhost:8000/api/extract-sheet-data', {
+        const response = await fetch('/api/extract-sheet-data', {
           method: 'POST',
           body: formData,
         });

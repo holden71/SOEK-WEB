@@ -775,7 +775,7 @@ const AnalysisModal = ({
       for (const type of ['МРЗ', 'ПЗ']) {
         try {
           const response = await fetch(
-            `http://localhost:8000/api/spectral-data?ek_id=${ekId}&calc_type=${encodeURIComponent(calcType)}&spectrum_type=${encodeURIComponent(type)}`
+            `/api/spectral-data?ek_id=${ekId}&calc_type=${encodeURIComponent(calcType)}&spectrum_type=${encodeURIComponent(type)}`
           );
 
           if (response.ok) {
@@ -847,7 +847,7 @@ const AnalysisModal = ({
       console.log('M1:', m1);
       console.log('M2:', m2);
 
-      const response = await fetch('http://localhost:8000/api/save-analysis-result', {
+      const response = await fetch('/api/save-analysis-result', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -893,7 +893,7 @@ const AnalysisModal = ({
     
     try {
       // First, check what data is missing
-      const requirementsResponse = await fetch(`http://localhost:8000/api/check-calculation-requirements?ek_id=${ekId}`, {
+      const requirementsResponse = await fetch(`/api/check-calculation-requirements?ek_id=${ekId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -923,7 +923,7 @@ const AnalysisModal = ({
       }
 
       // Then perform the calculation
-      const response = await fetch('http://localhost:8000/api/calculate-sigma-alt', {
+      const response = await fetch('/api/calculate-sigma-alt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1057,7 +1057,7 @@ const AnalysisModal = ({
         calculated: kResultsData.calculated || false
       };
 
-      const response = await fetch('http://localhost:8000/api/save-k-results', {
+      const response = await fetch('/api/save-k-results', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1125,7 +1125,7 @@ const AnalysisModal = ({
         }
       });
 
-      const response = await fetch('http://localhost:8000/api/save-stress-inputs', {
+      const response = await fetch('/api/save-stress-inputs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1150,7 +1150,7 @@ const AnalysisModal = ({
 
   const fetchCalculationRequirements = async (ekId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/check-calculation-requirements?ek_id=${ekId}`, {
+      const response = await fetch(`/api/check-calculation-requirements?ek_id=${ekId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1185,7 +1185,7 @@ const AnalysisModal = ({
       console.log('=== Завантаження результатів K коефіцієнтів ===');
       console.log('EK_ID:', ekId);
 
-      const response = await fetch(`http://localhost:8000/api/get-k-results/${ekId}`);
+      const response = await fetch(`/api/get-k-results/${ekId}`);
       
       if (!response.ok) {
         console.warn('No K results found for element:', ekId);
@@ -1233,7 +1233,7 @@ const AnalysisModal = ({
     try {
       // Fetch both calculation results and requirements information
       const [resultsResponse, requirements] = await Promise.all([
-        fetch(`http://localhost:8000/api/get-calculation-results?ek_id=${ekId}`, {
+        fetch(`/api/get-calculation-results?ek_id=${ekId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -1308,7 +1308,7 @@ const AnalysisModal = ({
     
     try {
 
-      const response = await fetch(`http://localhost:8000/api/get-stress-inputs?ek_id=${ekId}`, {
+      const response = await fetch(`/api/get-stress-inputs?ek_id=${ekId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1403,7 +1403,7 @@ const AnalysisModal = ({
           console.log('  calc_type: ДЕТЕРМІНИСТИЧНИЙ');
           
           const response = await fetch(
-            `http://localhost:8000/api/seism-requirements?ek_id=${ekId}&dempf=${dampingFactor}&spectr_earthq_type=${encodeURIComponent(type)}&calc_type=ДЕТЕРМІНИСТИЧНИЙ`
+            `/api/seism-requirements?ek_id=${ekId}&dempf=${dampingFactor}&spectr_earthq_type=${encodeURIComponent(type)}&calc_type=ДЕТЕРМІНИСТИЧНИЙ`
           );
 
           console.log(`Статус ответа для ${type}:`, response.status, response.statusText);

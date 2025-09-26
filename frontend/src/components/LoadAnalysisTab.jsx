@@ -211,7 +211,7 @@ const LoadAnalysisTab = ({
       if (!elementId) return;
       
       try {
-        const response = await fetch(`http://localhost:8000/api/get-load-analysis-params/${elementId}`);
+        const response = await fetch(`/api/get-load-analysis-params/${elementId}`);
         if (response.ok) {
           const data = await response.json();
           const savedParams = data.load_params;
@@ -669,7 +669,7 @@ const LoadAnalysisTab = ({
       
       // Отправляем данные на сервер для сохранения
       console.log('Отправляем запрос на сервер...');
-      const response = await fetch('http://localhost:8000/api/save-load-analysis-params', {
+      const response = await fetch('/api/save-load-analysis-params', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToSave)

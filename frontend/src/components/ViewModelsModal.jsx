@@ -3,7 +3,7 @@ import Model3DDownloadButton from './Model3DDownloadButton';
 import MediaViewerButton from './MediaViewerButton';
 import '../styles/AddModal.css';
 
-function ViewModelsModal({ isOpen, onClose, ekId, elementData, onModelsChanged }) {
+function ViewModelsModal({ isOpen, onClose, ekId, elementData }) {
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -80,15 +80,6 @@ function ViewModelsModal({ isOpen, onClose, ekId, elementData, onModelsChanged }
       
       // Refresh models list
       await fetchModels();
-      
-      // Check if this was the last model for this element
-      const updatedModels = models.filter(m => m.EK_3D_ID !== ek3dId);
-      const hasModelsLeft = updatedModels.length > 0;
-      
-      // Update parent component's cache
-      if (onModelsChanged) {
-        onModelsChanged(ekId, hasModelsLeft);
-      }
       
     } catch (error) {
       console.error('Error deleting model link:', error);

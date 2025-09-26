@@ -14,7 +14,7 @@ const FileDownloadButton = ({ fileId, fileName }) => {
     try {
       console.log(`Downloading file ID: ${fileId}, fileName: ${fileName}`);
       
-      const response = await fetch(`http://localhost:8000/api/files/${fileId}/download`);
+      const response = await fetch(`/api/files/${fileId}/download`);
       
       console.log('Response status:', response.status);
       console.log('Response headers:', response.headers);

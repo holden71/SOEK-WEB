@@ -10,7 +10,7 @@ export const use3DModelsFetching = () => {
     const fetch3DModels = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8000/api/models_3d');
+        const response = await fetch('/api/models_3d');
         if (!response.ok) {
           throw new Error('Failed to fetch 3D models');
         }
@@ -34,7 +34,7 @@ export const use3DModelsFetching = () => {
   const refreshData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/models_3d');
+      const response = await fetch('/api/models_3d');
       if (!response.ok) {
         throw new Error('Failed to fetch 3D models');
       }
@@ -50,7 +50,7 @@ export const use3DModelsFetching = () => {
 
   const deleteModel = async (modelId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/models_3d/${modelId}`, {
+      const response = await fetch(`/api/models_3d/${modelId}`, {
         method: 'DELETE',
       });
 
@@ -71,7 +71,7 @@ export const use3DModelsFetching = () => {
 
   const createModel = async (modelData) => {
     try {
-      const response = await fetch('http://localhost:8000/api/models_3d', {
+      const response = await fetch('/api/models_3d', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

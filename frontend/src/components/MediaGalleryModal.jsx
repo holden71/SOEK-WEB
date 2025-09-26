@@ -10,7 +10,7 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const API_BASE_URL = 'http://localhost:8000/api';
+  const API_BASE_URL = '/api';
 
   useEffect(() => {
     if (isOpen) {
@@ -142,7 +142,6 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
           {loading && (
             <div className="media-gallery-loading">
               <div className="spinner"></div>
-              <p>Завантаження мультимедіа файлів...</p>
             </div>
           )}
 

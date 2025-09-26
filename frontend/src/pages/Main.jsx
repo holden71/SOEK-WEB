@@ -53,8 +53,6 @@ function Main() {
   const [showViewModelsModal, setShowViewModelsModal] = useState(false);
   const [currentElementData, setCurrentElementData] = useState(null);
   
-  // Models availability cache
-  const [modelsAvailability, setModelsAvailability] = useState({});
 
   const calculatePopupPosition = (rect) => {
             const popupWidth = 480;
@@ -133,43 +131,6 @@ function Main() {
     setShowViewModelsModal(true);
   };
 
-  // Check if element has linked models
-  const checkElementModels = async (ekId) => {
-    try {
-      const response = await fetch(`/api/ek_models/check/${ekId}`);
-      if (response.ok) {
-        const result = await response.json();
-        return result.has_models;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error checking models for EK_ID:', ekId, error);
-      return false;
-    }
-  };
-
-  // Batch check models availability for all elements
-  const checkModelsAvailabilityForData = async (elementData) => {
-    if (!elementData || elementData.length === 0) return;
-    
-    const availability = {};
-    const promises = elementData.map(async (element) => {
-      const ekId = element.EK_ID || element.ek_id;
-      if (ekId) {
-        availability[ekId] = await checkElementModels(ekId);
-      }
-    });
-    
-    await Promise.all(promises);
-    setModelsAvailability(availability);
-  };
-
-  // Effect to check models availability when data changes
-  React.useEffect(() => {
-    if (data && data.length > 0) {
-      checkModelsAvailabilityForData(data);
-    }
-  }, [data]);
 
   const handleSearchRefresh = async () => {
       console.log('Refreshing table data after import...');
@@ -261,12 +222,6 @@ function Main() {
         alert(`3D модель створено успішно, але виникла проблема з прив'язкою до елементу: ${errorMessage}`);
       } else {
         alert('3D модель успішно створено і прив\'язано до елементу!');
-        
-        // Update models availability cache
-        setModelsAvailability(prev => ({
-          ...prev,
-          [ekId]: true
-        }));
       }
 
       setShowAddModelModal(false);
@@ -296,9 +251,6 @@ function Main() {
         maxSize: 80,
         minSize: 80,
         cell: ({ row }) => {
-          const ekId = row.original.EK_ID || row.original.ek_id;
-          const hasModels = modelsAvailability[ekId] || false;
-          
           return (
             <TableActions
               row={row}
@@ -306,7 +258,7 @@ function Main() {
               onImportClick={handleImportClick}
               onAnalysisClick={handleAnalysisClick}
               onAddModelClick={handleAddModelClick}
-              onViewModelsClick={hasModels ? handleViewModelsClick : null}
+              onViewModelsClick={handleViewModelsClick}
             />
           );
         },
@@ -482,12 +434,6 @@ function Main() {
           }}
           ekId={currentElementData?.EK_ID || currentElementData?.ek_id}
           elementData={currentElementData}
-          onModelsChanged={(ekId, hasModels) => {
-            setModelsAvailability(prev => ({
-              ...prev,
-              [ekId]: hasModels
-            }));
-          }}
         />
       </div>
     </div>

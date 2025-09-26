@@ -10,7 +10,7 @@ export const useFilesFetching = () => {
     const fetchFiles = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8000/api/files');
+        const response = await fetch('/api/files');
         if (!response.ok) {
           throw new Error('Failed to fetch files');
         }
@@ -30,7 +30,7 @@ export const useFilesFetching = () => {
   const refreshData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/files');
+      const response = await fetch('/api/files');
       if (!response.ok) {
         throw new Error('Failed to fetch files');
       }
@@ -46,7 +46,7 @@ export const useFilesFetching = () => {
 
   const createFile = async (fileData) => {
     try {
-      const response = await fetch('http://localhost:8000/api/files', {
+      const response = await fetch('/api/files', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ export const useFilesFetching = () => {
 
   const deleteFile = async (fileId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/files/${fileId}`, {
+      const response = await fetch(`/api/files/${fileId}`, {
         method: 'DELETE',
       });
 

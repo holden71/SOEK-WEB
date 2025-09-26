@@ -5,7 +5,7 @@ export const useMultimediaFetching = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const API_BASE_URL = 'http://localhost:8000/api';
+  const API_BASE_URL = '/api';
 
   const refreshData = useCallback(async () => {
     setLoading(true);

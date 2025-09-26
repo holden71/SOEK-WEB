@@ -8,6 +8,9 @@ import AddModelModal from '../components/AddModelModal';
 import FileDownloadButton from '../components/FileDownloadButton';
 import Model3DDownloadButton from '../components/Model3DDownloadButton';
 import MediaViewerButton from '../components/MediaViewerButton';
+import TableActionsMenu from '../components/TableActionsMenu';
+import MediaGalleryModal from '../components/MediaGalleryModal';
+import Model3DDownloadModal from '../components/Model3DDownloadModal';
 import { use3DModelsFetching } from '../hooks/use3DModelsFetching';
 import { useFilesFetching } from '../hooks/useFilesFetching';
 import { useFileTypesFetching } from '../hooks/useFileTypesFetching';
@@ -81,6 +84,12 @@ function Models3D() {
   const [showAddFileTypeModal, setShowAddFileTypeModal] = useState(false);
   const [showAddFileModal, setShowAddFileModal] = useState(false);
   const [showAddModelModal, setShowAddModelModal] = useState(false);
+  
+  // Model actions modal states
+  const [showMediaGalleryModal, setShowMediaGalleryModal] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [currentModelData, setCurrentModelData] = useState(null);
+  const [downloading, setDownloading] = useState(false);
 
   // Define available modes
   const modes = [
@@ -153,6 +162,104 @@ function Models3D() {
     // Multimedia mode only for viewing and deleting, no adding
   };
 
+  // Handle media viewer action
+  const handleViewMedia = (e, row) => {
+    e.stopPropagation();
+    setCurrentModelData(row.original);
+    setShowMediaGalleryModal(true);
+  };
+
+  // Handle download action
+  const handleDownload = (e, row) => {
+    e.stopPropagation();
+    setCurrentModelData(row.original);
+    setShowDownloadModal(true);
+  };
+
+  // Handle actual model download
+  const handleModelDownload = async (includeMultimedia) => {
+    setDownloading(true);
+    
+    try {
+      const modelId = currentModelData?.MODEL_ID || currentModelData?.model_id || currentModelData?.id;
+      
+      if (!modelId) {
+        throw new Error('ID моделі не знайдено');
+      }
+
+      const downloadUrl = `/api/models_3d/${modelId}/download?include_multimedia=${includeMultimedia}`;
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition');
+      
+      let fileName;
+      if (includeMultimedia) {
+        fileName = `model_${modelId}_with_multimedia.zip`;
+      } else {
+        if (disposition) {
+          const match = disposition.match(/filename="([^"]*)"/) || disposition.match(/filename=([^;]*)/);
+          if (match && match[1]) {
+            fileName = match[1];
+          }
+        }
+        if (!fileName) {
+          fileName = `model_${modelId}`;
+        }
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setShowDownloadModal(false);
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert(`Помилка завантаження 3D моделі: ${error.message}`);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Handle file download
+  const handleFileDownload = async (fileId, fileName) => {
+    try {
+      const response = await fetch(`/api/files/${fileId}/download`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || `file_${fileId}`;
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert(`Помилка завантаження файлу: ${error.message}`);
+    }
+  };
+
   // Define custom columns for 3D models table
   const customModelsColumns = useMemo(() => {
     if (currentMode !== 'models_3d' || modelsData.length === 0) return null;
@@ -190,19 +297,47 @@ function Models3D() {
     const actionsColumn = {
       id: 'actions',
       header: '',
-      size: 100,
-      maxSize: 100,
-      minSize: 100,
+      size: 60,
+      maxSize: 60,
+      minSize: 60,
       cell: ({ row }) => {
+        const modelData = row.original;
+        
+        const actions = [
+          {
+            key: 'view_media',
+            label: 'Переглянути мультимедіа',
+            onClick: handleViewMedia,
+            condition: async (row) => {
+              try {
+                const modelId = modelData.MODEL_ID || modelData.model_id || modelData.id;
+                if (!modelId) return false;
+                
+                const response = await fetch(`/api/multimedia/model/${modelId}/check`);
+                if (response.ok) {
+                  const result = await response.json();
+                  return result.has_multimedia && result.multimedia_count > 0;
+                }
+                return false;
+              } catch (error) {
+                console.error('Error checking multimedia:', error);
+                return false;
+              }
+            }
+          },
+          {
+            key: 'download',
+            label: 'Завантажити модель',
+            onClick: handleDownload
+          }
+        ];
+
         return (
-          <div className="table-actions-container">
-            <MediaViewerButton 
-              modelData={row.original} 
-            />
-            <Model3DDownloadButton 
-              modelData={row.original} 
-            />
-          </div>
+          <TableActionsMenu 
+            actions={actions}
+            row={row}
+            lazy={true}
+          />
         );
       },
     };
@@ -322,16 +457,29 @@ function Models3D() {
       maxSize: 60,
       minSize: 60,
       cell: ({ row }) => {
-        const fileId = row.original.FILE_ID || row.original.file_id;
-        const fileName = row.original.FILE_NAME || row.original.file_name;
+        const fileData = row.original;
         
+        const actions = [
+          {
+            key: 'download',
+            label: 'Завантажити файл',
+            onClick: (e, row) => {
+              e.stopPropagation();
+              const fileId = fileData.FILE_ID || fileData.file_id;
+              const fileName = fileData.FILE_NAME || fileData.file_name;
+              
+              // Handle file download logic
+              handleFileDownload(fileId, fileName);
+            }
+          }
+        ];
+
         return (
-          <div className="table-actions-container">
-            <FileDownloadButton 
-              fileId={fileId} 
-              fileName={fileName} 
-            />
-          </div>
+          <TableActionsMenu 
+            actions={actions}
+            row={row}
+            lazy={false}
+          />
         );
       },
     };
@@ -674,6 +822,31 @@ function Models3D() {
         isOpen={showAddModelModal}
         onClose={() => setShowAddModelModal(false)}
         onSave={handleSaveModel}
+      />
+
+      {/* Model Actions Modals */}
+      {showMediaGalleryModal && (
+        <MediaGalleryModal
+          isOpen={showMediaGalleryModal}
+          onClose={() => {
+            setShowMediaGalleryModal(false);
+            setCurrentModelData(null);
+          }}
+          modelData={currentModelData}
+        />
+      )}
+
+      <Model3DDownloadModal
+        isOpen={showDownloadModal}
+        onClose={() => {
+          if (!downloading) {
+            setShowDownloadModal(false);
+            setCurrentModelData(null);
+          }
+        }}
+        onDownload={handleModelDownload}
+        modelData={currentModelData}
+        loading={downloading}
       />
 
     </div>

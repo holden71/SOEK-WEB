@@ -1,0 +1,152 @@
+/* TableActionsMenu Component Styles */
+
+.table-actions-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.action-menu-button {
+  background: none;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #999;
+  transition: all 0.15s ease;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-menu-button:hover {
+  background-color: #f8f8f8;
+  color: #666;
+  border-color: #bbb;
+}
+
+.action-menu-button:active {
+  transform: scale(0.92);
+  background-color: #f0f0f0;
+}
+
+.action-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 180px;
+  max-width: 200px;
+  overflow: hidden;
+  animation: menuFadeIn 0.15s ease-out;
+  transform-origin: top left;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+  font-size: 12px;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+
+.menu-item:hover:not(:disabled) {
+  background-color: #f8f8f8;
+}
+
+.menu-item:active:not(:disabled) {
+  background-color: #f0f0f0;
+}
+
+.menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menu-text {
+  margin-left: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Loading state */
+.menu-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 12px;
+  min-height: 40px;
+}
+
+.menu-loading .spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e9ecef;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* No actions state */
+.no-actions {
+  padding: 12px;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .action-dropdown-menu {
+    min-width: 160px;
+    max-width: 180px;
+  }
+  
+  .menu-item {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  
+  .action-menu-button {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+  }
+}

@@ -17,7 +17,7 @@ export const useDataFetching = () => {
   useEffect(() => {
     const fetchPlants = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/plants');
+        const response = await fetch('/api/plants');
         if (!response.ok) {
           throw new Error('Failed to fetch plants');
         }
@@ -42,7 +42,7 @@ export const useDataFetching = () => {
       }
 
       try {
-        const response = await fetch(`http://localhost:8000/api/units?plant_id=${selectedPlant}`);
+        const response = await fetch(`/api/units?plant_id=${selectedPlant}`);
         if (!response.ok) {
           throw new Error('Failed to fetch units');
         }
@@ -66,7 +66,7 @@ export const useDataFetching = () => {
 
       try {
         const response = await fetch(
-          `http://localhost:8000/api/terms?plant_id=${selectedPlant}&unit_id=${selectedUnit}`
+          `/api/terms?plant_id=${selectedPlant}&unit_id=${selectedUnit}`
         );
         if (!response.ok) {
           throw new Error('Failed to fetch terms');
@@ -104,7 +104,7 @@ export const useDataFetching = () => {
       setSearching(true);
       setHasSearched(true);
       const response = await fetch(
-        `http://localhost:8000/api/search?plant_id=${selectedPlant}&unit_id=${selectedUnit}&t_id=${selectedT}`
+        `/api/search?plant_id=${selectedPlant}&unit_id=${selectedUnit}&t_id=${selectedT}`
       );
       
       if (!response.ok) {

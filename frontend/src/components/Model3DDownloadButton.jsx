@@ -25,7 +25,7 @@ const Model3DDownloadButton = ({ modelData }) => {
       console.log(`Downloading 3D model ID: ${modelId}, includeMultimedia: ${includeMultimedia}`);
       
       // Build the download URL with multimedia parameter
-      const downloadUrl = `http://localhost:8000/api/models_3d/${modelId}/download?include_multimedia=${includeMultimedia}`;
+      const downloadUrl = `/api/models_3d/${modelId}/download?include_multimedia=${includeMultimedia}`;
       
       console.log(`Making request to: ${downloadUrl}`);
       

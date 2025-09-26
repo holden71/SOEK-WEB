@@ -80,7 +80,7 @@ const ImportPopup = ({
       const analyzeFormData = new FormData();
       analyzeFormData.append('file', selectedFile);
       
-      const analyzeResponse = await fetch('http://localhost:8000/api/analyze-excel', {
+      const analyzeResponse = await fetch('/api/analyze-excel', {
         method: 'POST',
         body: analyzeFormData,
       });
@@ -103,7 +103,7 @@ const ImportPopup = ({
       extractFormData.append('file', selectedFile);
       extractFormData.append('sheet_name', firstSheet.name);
       
-      const extractResponse = await fetch('http://localhost:8000/api/extract-sheet-data', {
+      const extractResponse = await fetch('/api/extract-sheet-data', {
         method: 'POST',
         body: extractFormData,
       });
@@ -186,7 +186,7 @@ const ImportPopup = ({
       console.log("Sending data to endpoint: /api/save-accel-data");
       console.log("Request body:", JSON.stringify(transformedData, null, 2));
       
-      const saveResponse = await fetch('http://localhost:8000/api/save-accel-data', {
+      const saveResponse = await fetch('/api/save-accel-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +243,7 @@ const ImportPopup = ({
       
       console.log("Calling stored procedure with params:", procedureParams);
       
-      const procedureResponse = await fetch('http://localhost:8000/api/execute-set-all-ek-accel-set', {
+      const procedureResponse = await fetch('/api/execute-set-all-ek-accel-set', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

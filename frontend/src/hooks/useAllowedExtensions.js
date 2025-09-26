@@ -6,7 +6,7 @@ export const useAllowedExtensions = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const API_BASE_URL = 'http://localhost:8000/api';
+  const API_BASE_URL = '/api';
 
   const fetchAllowedExtensions = useCallback(async () => {
     setLoading(true);
