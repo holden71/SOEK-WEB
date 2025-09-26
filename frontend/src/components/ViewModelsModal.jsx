@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MediaGalleryModal from './MediaGalleryModal';
-import '../styles/AddModal.css';
+import '../styles/ViewModelsModal.css';
 
 function ViewModelsModal({ isOpen, onClose, ekId, elementData }) {
   const [models, setModels] = useState([]);
@@ -101,23 +101,23 @@ function ViewModelsModal({ isOpen, onClose, ekId, elementData }) {
 
   return (
     <>
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
+      <div className="view-models-overlay" onClick={onClose}>
+        <div className="view-models-content" onClick={(e) => e.stopPropagation()}>
+          <div className="view-models-header">
             <h2>3D Моделі для елемента #{ekId}</h2>
-            <button className="close-button" onClick={onClose}>✕</button>
+            <button className="view-models-close" onClick={onClose}>✕</button>
           </div>
 
-          <div className="modal-body">
+          <div className="view-models-body">
             <div className="element-info">
               <p><strong>EK_ID:</strong> {ekId}</p>
               {elementData?.NAME && <p><strong>Назва:</strong> {elementData.NAME}</p>}
               {elementData?.IDEN && <p><strong>Ідентифікатор:</strong> {elementData.IDEN}</p>}
             </div>
 
-            {loading && <div className="loading">Завантаження моделей...</div>}
+            {loading && <div className="view-models-loading">Завантаження моделей...</div>}
             
-            {error && <div className="error-message">Помилка: {error}</div>}
+            {error && <div className="view-models-error">Помилка: {error}</div>}
             
             {!loading && !error && models.length === 0 && (
               <div className="no-models">
