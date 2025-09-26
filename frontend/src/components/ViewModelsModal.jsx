@@ -105,7 +105,7 @@ function ViewModelsModal({ isOpen, onClose, ekId, elementData }) {
         <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h2>3D Моделі для елемента #{ekId}</h2>
-            <button className="close-button" onClick={onClose}>×</button>
+            <button className="close-button" onClick={onClose}>✕</button>
           </div>
 
           <div className="modal-body">

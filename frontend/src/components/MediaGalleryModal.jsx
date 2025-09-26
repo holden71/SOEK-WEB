@@ -222,7 +222,7 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
             </div>
           </div>
           
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>✕</button>
         </div>
 
         <div className="media-gallery-content">
