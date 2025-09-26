@@ -63,6 +63,11 @@
   background: #e9ecef;
 }
 
+.ag-theme-alpine .ag-paging-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .ag-theme-alpine .ag-paging-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -162,6 +167,11 @@
 .main-page .tiny-import-button:hover {
   color: #666;
   border-color: #bbb;
+}
+
+.main-page .tiny-import-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .main-page .tiny-import-button:active {
@@ -336,6 +346,11 @@
   background-color: #0069d9;
 }
 
+.main-page .import-confirm-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .main-page .import-confirm-button.imported {
   background-color: #28a745;
   cursor: default;
@@ -443,6 +458,11 @@
   box-shadow: none;
 }
 
+.main-page .select-file-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .main-page .select-file-button:hover:not(:disabled) {
   background-color: #0056b3;
 }
@@ -496,6 +516,11 @@
   align-items: center;
   justify-content: center;
   transition: color 0.2s;
+}
+
+.main-page .remove-file-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .main-page .remove-file-button:hover {
@@ -654,6 +679,11 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.add-button-standalone:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .add-button-standalone:active {
   background-color: #004494;
   transform: translateY(1px);
@@ -735,6 +765,11 @@
   background-color: #0056b3;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-header-above .add-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .table-header-above .add-button:active {

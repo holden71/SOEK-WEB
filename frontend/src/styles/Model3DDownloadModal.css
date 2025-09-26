@@ -63,6 +63,11 @@
   transition: all 0.15s ease;
 }
 
+.close-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .close-button:hover {
   background-color: #e5e5e5;
   color: #333;
@@ -139,6 +144,11 @@
 
 .download-option-button:active {
   transform: translateY(0);
+}
+
+.download-option-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .download-option-button:disabled {

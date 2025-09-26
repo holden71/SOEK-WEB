@@ -145,24 +145,6 @@
   font-weight: 500;
 }
 
-.modal-close-button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6c757d;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  line-height: 1;
-  font-family: 'Arial', sans-serif;
-  font-weight: normal;
-}
-
-.modal-close-button:hover {
-  background: #e9ecef;
-  color: #495057;
-}
 
 .analysis-modal-tabs {
   display: flex;

@@ -31,10 +31,18 @@
 .media-gallery-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 16px 20px;
   border-bottom: 1px solid #dee2e6;
   background-color: #f8f9fa;
+  gap: 20px;
+}
+
+.header-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .media-gallery-header h3 {
@@ -42,6 +50,63 @@
   font-size: 18px;
   font-weight: 600;
   color: #333;
+}
+
+.element-context {
+  background: #e8f4f8;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
+.element-context p {
+  margin: 2px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.download-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.download-model-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.download-model-btn.primary {
+  background: #007bff;
+  color: white;
+}
+
+.download-model-btn.primary:hover:not(:disabled) {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.download-model-btn.secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.download-model-btn.secondary:hover:not(:disabled) {
+  background: #545862;
+  transform: translateY(-1px);
+}
+
+.download-model-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .media-gallery-header .close-button {
@@ -55,6 +120,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.media-gallery-header .close-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .media-gallery-header .close-button:hover {
@@ -105,6 +175,11 @@
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.2s;
+}
+
+.retry-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .retry-button:hover {
@@ -575,6 +650,11 @@
 .media-viewer-button:hover {
   color: #1e7e34;
   border-color: #28a745;
+}
+
+.media-viewer-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .media-viewer-button:active {

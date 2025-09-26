@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import Model3DDownloadButton from './Model3DDownloadButton';
-import MediaViewerButton from './MediaViewerButton';
+import MediaGalleryModal from './MediaGalleryModal';
 import '../styles/AddModal.css';
 
 function ViewModelsModal({ isOpen, onClose, ekId, elementData }) {
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [selectedModelData, setSelectedModelData] = useState(null);
 
   useEffect(() => {
     if (isOpen && ekId) {
@@ -64,6 +65,15 @@ function ViewModelsModal({ isOpen, onClose, ekId, elementData }) {
     }
   };
 
+  const handleViewModel = (model) => {
+    setSelectedModelData({
+      ...model,
+      elementData: elementData,
+      ekId: ekId
+    });
+    setShowMediaGallery(true);
+  };
+
   const handleDeleteLink = async (ek3dId) => {
     if (!confirm('Ви впевнені, що хочете видалити прив\'язку цієї моделі до елемента?')) {
       return;
@@ -90,85 +100,100 @@ function ViewModelsModal({ isOpen, onClose, ekId, elementData }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>3D Моделі для елемента</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
-
-        <div className="modal-body">
-          <div className="element-info">
-            <p><strong>EK_ID:</strong> {ekId}</p>
-            {elementData?.NAME && <p><strong>Назва:</strong> {elementData.NAME}</p>}
-            {elementData?.IDEN && <p><strong>Ідентифікатор:</strong> {elementData.IDEN}</p>}
+    <>
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>3D Моделі для елемента #{ekId}</h2>
+            <button className="close-button" onClick={onClose}>×</button>
           </div>
 
-          {loading && <div className="loading">Завантаження моделей...</div>}
-          
-          {error && <div className="error-message">Помилка: {error}</div>}
-          
-          {!loading && !error && models.length === 0 && (
-            <div className="no-models">
-              <p>До цього елемента не прив'язано жодної 3D моделі.</p>
-              <p>Використовуйте пункт "Завантажити 3D модель" для додавання нової моделі.</p>
+          <div className="modal-body">
+            <div className="element-info">
+              <p><strong>EK_ID:</strong> {ekId}</p>
+              {elementData?.NAME && <p><strong>Назва:</strong> {elementData.NAME}</p>}
+              {elementData?.IDEN && <p><strong>Ідентифікатор:</strong> {elementData.IDEN}</p>}
             </div>
-          )}
-          
-          {!loading && !error && models.length > 0 && (
-            <div className="models-list">
-              <h3>Прив'язані 3D моделі ({models.length})</h3>
-              
-              {models.map((model) => (
-                <div key={model.EK_3D_ID} className="model-item">
-                  <div className="model-info">
-                    <div className="model-title">
-                      <strong>{model.MODEL_SH_NAME || 'Без назви'}</strong>
+
+            {loading && <div className="loading">Завантаження моделей...</div>}
+            
+            {error && <div className="error-message">Помилка: {error}</div>}
+            
+            {!loading && !error && models.length === 0 && (
+              <div className="no-models">
+                <p>До цього елемента не прив'язано жодної 3D моделі.</p>
+                <p>Використовуйте пункт "Завантажити 3D модель" для додавання нової моделі.</p>
+              </div>
+            )}
+            
+            {!loading && !error && models.length > 0 && (
+              <div className="models-list">
+                <h3>Прив'язані 3D моделі ({models.length})</h3>
+                
+                {models.map((model) => (
+                  <div key={model.EK_3D_ID} className="model-item">
+                    <div className="model-info">
+                      <div className="model-title">
+                        <strong>{model.MODEL_SH_NAME || 'Без назви'}</strong>
+                      </div>
+                      
+                      <div className="model-details">
+                        <span className="model-field">
+                          <strong>Файл:</strong> {model.MODEL_FILE_NAME || 'N/A'}
+                        </span>
+                        
+                        <span className="model-field">
+                          <strong>Тип:</strong> {model.FILE_TYPE_NAME || 'N/A'}
+                        </span>
+                        
+                        {model.MODEL_DESCR && (
+                          <span className="model-field">
+                            <strong>Опис:</strong> {model.MODEL_DESCR}
+                          </span>
+                        )}
+                        
+                        <span className="model-field">
+                          <strong>Model ID:</strong> {model.MODEL_ID}
+                        </span>
+                      </div>
                     </div>
                     
-                    <div className="model-details">
-                      <span className="model-field">
-                        <strong>Файл:</strong> {model.MODEL_FILE_NAME || 'N/A'}
-                      </span>
-                      
-                      <span className="model-field">
-                        <strong>Тип:</strong> {model.FILE_TYPE_NAME || 'N/A'}
-                      </span>
-                      
-                      {model.MODEL_DESCR && (
-                        <span className="model-field">
-                          <strong>Опис:</strong> {model.MODEL_DESCR}
-                        </span>
-                      )}
-                      
-                      <span className="model-field">
-                        <strong>Model ID:</strong> {model.MODEL_ID}
-                      </span>
+                    <div className="model-actions">
+                      <button 
+                        className="view-button"
+                        onClick={() => handleViewModel(model)}
+                        title="Переглянути модель та мультимедіа"
+                      >
+                        Переглянути
+                      </button>
+                      <button 
+                        className="delete-link-button"
+                        onClick={() => handleDeleteLink(model.EK_3D_ID)}
+                        title="Видалити прив'язку"
+                      >
+                        Видалити
+                      </button>
                     </div>
                   </div>
-                  
-                  <div className="model-actions">
-                    <MediaViewerButton 
-                      modelData={{ MODEL_ID: model.MODEL_ID }} 
-                    />
-                    <Model3DDownloadButton 
-                      modelData={{ MODEL_ID: model.MODEL_ID, SH_NAME: model.MODEL_SH_NAME }} 
-                    />
-                    <button 
-                      className="delete-link-button"
-                      onClick={() => handleDeleteLink(model.EK_3D_ID)}
-                      title="Видалити прив'язку"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Media Gallery Modal */}
+      {showMediaGallery && (
+        <MediaGalleryModal
+          isOpen={showMediaGallery}
+          onClose={() => {
+            setShowMediaGallery(false);
+            setSelectedModelData(null);
+          }}
+          modelData={selectedModelData}
+        />
+      )}
+    </>
   );
 }
 

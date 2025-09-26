@@ -29,6 +29,11 @@
   border-color: #bbb;
 }
 
+.action-menu-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .action-menu-button:active {
   transform: scale(0.92);
   background-color: #f0f0f0;
@@ -85,6 +90,11 @@
 
 .menu-item:active:not(:disabled) {
   background-color: #f0f0f0;
+}
+
+.menu-item:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .menu-item:disabled {

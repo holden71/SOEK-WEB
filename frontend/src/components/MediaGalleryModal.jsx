@@ -9,6 +9,7 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloading, setDownloading] = useState(false);
 
   const API_BASE_URL = '/api';
 
@@ -61,6 +62,60 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
+    }
+  };
+
+  const handleDownloadModel = async (includeMultimedia = false) => {
+    setDownloading(true);
+    
+    try {
+      const modelId = modelData?.MODEL_ID || modelData?.model_id || modelData?.id;
+      
+      if (!modelId) {
+        throw new Error('ID моделі не знайдено');
+      }
+
+      const downloadUrl = `/api/models_3d/${modelId}/download?include_multimedia=${includeMultimedia}`;
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition');
+      
+      let fileName;
+      if (includeMultimedia) {
+        fileName = `model_${modelId}_with_multimedia.zip`;
+      } else {
+        if (disposition) {
+          const match = disposition.match(/filename="([^"]*)"/) || disposition.match(/filename=([^;]*)/);
+          if (match && match[1]) {
+            fileName = match[1];
+          }
+        }
+        if (!fileName) {
+          const modelName = modelData?.MODEL_SH_NAME || modelData?.SH_NAME || 'model';
+          fileName = `${modelName}_${modelId}`;
+        }
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert(`Помилка завантаження: ${error.message}`);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -130,12 +185,44 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
     <div className="media-gallery-overlay" onClick={handleOverlayClick}>
       <div className="media-gallery-modal">
         <div className="media-gallery-header">
-          <h3>Мультимедіа для моделі {modelData?.SH_NAME || modelData?.sh_name || 'невідомої'}</h3>
-          <button className="close-button" onClick={onClose}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
+          <div className="header-content">
+            <h3>Мультимедіа для моделі {modelData?.MODEL_SH_NAME || modelData?.SH_NAME || modelData?.sh_name || 'невідомої'}</h3>
+            
+            {/* Element info if available */}
+            {modelData?.elementData && (
+              <div className="element-context">
+                <p><strong>Елемент:</strong> {modelData.elementData.NAME || `#${modelData.ekId}`}</p>
+                {modelData.elementData.IDEN && (
+                  <p><strong>Ідентифікатор:</strong> {modelData.elementData.IDEN}</p>
+                )}
+              </div>
+            )}
+            
+            {/* Download buttons */}
+            <div className="download-actions">
+              <button 
+                className="download-model-btn primary"
+                onClick={() => handleDownloadModel(false)}
+                disabled={downloading}
+                title="Скачати тільки модель"
+              >
+                Скачати модель
+              </button>
+              
+              {multimediaFiles.length > 0 && (
+                <button 
+                  className="download-model-btn secondary"
+                  onClick={() => handleDownloadModel(true)}
+                  disabled={downloading}
+                  title="Скачати модель з мультимедіа"
+                >
+                  Скачати модель + мультимедіа
+                </button>
+              )}
+            </div>
+          </div>
+          
+          <button className="close-button" onClick={onClose}>×</button>
         </div>
 
         <div className="media-gallery-content">

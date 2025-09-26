@@ -1744,9 +1744,7 @@ const AnalysisModal = ({
               </div>
             )}
           </div>
-          <button className="modal-close-button" onClick={onClose}>
-            ✕
-          </button>
+          <button className="close-button" onClick={onClose}>×</button>
         </div>
 
         <div className="analysis-modal-tabs">

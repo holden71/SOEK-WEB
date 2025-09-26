@@ -75,6 +75,11 @@
   color: #495057;
 }
 
+.close-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .close-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -271,6 +276,12 @@
   background: #0056b3;
 }
 
+.cancel-button:focus,
+.save-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .cancel-button:disabled,
 .save-button:disabled {
   opacity: 0.6;
@@ -326,6 +337,11 @@
   background-color: #0056b3;
 }
 
+.select-file-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .select-file-button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
@@ -377,6 +393,11 @@
   transition: color 0.2s;
   margin-left: 8px;
   flex-shrink: 0;
+}
+
+.remove-file-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .remove-file-button:hover {
@@ -513,6 +534,32 @@
   flex-shrink: 0;
 }
 
+.view-button {
+  background: #007bff;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.view-button:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.view-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.view-button:active {
+  transform: scale(0.95);
+}
+
 .delete-link-button {
   background: none;
   border: 1px solid #dc3545;
@@ -527,6 +574,11 @@
 .delete-link-button:hover {
   background-color: #dc3545;
   color: white;
+}
+
+.delete-link-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .delete-link-button:active {
@@ -546,4 +598,10 @@
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 15px;
+}
+
+/* Keep only the large-modal class for ViewModelsModal */
+.large-modal {
+  max-width: 600px;
+  max-height: 80vh;
 }

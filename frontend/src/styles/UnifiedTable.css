@@ -120,6 +120,11 @@
   box-shadow: none;
 }
 
+.add-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .add-button:disabled:hover {
   background-color: #cccccc;
   transform: none;
@@ -417,6 +422,11 @@ tbody tr:last-child td {
 .pagination-buttons button:hover:not(:disabled) {
   background: #e9ecef;
   border-color: #adb5bd;
+}
+
+.pagination-buttons button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .pagination-buttons button:disabled {

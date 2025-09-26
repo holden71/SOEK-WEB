@@ -91,7 +91,6 @@ function Main() {
     setImportPopupPosition(position);
     
             const rowData = row.original;
-    console.log("Row data:", rowData);
     setImportPopupRowData(rowData);
             
             // Count items with the same ptype_id
@@ -107,33 +106,24 @@ function Main() {
 
   const handleAnalysisClick = (e, row) => {
     const rowData = row.original;
-    console.log("Analysis for row data:", rowData);
-    console.log("Row data EK_ID:", rowData?.EK_ID);
-    console.log("Row data ek_id:", rowData?.ek_id);
-    console.log("Row data id:", rowData?.id);
     setAnalysisElementData(rowData);
     setShowAnalysisModal(true);
   };
 
   const handleAddModelClick = (e, row) => {
     const rowData = row.original;
-    console.log("Add model for row data:", rowData);
-    console.log("Row data EK_ID:", rowData?.EK_ID);
     setCurrentElementData(rowData);
     setShowAddModelModal(true);
   };
 
   const handleViewModelsClick = (e, row) => {
     const rowData = row.original;
-    console.log("View models for row data:", rowData);
-    console.log("Row data EK_ID:", rowData?.EK_ID);
     setCurrentElementData(rowData);
     setShowViewModelsModal(true);
   };
 
 
   const handleSearchRefresh = async () => {
-      console.log('Refreshing table data after import...');
       await handleSearch();
     // Clear global filter to show updated data
     setGlobalFilter('');
@@ -142,7 +132,6 @@ function Main() {
   // Handle delete selected items
   const handleDeleteSelected = async (selectedRows) => {
     // TODO: Implement delete functionality for main table
-    console.log('Selected rows to delete:', selectedRows);
     alert(`Видалення елементів ЕК (${selectedRows.length} шт.) знаходиться в розробці`);
   };
 
@@ -184,13 +173,19 @@ function Main() {
       }
 
       const newModel = await response.json();
-      console.log('Created 3D model:', newModel);
 
       // Get EK_ID from current element data
-      const ekId = currentElementData?.EK_ID || currentElementData?.ek_id;
+      const ekId = currentElementData?.EK_ID || currentElementData?.ek_id || currentElementData?.id;
       
       if (!ekId) {
         throw new Error('EK_ID not found in element data');
+      }
+
+      // Get model_id from response
+      const modelId = newModel.data?.model_id || newModel.data?.MODEL_ID || newModel.MODEL_ID || newModel.model_id;
+      
+      if (!modelId) {
+        throw new Error('Model ID not found in API response');
       }
 
       // Create link between EK and 3D model
@@ -201,27 +196,41 @@ function Main() {
         },
         body: JSON.stringify({
           ek_id: ekId,
-          model_id: newModel.model_id,
+          model_id: modelId,
           sh_name: `Model for EK ${ekId}`
         }),
       });
 
       if (!linkResponse.ok) {
-        let errorMessage = `HTTP ${linkResponse.status}`;
+        let errorMessage = `HTTP ${linkResponse.status}: ${linkResponse.statusText}`;
         try {
           const linkContentType = linkResponse.headers.get('content-type');
           if (linkContentType && linkContentType.includes('application/json')) {
             const errorData = await linkResponse.json();
-            errorMessage = errorData.detail || errorMessage;
+            // Ensure we get a string, not an object
+            if (typeof errorData.detail === 'string') {
+              errorMessage = errorData.detail;
+            } else if (typeof errorData.detail === 'object') {
+              errorMessage = JSON.stringify(errorData.detail);
+            } else {
+              errorMessage = errorData.message || errorData.error || errorMessage;
+            }
+          } else {
+            // Try to get text response if not JSON
+            const textResponse = await linkResponse.text();
+            if (textResponse) {
+              errorMessage = textResponse;
+            }
           }
         } catch (parseError) {
           console.error('Failed to parse link error response:', parseError);
+          errorMessage = `Failed to parse error response: ${parseError.message}`;
         }
         
         console.warn('Failed to link model to EK:', errorMessage);
-        alert(`3D модель створено успішно, але виникла проблема з прив'язкою до елементу: ${errorMessage}`);
+        alert(`3D модель створено, але не вдалося прив'язати до елементу: ${errorMessage}`);
       } else {
-        alert('3D модель успішно створено і прив\'язано до елементу!');
+        alert('3D модель успішно створено і прив\'язано!');
       }
 
       setShowAddModelModal(false);
@@ -229,13 +238,7 @@ function Main() {
 
     } catch (error) {
       console.error('Error creating model:', error);
-      
-      // Handle specific JSON parsing errors
-      if (error.message.includes('Unexpected token') || error.message.includes('Unexpected end of JSON')) {
-        alert('Помилка: Сервер повернув неправильний формат відповіді. Перевірте налаштування API.');
-      } else {
-        alert(`Помилка створення моделі: ${error.message}`);
-      }
+      alert(`Помилка створення моделі: ${error.message}`);
     }
   };
 
