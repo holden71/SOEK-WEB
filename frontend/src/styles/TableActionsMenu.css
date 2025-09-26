@@ -93,6 +93,10 @@
   cursor: not-allowed;
 }
 
+.menu-item:last-child {
+  border-bottom: none;
+}
+
 .menu-text {
   margin-left: 0;
   white-space: nowrap;

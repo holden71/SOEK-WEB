@@ -646,7 +646,6 @@ async def save_stress_inputs(
         update_fields = []
         update_params = {"ek_id": params.ek_id}
         field_mapping = {
-            "natural_frequency": "FIRST_NAT_FREQ",
             "sigma_dop": "SIGMA_DOP",
             "hclpf": "HCLPF",
             "sigma_1": "SIGMA_1",
@@ -714,7 +713,7 @@ async def get_stress_inputs(db: DbSessionDep, ek_id: int):
             raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
         stress_query = text(
             """
-            SELECT FIRST_NAT_FREQ, SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2, 
+            SELECT SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2, 
                    SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ,
                    SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ
             FROM SRTN_EK_SEISM_DATA 
@@ -726,19 +725,18 @@ async def get_stress_inputs(db: DbSessionDep, ek_id: int):
         if not row:
             raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
         stress_values = {
-            "FIRST_NAT_FREQ": row[0],
-            "SIGMA_DOP": row[1],
-            "HCLPF": row[2],
-            "SIGMA_1": row[3],
-            "SIGMA_2": row[4],
-            "SIGMA_S_1_PZ": row[5],
-            "SIGMA_S_2_PZ": row[6],
-            "SIGMA_S_S1_PZ": row[7],
-            "SIGMA_S_S2_PZ": row[8],
-            "SIGMA_S_1_MRZ": row[9],
-            "SIGMA_S_2_MRZ": row[10],
-            "SIGMA_S_S1_MRZ": row[11],
-            "SIGMA_S_S2_MRZ": row[12],
+            "SIGMA_DOP": row[0],
+            "HCLPF": row[1],
+            "SIGMA_1": row[2],
+            "SIGMA_2": row[3],
+            "SIGMA_S_1_PZ": row[4],
+            "SIGMA_S_2_PZ": row[5],
+            "SIGMA_S_S1_PZ": row[6],
+            "SIGMA_S_S2_PZ": row[7],
+            "SIGMA_S_1_MRZ": row[8],
+            "SIGMA_S_2_MRZ": row[9],
+            "SIGMA_S_S1_MRZ": row[10],
+            "SIGMA_S_S2_MRZ": row[11],
         }
         return {"success": True, "ek_id": ek_id, "stress_values": stress_values}
     except HTTPException:

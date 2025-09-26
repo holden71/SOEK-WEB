@@ -43,8 +43,6 @@ async def save_load_analysis_params(db: DbSessionDep, params: LoadAnalysisParams
             "ratio_p_pz": "RATIO_P_PZ",
             "delta_t_mrz": "DELTA_T_MRZ",
             "ratio_p_mrz": "RATIO_P_MRZ",
-            "first_freq_alt_pz": "FIRST_FREQ_ALT_PZ",
-            "first_freq_alt_mrz": "FIRST_FREQ_ALT_MRZ", 
             "ration_sigma_dop_pz": "RATION_SIGMA_DOP_PZ",
             "ration_sigma_dop_mrz": "RATION_SIGMA_DOP_MRZ",
             "m1_alt_pz": "M1_ALT_PZ",
