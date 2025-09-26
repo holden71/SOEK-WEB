@@ -207,12 +207,13 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
 .view-button:hover {
   background: #2563eb;
+  transform: translateY(-0.5px);
 }
 
 .view-button:focus {
@@ -236,6 +237,7 @@
 .delete-link-button:hover {
   background: #dc2626;
   color: white;
+  transform: translateY(-0.5px);
 }
 
 .delete-link-button:focus {

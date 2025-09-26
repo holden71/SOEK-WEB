@@ -265,6 +265,7 @@
 
 .cancel-button:hover:not(:disabled) {
   background: #5a6268;
+  transform: translateY(-0.5px);
 }
 
 .save-button {
@@ -274,6 +275,7 @@
 
 .save-button:hover:not(:disabled) {
   background: #0056b3;
+  transform: translateY(-0.5px);
 }
 
 .cancel-button:focus,
@@ -335,6 +337,7 @@
 
 .select-file-button:hover:not(:disabled) {
   background-color: #0056b3;
+  transform: translateY(-0.5px);
 }
 
 .select-file-button:focus {
@@ -548,7 +551,7 @@
 
 .view-button:hover {
   background: #0056b3;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .view-button:focus {

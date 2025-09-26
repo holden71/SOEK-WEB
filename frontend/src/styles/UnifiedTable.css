@@ -103,7 +103,7 @@
 
 .add-button:hover {
   background-color: #0056b3;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -526,7 +526,7 @@ tbody tr:last-child td {
 
 .selection-info .delete-selected-button:hover {
   background-color: #0056b3;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -557,7 +557,7 @@ tbody tr:last-child td {
 
 .selection-info .clear-selection-button:hover {
   background-color: #5a6268;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -666,7 +666,7 @@ tbody tr.selected-row:hover {
 
 .cancel-delete-button:hover {
   background-color: #5a6268;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .confirm-delete-button {
@@ -683,7 +683,7 @@ tbody tr.selected-row:hover {
 
 .confirm-delete-button:hover {
   background-color: #c82333;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 /* Responsive Styles */

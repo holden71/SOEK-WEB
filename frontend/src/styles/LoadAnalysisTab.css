@@ -349,7 +349,7 @@
 
 .load-analysis-calculate-button:hover {
   background-color: #0056b3;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .load-analysis-calculate-button:active {

@@ -63,7 +63,7 @@
 
 .search-button button:hover {
   background-color: #0056b3;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -1002,6 +1002,7 @@ th {
 
 .main-page .import-confirm-button:hover {
   background-color: #0069d9;
+  transform: translateY(-0.5px);
 }
 
 .main-page .import-confirm-button:focus {
@@ -1123,6 +1124,7 @@ th {
 
 .main-page .select-file-button:hover:not(:disabled) {
   background-color: #0056b3;
+  transform: translateY(-0.5px);
 }
 
 .main-page .select-file-button svg {

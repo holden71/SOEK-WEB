@@ -138,7 +138,7 @@
 .download-option-button:hover {
   border-color: #007bff;
   background-color: #f8f9ff;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
 }
 

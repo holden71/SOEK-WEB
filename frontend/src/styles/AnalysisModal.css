@@ -17,6 +17,7 @@
 
 .tiny-analysis-button:hover {
   background: #138496;
+  transform: translateY(-0.5px);
 }
 
 .tiny-analysis-button:active {
@@ -549,6 +550,7 @@
 
 .retry-button:hover {
   background: #0056b3;
+  transform: translateY(-0.5px);
 }
 
 .analysis-no-data {

@@ -93,7 +93,7 @@
 
 .download-model-btn.primary:hover:not(:disabled) {
   background: #0056b3;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .download-model-btn.secondary {
@@ -103,7 +103,7 @@
 
 .download-model-btn.secondary:hover:not(:disabled) {
   background: #545862;
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .download-model-btn:disabled {
@@ -177,7 +177,7 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .retry-button:focus {
@@ -187,6 +187,7 @@
 
 .retry-button:hover {
   background-color: #0056b3;
+  transform: translateY(-0.5px);
 }
 
 .media-gallery-empty p {
@@ -331,11 +332,12 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .media-action-btn:hover {
   background-color: #0056b3;
+  transform: translateY(-0.5px);
 }
 
 .download-btn {
@@ -344,6 +346,7 @@
 
 .download-btn:hover {
   background-color: #0056b3;
+  transform: translateY(-0.5px);
 }
 
 .open-tab-btn {
@@ -352,6 +355,7 @@
 
 .open-tab-btn:hover {
   background-color: #545b62;
+  transform: translateY(-0.5px);
 }
 
 /* Legacy support for existing classes */
