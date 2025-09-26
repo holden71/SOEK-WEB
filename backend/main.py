@@ -16,6 +16,7 @@ from routes.models_3d import router as models_3d_router
 from routes.files import router as files_router
 from routes.file_types import router as file_types_router
 from routes.multimedia import router as multimedia_router
+from routes.ek_models import router as ek_models_router
 
 
 @asynccontextmanager
@@ -50,6 +51,7 @@ app.include_router(models_3d_router)
 app.include_router(files_router)
 app.include_router(file_types_router)
 app.include_router(multimedia_router)
+app.include_router(ek_models_router)
 
 
 if __name__ == "__main__":

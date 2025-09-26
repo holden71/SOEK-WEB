@@ -59,6 +59,17 @@ class MultimediaModel(Base):
     model = relationship("Model3D")
 
 
+class EkModel3D(Base):
+    __tablename__ = 'SRTN_EK_3D_MODELS'
+    
+    EK_3D_ID = Column(Integer, primary_key=True, autoincrement=True)
+    SH_NAME = Column(String(200))
+    EK_ID = Column(Integer)
+    MODEL_ID = Column(Integer, ForeignKey('SRTN_3D_MODELS.MODEL_ID'))
+    
+    model = relationship("Model3D")
+
+
 # ==================== Plant & Units Tables ====================
 
 class Plant(Base):

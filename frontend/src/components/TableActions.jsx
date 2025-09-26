@@ -5,7 +5,9 @@ const TableActions = ({
   row, 
   data, 
   onImportClick, 
-  onAnalysisClick 
+  onAnalysisClick,
+  onAddModelClick,
+  onViewModelsClick 
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -43,6 +45,22 @@ const TableActions = ({
     onAnalysisClick(e, row);
   };
 
+  const handleAddModelClick = (e) => {
+    e.stopPropagation();
+    setIsMenuOpen(false);
+    if (onAddModelClick) {
+      onAddModelClick(e, row);
+    }
+  };
+
+  const handleViewModelsClick = (e) => {
+    e.stopPropagation();
+    setIsMenuOpen(false);
+    if (onViewModelsClick) {
+      onViewModelsClick(e, row);
+    }
+  };
+
   return (
     <div className="table-actions-container">
       <button 
@@ -61,6 +79,16 @@ const TableActions = ({
           <div className="menu-item" onClick={handleAnalysisClick}>
             <span className="menu-text">Аналіз спектрів</span>
           </div>
+          {onAddModelClick && (
+            <div className="menu-item" onClick={handleAddModelClick}>
+              <span className="menu-text">Завантажити 3D модель</span>
+            </div>
+          )}
+          {onViewModelsClick && (
+            <div className="menu-item" onClick={handleViewModelsClick}>
+              <span className="menu-text">Переглянути 3D модель</span>
+            </div>
+          )}
         </div>
       )}
     </div>
