@@ -73,7 +73,7 @@ async def extract_sheet_data(
             if cell_value is not None:
                 headers.append(str(cell_value))
 
-        result = {"demp": sheet_name}
+        result = {}
 
         for col_idx, header in enumerate(headers, start=1):
             column_data = []
