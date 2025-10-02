@@ -3,6 +3,7 @@ import Plotly from 'plotly.js-dist-min';
 import CalculationAnalysisTab from './CalculationAnalysisTab';
 import SeismicAnalysisTab from './SeismicAnalysisTab';
 import LoadAnalysisTab from './LoadAnalysisTab';
+import SpectraTab from './SpectraTab';
 import '../styles/AnalysisModal.css';
 
 const linearInterpolate = (x, x0, y0, x1, y1) => {
@@ -227,7 +228,8 @@ const AnalysisModal = ({
   const [selectedAxis, setSelectedAxis] = useState('x'); // New state for axis selection
   const [spectrumType, setSpectrumType] = useState('МРЗ'); // New state for spectrum type
   const [dampingFactor, setDampingFactor] = useState(0.5); // New state for damping factor
-  const [dampingInputValue, setDampingInputValue] = useState('0.5'); // Local state for input display
+  const [availableDampingFactors, setAvailableDampingFactors] = useState([]); // Available damping factors from API
+  const [dampingFactorsLoading, setDampingFactorsLoading] = useState(true); // Loading state for damping factors
   const [analysisResult, setAnalysisResult] = useState(null);
   const [allAnalysisResults, setAllAnalysisResults] = useState({}); // New state for all analysis results
   const [plotData, setPlotData] = useState(null);
@@ -279,8 +281,66 @@ const AnalysisModal = ({
   
   const modalRef = useRef(null);
   const chartsCreated = useRef(false); // Track if charts have been created
-  const dampingTimerRef = useRef(null); // Timer ref for debouncing
   const frequencyTimerRef = useRef(null); // Timer ref for natural frequency debouncing
+
+  // Fetch available damping factors
+  const fetchAvailableDampingFactors = async (ekId) => {
+    console.log('\n=== ЗАВАНТАЖЕННЯ КОЕФІЦІЄНТІВ ДЕМПФІРУВАННЯ ===');
+    console.log('EK_ID:', ekId);
+    setDampingFactorsLoading(true);
+    
+    try {
+      const calcType = elementData?.CALC_TYPE || elementData?.calc_type || 'ДЕТЕРМІНИСТИЧНИЙ';
+      console.log('CALC_TYPE:', calcType);
+      
+      // Fetch for both МРЗ and ПЗ and combine
+      console.log('Запит до API для МРЗ та ПЗ...');
+      const responses = await Promise.all([
+        fetch(`/api/available-damping-factors?ek_id=${ekId}&spectr_earthq_type=МРЗ&calc_type=${encodeURIComponent(calcType)}`),
+        fetch(`/api/available-damping-factors?ek_id=${ekId}&spectr_earthq_type=ПЗ&calc_type=${encodeURIComponent(calcType)}`)
+      ]);
+      
+      console.log('Статуси відповідей:', responses.map(r => r.status));
+      
+      const [mrzData, pzData] = await Promise.all(responses.map(r => r.json()));
+      
+      console.log('МРЗ дані:', mrzData);
+      console.log('ПЗ дані:', pzData);
+      
+      // Combine and deduplicate
+      const allFactors = [...new Set([
+        ...(mrzData.damping_factors || []),
+        ...(pzData.damping_factors || [])
+      ])].sort((a, b) => a - b);
+      
+      console.log('📊 ЗНАЙДЕНО КОЕФІЦІЄНТІВ:', allFactors.length);
+      console.log('📋 СПИСОК КОЕФІЦІЄНТІВ:', allFactors);
+      
+      if (allFactors.length === 0) {
+        console.warn('⚠️ УВАГА: Не знайдено жодного коефіцієнта демпфірування!');
+        console.warn('Це означає, що вимоги не імпортовані для цього елемента');
+      }
+      
+      setAvailableDampingFactors(allFactors);
+      
+      // Set default damping factor if current one is not available
+      if (allFactors.length > 0) {
+        if (!allFactors.includes(dampingFactor)) {
+          console.log(`Поточний коефіцієнт ${dampingFactor} недоступний. Встановлюємо ${allFactors[0]}`);
+          setDampingFactor(allFactors[0]);
+        } else {
+          console.log(`Поточний коефіцієнт ${dampingFactor} доступний`);
+        }
+      }
+      
+      console.log('=== ЗАВЕРШЕНО ЗАВАНТАЖЕННЯ КОЕФІЦІЄНТІВ ===\n');
+    } catch (error) {
+      console.error('❌ ПОМИЛКА при завантаженні коефіцієнтів:', error);
+      setAvailableDampingFactors([]);
+    } finally {
+      setDampingFactorsLoading(false);
+    }
+  };
 
   // Reset stress inputs and fetch data when modal opens or element changes
   useEffect(() => {
@@ -308,6 +368,7 @@ const AnalysisModal = ({
       clearCalculationResults();
       
       fetchAllSpectralData();
+      fetchAvailableDampingFactors(elementData.EK_ID || elementData.ek_id);
       fetchAllRequirementsData(elementData.EK_ID || elementData.ek_id);
       // Small delay to ensure reset is applied before loading from DB
       setTimeout(() => {
@@ -535,10 +596,6 @@ const AnalysisModal = ({
     }
   }, [dampingFactor]);
 
-  // Update input value when damping factor changes externally
-  useEffect(() => {
-    setDampingInputValue(dampingFactor.toString());
-  }, [dampingFactor]);
 
   // Update spectralData when spectrumType changes (for UI display)
   useEffect(() => {
@@ -555,42 +612,40 @@ const AnalysisModal = ({
   }, [spectrumType, allRequirementsData]);
 
   const createPlotlyChart = () => {
-    if (!plotData && (!spectralData || !spectralData.frequency)) return;
-
-    const dataToPlot = plotData || spectralData;
-    const frequency = dataToPlot.frequency;
-    
     // Helper function to get field value with fallback patterns
     const getFieldValue = (data, prefix, axis) => {
+      if (!data) return null;
       return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
     };
 
-    // Get data for selected axis based on spectrum type
-    let yData, axisName, requirementsYData;
     const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
     const displayPrefix = spectrumType.toUpperCase();
+
+    // Get characteristics and requirements data for selected axis
+    let charData, reqData, frequency;
     
-    switch (selectedAxis) {
-      case 'x':
-        yData = getFieldValue(dataToPlot, `char`, 'x') || getFieldValue(dataToPlot, spectrumPrefix, 'x');
-        requirementsYData = getFieldValue(dataToPlot, 'req', 'x');
-        axisName = `${displayPrefix} X`;
-        break;
-      case 'y':
-        yData = getFieldValue(dataToPlot, `char`, 'y') || getFieldValue(dataToPlot, spectrumPrefix, 'y');
-        requirementsYData = getFieldValue(dataToPlot, 'req', 'y');
-        axisName = `${displayPrefix} Y`;
-        break;
-      case 'z':
-        yData = getFieldValue(dataToPlot, `char`, 'z') || getFieldValue(dataToPlot, spectrumPrefix, 'z');
-        requirementsYData = getFieldValue(dataToPlot, 'req', 'z');
-        axisName = `${displayPrefix} Z`;
-        break;
-      default:
-        return;
+    if (plotData && plotData.frequency) {
+      // Use interpolated plot data if available
+      frequency = plotData.frequency;
+      charData = getFieldValue(plotData, 'char', selectedAxis);
+      reqData = getFieldValue(plotData, 'req', selectedAxis);
+    } else {
+      // Collect data from original sources
+      const charFreq = spectralData?.frequency;
+      const reqFreq = requirementsData?.frequency;
+      
+      charData = getFieldValue(spectralData, spectrumPrefix, selectedAxis);
+      reqData = getFieldValue(requirementsData, spectrumPrefix, selectedAxis);
+      
+      // Use frequency from whichever data is available
+      frequency = charFreq || reqFreq;
     }
 
-    if (!yData || yData.length === 0) return;
+    // If we have no frequency data at all, cannot plot
+    if (!frequency || frequency.length === 0) return;
+    
+    // If we have neither characteristics nor requirements for this axis, cannot plot
+    if ((!charData || charData.length === 0) && (!reqData || reqData.length === 0)) return;
 
     // Professional chart configuration optimized for single chart
     const layout = {
@@ -705,35 +760,41 @@ const AnalysisModal = ({
     };
 
     const unitLabel = spectrumType === 'МРЗ' ? 'м/с²' : 'м';
+    const yAxisLabel = spectrumType === 'МРЗ' ? 'Прискорення' : 'Переміщення';
     
-    const data = [{
-      x: frequency,
-      y: yData,
-      type: 'scatter',
-      mode: 'lines',
-      line: { 
-        color: '#3498db', 
-        width: 2.5,
-        shape: 'linear'
-      },
-      name: 'Властивості',
-      hovertemplate: `Частота: %{x:.3f} Гц<br>${spectrumType === 'МРЗ' ? 'Прискорення' : 'Переміщення'}: %{y:.6f} ${unitLabel}<extra></extra>`
-    }];
+    const traces = [];
 
-    // Add requirements data if available
-    if (requirementsYData && requirementsYData.length > 0) {
-      data.push({
+    // Add characteristics trace if available
+    if (charData && charData.length > 0) {
+      traces.push({
         x: frequency,
-        y: requirementsYData,
+        y: charData,
+        type: 'scatter',
+        mode: 'lines',
+        line: { 
+          color: '#3498db', 
+          width: 2.5,
+          shape: 'linear'
+        },
+        name: 'Характеристики',
+        hovertemplate: `Частота: %{x:.3f} Гц<br>${yAxisLabel}: %{y:.6f} ${unitLabel}<extra></extra>`
+      });
+    }
+
+    // Add requirements trace if available
+    if (reqData && reqData.length > 0) {
+      traces.push({
+        x: frequency,
+        y: reqData,
         type: 'scatter',
         mode: 'lines',
         line: {
-          color: '#e74c3c', // A contrasting color for requirements
+          color: '#e74c3c',
           width: 2.5,
-          dash: 'dash' // Dashed line for distinction
+          dash: 'dash'
         },
         name: 'Вимоги',
-        hovertemplate: `Частота: %{x:.3f} Гц<br>${spectrumType === 'МРЗ' ? 'Прискорення' : 'Переміщення'}: %{y:.6f} ${unitLabel}<extra></extra>`
+        hovertemplate: `Частота: %{x:.3f} Гц<br>${yAxisLabel}: %{y:.6f} ${unitLabel}<extra></extra>`
       });
     }
 
@@ -743,7 +804,7 @@ const AnalysisModal = ({
         // Always purge first to ensure clean state
         Plotly.purge('main-spectrum-chart');
         // Then create new plot
-        Plotly.newPlot('main-spectrum-chart', data, layout, config)
+        Plotly.newPlot('main-spectrum-chart', traces, layout, config)
           .then(() => {
             // Force resize to ensure proper display
             setTimeout(() => {
@@ -1465,183 +1526,31 @@ const AnalysisModal = ({
     }
   };
 
-  const handleDampingInputChange = (e) => {
-    const inputValue = e.target.value;
-    setDampingInputValue(inputValue);
-
-    // Clear previous timer
-    if (dampingTimerRef.current) {
-      clearTimeout(dampingTimerRef.current);
-    }
-
-    // Set new timer to update damping factor after 500ms of no input
-    dampingTimerRef.current = setTimeout(() => {
-      const numericValue = parseFloat(inputValue);
-      if (!isNaN(numericValue) && numericValue > 0) {
-        setDampingFactor(numericValue);
-      } else {
-        // Reset to previous valid value if input is invalid
-        setDampingInputValue(dampingFactor.toString());
-      }
-    }, 1200);
-  };
-
-  const handleDampingInputBlur = () => {
-    // Clear timer if exists
-    if (dampingTimerRef.current) {
-      clearTimeout(dampingTimerRef.current);
-    }
-
-    // Immediately validate and apply value on blur
-    const numericValue = parseFloat(dampingInputValue);
-    if (!isNaN(numericValue) && numericValue > 0) {
-      setDampingFactor(numericValue);
-      setDampingInputValue(numericValue.toString());
-    } else {
-      // Reset to previous valid value if input is invalid
-      setDampingInputValue(dampingFactor.toString());
+  const handleDampingChange = (e) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      setDampingFactor(value);
     }
   };
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (dampingTimerRef.current) {
-        clearTimeout(dampingTimerRef.current);
-      }
-    };
-  }, []);
 
   const renderSpectraTab = () => {
-    if (loading) {
-      return (
-        <div className="analysis-loading">
-          <div className="spinner"></div>
-          <p>Завантаження спектральних даних...</p>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="analysis-error">
-          <p>Помилка: {error}</p>
-          <button onClick={fetchAllSpectralData} className="retry-button">
-            Спробувати ще раз
-          </button>
-        </div>
-      );
-    }
-
-    if (!spectralData || !spectralData.frequency || spectralData.frequency.length === 0) {
-      return (
-        <div className="analysis-no-data">
-          <p>Спектральні дані відсутні для цього елемента</p>
-          <p>Імпортуйте характеристики, щоб переглянути графіки</p>
-        </div>
-      );
-    }
-
-    // Helper function to get field value with fallback patterns
-    const getFieldValue = (data, prefix, axis) => {
-      return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
-    };
-    
-    // Check which axes have data based on spectrum type
-    const spectrumPrefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
-    const hasXData = getFieldValue(spectralData, spectrumPrefix, 'x')?.length > 0;
-    const hasYData = getFieldValue(spectralData, spectrumPrefix, 'y')?.length > 0;
-    const hasZData = getFieldValue(spectralData, spectrumPrefix, 'z')?.length > 0;
-
     return (
-      <div className="spectra-container">
-        <div className="unified-selector">
-          <div className="spectrum-type-buttons">
-            <button 
-              className={`spectrum-type-button ${spectrumType === 'МРЗ' ? 'active' : ''}`}
-              onClick={() => setSpectrumType('МРЗ')}
-            >
-              МРЗ
-            </button>
-            <button 
-              className={`spectrum-type-button ${spectrumType === 'ПЗ' ? 'active' : ''}`}
-              onClick={() => setSpectrumType('ПЗ')}
-            >
-              ПЗ
-            </button>
-          </div>
-          
-          <div className="axis-buttons">
-            {hasXData && (
-              <button 
-                className={`axis-button ${selectedAxis === 'x' ? 'active' : ''}`}
-                onClick={() => setSelectedAxis('x')}
-              >
-                {spectrumType} X
-              </button>
-            )}
-            {hasYData && (
-              <button 
-                className={`axis-button ${selectedAxis === 'y' ? 'active' : ''}`}
-                onClick={() => setSelectedAxis('y')}
-              >
-                {spectrumType} Y
-              </button>
-            )}
-            {hasZData && (
-              <button 
-                className={`axis-button ${selectedAxis === 'z' ? 'active' : ''}`}
-                onClick={() => setSelectedAxis('z')}
-              >
-                {spectrumType} Z
-              </button>
-            )}
-          </div>
-        </div>
-        
-        <div className="single-chart-container">
-          <div id="main-spectrum-chart" className="main-plotly-chart"></div>
-        </div>
-        
-        <div className="damping-controls">
-          <div className="damping-input-group">
-            <label htmlFor="damping-factor">Коефіцієнт демпфірування:</label>
-            <input
-              id="damping-factor"
-              type="number"
-              step="0.01"
-              value={dampingInputValue}
-              onChange={handleDampingInputChange}
-              onBlur={handleDampingInputBlur}
-              className="damping-input"
-              lang="en"
-            />
-          </div>
-        </div>
-        
-        <div className="spectral-info">
-          <div className="info-item">
-            <span className="info-label">Тип спектру:</span>
-            <span className="info-value">{spectrumType}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Кількість точок частоти:</span>
-            <span className="info-value">{spectralData.frequency.length}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Діапазон частот:</span>
-            <span className="info-value">
-              {Math.min(...spectralData.frequency).toFixed(2)} - {Math.max(...spectralData.frequency).toFixed(2)} Гц
-            </span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Поточна вісь:</span>
-            <span className="info-value">
-              {selectedAxis === 'x' ? `${spectrumType} X` : selectedAxis === 'y' ? `${spectrumType} Y` : `${spectrumType} Z`}
-            </span>
-          </div>
-        </div>
-      </div>
+      <SpectraTab
+        dampingFactor={dampingFactor}
+        dampingFactorsLoading={dampingFactorsLoading}
+        availableDampingFactors={availableDampingFactors}
+        handleDampingChange={handleDampingChange}
+        loading={loading}
+        error={error}
+        fetchAllSpectralData={fetchAllSpectralData}
+        requirementsData={requirementsData}
+        spectralData={spectralData}
+        spectrumType={spectrumType}
+        setSpectrumType={setSpectrumType}
+        selectedAxis={selectedAxis}
+        setSelectedAxis={setSelectedAxis}
+        createPlotlyChart={createPlotlyChart}
+      />
     );
   };
 
@@ -1752,7 +1661,7 @@ const AnalysisModal = ({
             className={`tab-button ${activeTab === 'spectra' ? 'active' : ''}`}
             onClick={() => setActiveTab('spectra')}
           >
-            Спектри
+            Графіки спектрів
           </button>
           <button 
             className={`tab-button ${activeTab === 'analysis' ? 'active' : ''}`}

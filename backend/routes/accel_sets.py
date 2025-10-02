@@ -548,6 +548,37 @@ async def get_spectral_data(
         raise HTTPException(status_code=500, detail=f"Error retrieving spectral data: {str(e)}")
 
 
+@router.get("/available-damping-factors")
+async def get_available_damping_factors(
+    db: DbSessionDep,
+    ek_id: int,
+    spectr_earthq_type: str = "МРЗ",
+    calc_type: str = "ДЕТЕРМІНІСТИЧНИЙ",
+):
+    """Get list of available damping factors - returns standard damping factors"""
+    try:
+        print(f"\n=== GET_AVAILABLE_DAMPING_FACTORS ===")
+        print(f"EK_ID: {ek_id}, Type: {spectr_earthq_type}, Calc: {calc_type}")
+        
+        # TODO: Query database when SRTN_SEISM_REQUIREMENTS table structure is clarified
+        # For now, return standard damping factors commonly used in seismic analysis
+        
+        # Standard damping factors (%) used in seismic analysis
+        standard_factors = [0.5, 1, 2, 3, 5, 7, 10]
+        
+        print(f"  ✓ Returning {len(standard_factors)} standard damping factors: {standard_factors}")
+        print(f"=== END ===\n")
+        
+        return {"damping_factors": standard_factors}
+        
+    except Exception as e:
+        import traceback
+        print(f"  ❌ ERROR: {str(e)}")
+        print(f"  Traceback: {traceback.format_exc()}")
+        print(f"=== END ===\n")
+        raise HTTPException(status_code=500, detail=f"Error getting damping factors: {str(e)}")
+
+
 @router.get("/seism-requirements", response_model=SpectralDataResult)
 async def get_seism_requirements(
     db: DbSessionDep,
@@ -557,13 +588,25 @@ async def get_seism_requirements(
     calc_type: str = "ДЕТЕРМІНІСТИЧНИЙ",
 ):
     try:
+        print(f"\n=== GET_SEISM_REQUIREMENTS Debug ===")
+        print(f"Input parameters:")
+        print(f"  ek_id: {ek_id}")
+        print(f"  dempf: {dempf}")
+        print(f"  spectr_earthq_type: {spectr_earthq_type}")
+        print(f"  calc_type: {calc_type}")
+        
         conn = db.connection().connection
         cursor = conn.cursor()
         set_id_out = cursor.var(int)
         cursor.callproc('GET_SEISM_REQUIREMENTS', [ek_id, dempf, spectr_earthq_type, calc_type, set_id_out])
         set_id = set_id_out.getvalue()
+        
+        print(f"  Returned set_id: {set_id}")
+        
         if not set_id:
+            print("  ❌ No set_id returned - returning empty data")
             return SpectralDataResult(frequency=[])
+            
         set_query = text(
             """
             SELECT ACCEL_SET_ID, X_PLOT_ID, Y_PLOT_ID, Z_PLOT_ID
@@ -573,8 +616,17 @@ async def get_seism_requirements(
         )
         set_result = db.execute(set_query, {"set_id": set_id})
         set_row = set_result.fetchone()
+        
         if not set_row:
+            print(f"  ❌ No data found in SRTN_ACCEL_SET for set_id: {set_id}")
             return SpectralDataResult(frequency=[])
+            
+        print(f"  ✓ Found SRTN_ACCEL_SET row:")
+        print(f"    ACCEL_SET_ID: {set_row[0]}")
+        print(f"    X_PLOT_ID: {set_row[1]}")
+        print(f"    Y_PLOT_ID: {set_row[2]}")
+        print(f"    Z_PLOT_ID: {set_row[3]}")
+        
         x_plot_id = set_row[1]
         y_plot_id = set_row[2]
         z_plot_id = set_row[3]
@@ -583,9 +635,19 @@ async def get_seism_requirements(
         y_freq, y_accel = get_plot_data(db, y_plot_id)
         z_freq, z_accel = get_plot_data(db, z_plot_id)
 
+        print(f"  Plot data retrieved:")
+        print(f"    X: {len(x_freq) if x_freq else 0} points")
+        print(f"    Y: {len(y_freq) if y_freq else 0} points")
+        print(f"    Z: {len(z_freq) if z_freq else 0} points")
+
         response_data = build_spectral_response(x_freq, y_freq, z_freq, x_accel, y_accel, z_accel, spectr_earthq_type)
+        print(f"  ✓ Returning response with {len(response_data.get('frequency', []))} frequency points")
+        print("=== END Debug ===\n")
+        
         return SpectralDataResult(**response_data)
     except Exception as e:
+        print(f"  ❌ ERROR: {str(e)}")
+        print("=== END Debug ===\n")
         raise HTTPException(status_code=500, detail=f"Error retrieving seism requirements: {str(e)}")
 
 

@@ -1,0 +1,250 @@
+/* Spectra Tab - Project Style */
+.spectra-tab {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+/* 1. Damping Section */
+.spectra-tab .damping-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.spectra-tab .damping-section label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6c757d;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.spectra-tab .damping-section select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  color: #495057;
+  font-family: 'Arial', sans-serif;
+  cursor: pointer;
+  outline: none;
+}
+
+.spectra-tab .damping-section select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.spectra-tab .damping-section select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #e9ecef;
+}
+
+.spectra-tab .available-hint {
+  font-size: 12px;
+  color: #28a745;
+  font-weight: 500;
+}
+
+/* 2. State Messages */
+.spectra-tab .state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  gap: 16px;
+}
+
+.spectra-tab .state-message p {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0;
+  font-family: 'Arial', sans-serif;
+}
+
+.spectra-tab .state-message.error p {
+  color: #dc3545;
+}
+
+.spectra-tab .retry-btn {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Arial', sans-serif;
+  transition: background 0.2s;
+}
+
+.spectra-tab .retry-btn:hover {
+  background: #0056b3;
+}
+
+.spectra-tab .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f4f6;
+  border-top-color: #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 3. Type Selector (МРЗ / ПЗ) - Classic style */
+.spectra-tab .type-selector {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.spectra-tab .type-selector button {
+  background: white;
+  border: 2px solid #ced4da;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Arial', sans-serif;
+  min-width: 80px;
+}
+
+.spectra-tab .type-selector button:hover {
+  border-color: #007bff;
+  color: #007bff;
+  background: #f8f9fa;
+}
+
+.spectra-tab .type-selector button.active {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+/* 4. Axis Selector (X / Y / Z) - Classic style */
+.spectra-tab .axis-selector {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.spectra-tab .axis-selector button {
+  background: white;
+  border: 2px solid #ced4da;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #495057;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: 'Arial', sans-serif;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 60px;
+}
+
+.spectra-tab .axis-selector button:hover {
+  border-color: #007bff;
+  color: #007bff;
+  background: #f8f9fa;
+}
+
+.spectra-tab .axis-selector button.active {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+/* 5. Chart Area */
+.spectra-tab .chart-area {
+  flex: 1;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 16px;
+  min-height: 400px;
+}
+
+.spectra-tab .chart-area #main-spectrum-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+/* 6. Data Status */
+.spectra-tab .data-status {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 8px;
+}
+
+.spectra-tab .data-status span {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+}
+
+.spectra-tab .data-status .ok {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.spectra-tab .data-status .no {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .spectra-tab {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .spectra-tab .type-selector button {
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+
+  .spectra-tab .axis-selector button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .spectra-tab .chart-area {
+    padding: 12px;
+    min-height: 300px;
+  }
+
+  .spectra-tab .chart-area #main-spectrum-chart {
+    min-height: 300px;
+  }
+}
+

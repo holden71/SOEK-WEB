@@ -49,44 +49,45 @@ const SeismicAnalysisTab = ({
     }
   };
 
-  // Check if data exists for PZ and MRZ
+  // Helper: check if spectrum data has values for at least one axis
+  const hasSpectrumData = (data, prefix) => {
+    if (!data) return false;
+    return ['x', 'y', 'z'].some(axis => {
+      const key = `${prefix}_${axis}`;
+      return data[key] && data[key].length > 0;
+    });
+  };
+
+  // Check data availability for PZ and MRZ separately for requirements and characteristics
   const checkDataAvailability = () => {
     const availability = {
-      pz: false,
-      mrz: false
+      pz: {
+        requirements: false,
+        characteristics: false,
+        hasData: false  // at least requirements exist
+      },
+      mrz: {
+        requirements: false,
+        characteristics: false,
+        hasData: false  // at least requirements exist
+      }
     };
 
-    // Check ПЗ data availability across all spectrum types
-    const pzSpectralData = allSpectralData?.['ПЗ'];
-    const pzRequirementsData = allRequirementsData?.['ПЗ'];
+    // Check ПЗ
+    const pzRequirements = allRequirementsData?.['ПЗ'];
+    const pzCharacteristics = allSpectralData?.['ПЗ'];
     
-    if (pzSpectralData && pzRequirementsData) {
-      const hasPzSpectral = (pzSpectralData.pz_x && pzSpectralData.pz_x.length > 0) ||
-                           (pzSpectralData.pz_y && pzSpectralData.pz_y.length > 0) ||
-                           (pzSpectralData.pz_z && pzSpectralData.pz_z.length > 0);
-      
-      const hasPzRequirements = (pzRequirementsData.pz_x && pzRequirementsData.pz_x.length > 0) ||
-                               (pzRequirementsData.pz_y && pzRequirementsData.pz_y.length > 0) ||
-                               (pzRequirementsData.pz_z && pzRequirementsData.pz_z.length > 0);
-      
-      availability.pz = hasPzSpectral && hasPzRequirements;
-    }
+    availability.pz.requirements = hasSpectrumData(pzRequirements, 'pz');
+    availability.pz.characteristics = hasSpectrumData(pzCharacteristics, 'pz');
+    availability.pz.hasData = availability.pz.requirements || availability.pz.characteristics;
 
-    // Check МРЗ data availability across all spectrum types
-    const mrzSpectralData = allSpectralData?.['МРЗ'];
-    const mrzRequirementsData = allRequirementsData?.['МРЗ'];
+    // Check МРЗ
+    const mrzRequirements = allRequirementsData?.['МРЗ'];
+    const mrzCharacteristics = allSpectralData?.['МРЗ'];
     
-    if (mrzSpectralData && mrzRequirementsData) {
-      const hasMrzSpectral = (mrzSpectralData.mrz_x && mrzSpectralData.mrz_x.length > 0) ||
-                            (mrzSpectralData.mrz_y && mrzSpectralData.mrz_y.length > 0) ||
-                            (mrzSpectralData.mrz_z && mrzSpectralData.mrz_z.length > 0);
-      
-      const hasMrzRequirements = (mrzRequirementsData.mrz_x && mrzRequirementsData.mrz_x.length > 0) ||
-                                (mrzRequirementsData.mrz_y && mrzRequirementsData.mrz_y.length > 0) ||
-                                (mrzRequirementsData.mrz_z && mrzRequirementsData.mrz_z.length > 0);
-      
-      availability.mrz = hasMrzSpectral && hasMrzRequirements;
-    }
+    availability.mrz.requirements = hasSpectrumData(mrzRequirements, 'mrz');
+    availability.mrz.characteristics = hasSpectrumData(mrzCharacteristics, 'mrz');
+    availability.mrz.hasData = availability.mrz.requirements || availability.mrz.characteristics;
 
     return availability;
   };
