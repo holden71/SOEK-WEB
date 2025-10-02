@@ -1,10 +1,9 @@
 /* Spectra Tab - Project Style */
 .spectra-tab {
-  padding: 20px 24px;
+  padding: 20px 24px 24px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 100%;
 }
 
 /* 1. Damping Section */
@@ -177,48 +176,47 @@
   box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
 }
 
-/* 5. Chart Area */
+/* 5. Data Status - Important info above chart */
+.spectra-tab .data-status {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.spectra-tab .data-status span {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Arial', sans-serif;
+  color: #495057;
+}
+
+.spectra-tab .data-status .ok {
+  color: #28a745;
+}
+
+.spectra-tab .data-status .no {
+  color: #dc3545;
+}
+
+/* 6. Chart Area */
 .spectra-tab .chart-area {
-  flex: 1;
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 6px;
-  padding: 16px;
-  min-height: 400px;
+  padding: 20px;
+  min-height: 450px;
+  margin: 16px 0 0 0;
 }
 
 .spectra-tab .chart-area #main-spectrum-chart {
   width: 100%;
   height: 100%;
   min-height: 400px;
-}
-
-/* 6. Data Status */
-.spectra-tab .data-status {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  padding: 8px;
-}
-
-.spectra-tab .data-status span {
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: 'Arial', sans-serif;
-}
-
-.spectra-tab .data-status .ok {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.spectra-tab .data-status .no {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
 }
 
 /* Responsive Design */
@@ -239,8 +237,9 @@
   }
 
   .spectra-tab .chart-area {
-    padding: 12px;
-    min-height: 300px;
+    padding: 16px;
+    min-height: 350px;
+    margin: 12px 0 16px 0;
   }
 
   .spectra-tab .chart-area #main-spectrum-chart {

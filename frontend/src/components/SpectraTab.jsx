@@ -144,19 +144,19 @@ const SpectraTab = ({
             )}
           </div>
 
-          {/* 5. Chart Area */}
-          <div className="chart-area">
-            <div id="main-spectrum-chart"></div>
-          </div>
-
-          {/* 6. Data Status */}
+          {/* 5. Data Status - IMPORTANT INFO */}
           <div className="data-status">
             <span className={hasRequirements ? 'ok' : 'no'}>
-              {hasRequirements ? '✓' : '✗'} Вимоги
+              Вимоги: {hasRequirements ? 'Знайдено' : 'Не знайдено'}
             </span>
             <span className={hasCharacteristics ? 'ok' : 'no'}>
-              {hasCharacteristics ? '✓' : '✗'} Характеристики
+              Характеристики: {hasCharacteristics ? 'Знайдено' : 'Не знайдено'}
             </span>
+          </div>
+
+          {/* 6. Chart Area */}
+          <div className="chart-area">
+            <div id="main-spectrum-chart"></div>
           </div>
         </>
       )}
