@@ -33,7 +33,7 @@ function Layout() {
               to="/import"
               className={location.pathname === '/import' ? 'active' : ''}
             >
-              📥 Імпорт спектрів
+              📥 Імпорт вимог
             </Link>
           </li>
           <li>

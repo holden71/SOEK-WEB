@@ -25,6 +25,49 @@ from models import (
 router = APIRouter(prefix="/api", tags=["accel"])
 
 
+# Helper functions
+def get_plot_data(db, plot_id):
+    """Extract frequency and acceleration data from a plot"""
+    if not plot_id:
+        return [], []
+    point_query = text(
+        """
+        SELECT FREQ, ACCEL
+        FROM SRTN_ACCEL_POINT
+        WHERE PLOT_ID = :plot_id
+        ORDER BY FREQ
+        """
+    )
+    point_result = db.execute(point_query, {"plot_id": plot_id})
+    points = point_result.fetchall()
+    frequencies = []
+    accelerations = []
+    for point in points:
+        freq = float(point[0]) if point[0] is not None else 0.0
+        accel = float(point[1]) if point[1] is not None else 0.0
+        frequencies.append(freq)
+        accelerations.append(accel)
+    return frequencies, accelerations
+
+
+def build_spectral_response(x_freq, y_freq, z_freq, x_accel, y_accel, z_accel, spectrum_type: str):
+    """Build spectral data response dict"""
+    all_frequencies = [x_freq, y_freq, z_freq]
+    base_freq = max(all_frequencies, key=len) if any(all_frequencies) else []
+    
+    response_data = {"frequency": base_freq}
+    if spectrum_type == "МРЗ":
+        response_data["mrz_x"] = x_accel if x_accel else None
+        response_data["mrz_y"] = y_accel if y_accel else None
+        response_data["mrz_z"] = z_accel if z_accel else None
+    elif spectrum_type == "ПЗ":
+        response_data["pz_x"] = x_accel if x_accel else None
+        response_data["pz_y"] = y_accel if y_accel else None
+        response_data["pz_z"] = z_accel if z_accel else None
+    
+    return response_data
+
+
 @router.post("/save-accel-data")
 async def save_accel_data(
     db: DbSessionDep,
@@ -63,7 +106,7 @@ async def save_accel_data(
             "pz_set_id": None,
         }
 
-        for sheet_name, sheet_data in data.sheets.items():
+        for sheet_data in data.sheets.values():
             dempf = sheet_data.dempf
             sheet_columns = sheet_data.data
 
@@ -75,6 +118,7 @@ async def save_accel_data(
                     "частота,гц",
                     "частота гц",
                     "част",
+                    "гц",
                     "frequency",
                     "freq",
                     "hz",
@@ -89,22 +133,49 @@ async def save_accel_data(
                 else:
                     continue
 
-            valid_spectrum_types = ["МРЗ", "ПЗ"]
+            # Mapping of spectrum type aliases to standard names
+            spectrum_type_mapping = {
+                "мрз": "МРЗ",
+                "mrz": "МРЗ",
+                "МРЗ": "МРЗ",
+                "пз": "ПЗ",
+                "pz": "ПЗ",
+                "ПЗ": "ПЗ",
+            }
             valid_axes = ["x", "y", "z"]
             relevant_columns = [freq_column]
 
+            # Collect relevant columns and normalize spectrum types
             for column_name in sheet_columns.keys():
                 if "_" in column_name:
                     parts = column_name.split("_")
-                    if len(parts) == 2 and parts[0] in valid_spectrum_types and parts[1].lower() in valid_axes:
-                        relevant_columns.append(column_name)
+                    if len(parts) == 2:
+                        spectrum_type_raw = parts[0].lower()
+                        axis = parts[1].lower()
+                        if spectrum_type_raw in spectrum_type_mapping and axis in valid_axes:
+                            relevant_columns.append(column_name)
 
+            # Extract unique spectrum types (normalized)
             spectrum_types = set()
             for column_name in relevant_columns:
                 if "_" in column_name:
-                    spectrum_type = column_name.split("_")[0]
-                    if spectrum_type in valid_spectrum_types:
-                        spectrum_types.add(spectrum_type)
+                    spectrum_type_raw = column_name.split("_")[0].lower()
+                    if spectrum_type_raw in spectrum_type_mapping:
+                        normalized_type = spectrum_type_mapping[spectrum_type_raw]
+                        spectrum_types.add(normalized_type)
+
+            # Create a mapping from original column names to normalized spectrum types
+            column_to_normalized = {}
+            for column_name in sheet_columns.keys():
+                if "_" in column_name:
+                    parts = column_name.split("_")
+                    if len(parts) == 2:
+                        spectrum_type_raw = parts[0].lower()
+                        if spectrum_type_raw in spectrum_type_mapping:
+                            normalized_type = spectrum_type_mapping[spectrum_type_raw]
+                            axis = parts[1].lower()
+                            if axis in valid_axes:
+                                column_to_normalized[column_name] = (normalized_type, axis)
 
             for spectrum_type in spectrum_types:
                 lev = data.lev
@@ -199,9 +270,12 @@ async def save_accel_data(
                         pass
 
                 plot_ids: Dict[str, int] = {}
-                for axis in ["x", "y", "z"]:
-                    column_name = f"{spectrum_type}_{axis}"
-                    if column_name not in sheet_columns:
+                # Find actual column names for this spectrum type
+                for original_col_name, (normalized_type, axis) in column_to_normalized.items():
+                    if normalized_type != spectrum_type:
+                        continue
+                    
+                    if axis not in ["x", "y", "z"]:
                         continue
 
                     db.execute(
@@ -211,7 +285,7 @@ async def save_accel_data(
                             VALUES (:axis, :name)
                             """
                         ),
-                        {"axis": axis.upper(), "name": column_name},
+                        {"axis": axis.upper(), "name": original_col_name},
                     )
 
                     plot_id_query = text(
@@ -223,7 +297,7 @@ async def save_accel_data(
                         ) WHERE ROWNUM = 1
                         """
                     )
-                    plot_id_result = db.execute(plot_id_query, {"axis": axis.upper(), "name": column_name})
+                    plot_id_result = db.execute(plot_id_query, {"axis": axis.upper(), "name": original_col_name})
                     plot_id = plot_id_result.scalar()
                     plot_ids[axis] = plot_id
                     created_records["plots"].append(plot_id)
@@ -245,13 +319,14 @@ async def save_accel_data(
                     },
                 )
 
-                for axis in ["x", "y", "z"]:
-                    column_name = f"{spectrum_type}_{axis}"
-                    if column_name not in sheet_columns or axis not in plot_ids:
+                # Insert data points for each axis
+                for original_col_name, (normalized_type, axis) in column_to_normalized.items():
+                    if normalized_type != spectrum_type or axis not in plot_ids:
                         continue
+                    
                     plot_id = plot_ids[axis]
                     frequencies = sheet_columns.get(freq_column, [])
-                    accelerations = sheet_columns.get(column_name, [])
+                    accelerations = sheet_columns.get(original_col_name, [])
                     num_points = min(len(frequencies), len(accelerations))
                     for i in range(num_points):
                         try:
@@ -441,43 +516,11 @@ async def get_spectral_data(
 
         _, x_plot_id, y_plot_id, z_plot_id = set_row
 
-        def get_plot_data(plot_id):
-            if not plot_id:
-                return [], []
-            point_query = text(
-                """
-                SELECT FREQ, ACCEL
-                FROM SRTN_ACCEL_POINT
-                WHERE PLOT_ID = :plot_id
-                ORDER BY FREQ
-                """
-            )
-            point_result = db.execute(point_query, {"plot_id": plot_id})
-            points = point_result.fetchall()
-            frequencies = []
-            accelerations = []
-            for point in points:
-                freq = float(point[0]) if point[0] is not None else 0.0
-                accel = float(point[1]) if point[1] is not None else 0.0
-                frequencies.append(freq)
-                accelerations.append(accel)
-            return frequencies, accelerations
+        x_freq, x_accel = get_plot_data(db, x_plot_id)
+        y_freq, y_accel = get_plot_data(db, y_plot_id)
+        z_freq, z_accel = get_plot_data(db, z_plot_id)
 
-        x_freq, x_accel = get_plot_data(x_plot_id)
-        y_freq, y_accel = get_plot_data(y_plot_id)
-        z_freq, z_accel = get_plot_data(z_plot_id)
-        all_frequencies = [x_freq, y_freq, z_freq]
-        base_freq = max(all_frequencies, key=len) if any(all_frequencies) else []
-
-        response_data = {"frequency": base_freq}
-        if spectrum_type == "МРЗ":
-            response_data["mrz_x"] = x_accel if x_accel else None
-            response_data["mrz_y"] = y_accel if y_accel else None
-            response_data["mrz_z"] = z_accel if z_accel else None
-        elif spectrum_type == "ПЗ":
-            response_data["pz_x"] = x_accel if x_accel else None
-            response_data["pz_y"] = y_accel if y_accel else None
-            response_data["pz_z"] = z_accel if z_accel else None
+        response_data = build_spectral_response(x_freq, y_freq, z_freq, x_accel, y_accel, z_accel, spectrum_type)
 
         # Attach PGA value (PGA or PGA_*) for k2 (Д.12)
         try:
@@ -536,42 +579,11 @@ async def get_seism_requirements(
         y_plot_id = set_row[2]
         z_plot_id = set_row[3]
 
-        def get_plot_data(plot_id):
-            if not plot_id:
-                return [], []
-            point_query = text(
-                """
-                SELECT FREQ, ACCEL
-                FROM SRTN_ACCEL_POINT
-                WHERE PLOT_ID = :plot_id
-                ORDER BY FREQ
-                """
-            )
-            point_result = db.execute(point_query, {"plot_id": plot_id})
-            points = point_result.fetchall()
-            frequencies = []
-            accelerations = []
-            for point in points:
-                freq = float(point[0]) if point[0] is not None else 0.0
-                accel = float(point[1]) if point[1] is not None else 0.0
-                frequencies.append(freq)
-                accelerations.append(accel)
-            return frequencies, accelerations
+        x_freq, x_accel = get_plot_data(db, x_plot_id)
+        y_freq, y_accel = get_plot_data(db, y_plot_id)
+        z_freq, z_accel = get_plot_data(db, z_plot_id)
 
-        x_freq, x_accel = get_plot_data(x_plot_id)
-        y_freq, y_accel = get_plot_data(y_plot_id)
-        z_freq, z_accel = get_plot_data(z_plot_id)
-        all_frequencies = [x_freq, y_freq, z_freq]
-        base_freq = max(all_frequencies, key=len) if any(all_frequencies) else []
-        response_data = {"frequency": base_freq}
-        if spectr_earthq_type == "МРЗ":
-            response_data["mrz_x"] = x_accel if x_accel else None
-            response_data["mrz_y"] = y_accel if y_accel else None
-            response_data["mrz_z"] = z_accel if z_accel else None
-        elif spectr_earthq_type == "ПЗ":
-            response_data["pz_x"] = x_accel if x_accel else None
-            response_data["pz_y"] = y_accel if y_accel else None
-            response_data["pz_z"] = z_accel if z_accel else None
+        response_data = build_spectral_response(x_freq, y_freq, z_freq, x_accel, y_accel, z_accel, spectr_earthq_type)
         return SpectralDataResult(**response_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving seism requirements: {str(e)}")

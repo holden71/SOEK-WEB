@@ -810,7 +810,7 @@ function Import() {
 
   return (
     <div className="import-page">
-      <PageHeader title="Імпорт спектрів" />
+      <PageHeader title="Імпорт сейсмічних вимог" />
       <div className="import-content">
         <form className="import-form">
           <div className="filters">
