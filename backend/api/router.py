@@ -12,7 +12,8 @@ from api.endpoints import (
     locations,
     multimedia,
     acceleration,
-    analysis,
+    seismic_analysis,
+    load_analysis,
 )
 
 # Создаем главный роутер для API
@@ -27,5 +28,6 @@ api_router.include_router(models_3d.router)
 api_router.include_router(locations.router)
 api_router.include_router(multimedia.router)
 api_router.include_router(acceleration.router)
-api_router.include_router(analysis.router)
+api_router.include_router(seismic_analysis.router)
+api_router.include_router(load_analysis.router)
 

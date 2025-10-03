@@ -1,5 +1,5 @@
 """
-Load Analysis service - бизнес-логика для анализа нагрузок
+Load Analysis service - анализ изменения нагрузок (материалы, давление, температура)
 """
 from typing import Dict, Any
 from sqlalchemy.orm import Session
@@ -10,10 +10,7 @@ from schemas import LoadAnalysisParams
 
 
 class LoadAnalysisService:
-    """Load analysis service"""
-    
-    def __init__(self):
-        self.seismic_repo = SeismicRepository()
+    """Load analysis service - анализ изменения нагрузок"""
     
     # Field mapping for load analysis parameters
     FIELD_MAPPING = {
@@ -44,6 +41,9 @@ class LoadAnalysisService:
         "k1_alt_pz": "K1_ALT_PZ",
         "k1_alt_mrz": "K1_ALT_MRZ",
     }
+    
+    def __init__(self):
+        self.seismic_repo = SeismicRepository()
     
     def save_load_analysis_params(self, db: Session, params: LoadAnalysisParams) -> Dict[str, Any]:
         """Save load analysis parameters"""

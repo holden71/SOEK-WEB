@@ -1,10 +1,9 @@
 """
-Analysis endpoints - анализ и расчеты
+Seismic Analysis endpoints - анализ изменения сейсмических требований
 """
 from fastapi import APIRouter, Body, Query, HTTPException
 
 from api.dependencies import DbSessionDep
-from schemas import LoadAnalysisParams
 from schemas.analysis import (
     SaveAnalysisResultParams,
     SaveAnalysisResultResponse,
@@ -13,12 +12,10 @@ from schemas.analysis import (
     SaveKResultsParams,
     SaveKResultsResponse
 )
-from services.analysis import AnalysisService
-from services import LoadAnalysisService
+from services import SeismicAnalysisService
 
-router = APIRouter(prefix="/api", tags=["analysis"])
-analysis_service = AnalysisService()
-load_analysis_service = LoadAnalysisService()
+router = APIRouter(prefix="/api", tags=["seismic-analysis"])
+seismic_service = SeismicAnalysisService()
 
 
 @router.post("/save-analysis-result", response_model=SaveAnalysisResultResponse)
@@ -28,7 +25,7 @@ async def save_analysis_result(
 ):
     """Save analysis result (M1, M2 values)"""
     try:
-        result = analysis_service.save_analysis_result(
+        result = seismic_service.save_analysis_result(
             db,
             params.ek_id,
             params.spectrum_type,
@@ -50,7 +47,7 @@ async def save_stress_inputs(
 ):
     """Save stress inputs"""
     try:
-        result = analysis_service.save_stress_inputs(
+        result = seismic_service.save_stress_inputs(
             db,
             params.ek_id,
             natural_frequency=params.natural_frequency,
@@ -82,7 +79,7 @@ async def save_k_results(
 ):
     """Save K calculation results"""
     try:
-        result = analysis_service.save_k_results(
+        result = seismic_service.save_k_results(
             db,
             params.ek_id,
             k1_pz=params.k1_pz,
@@ -108,7 +105,7 @@ async def get_k_results(
 ):
     """Get K calculation results"""
     try:
-        return analysis_service.get_k_results(db, ek_id)
+        return seismic_service.get_k_results(db, ek_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -123,7 +120,7 @@ async def get_calculation_results(
 ):
     """Get all calculation results for element"""
     try:
-        return analysis_service.get_calculation_results(db, ek_id)
+        return seismic_service.get_calculation_results(db, ek_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -138,7 +135,7 @@ async def get_stress_inputs(
 ):
     """Get stress inputs for element"""
     try:
-        return analysis_service.get_stress_inputs(db, ek_id)
+        return seismic_service.get_stress_inputs(db, ek_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -153,34 +150,10 @@ async def check_calculation_requirements(
 ):
     """Check if calculation requirements are met"""
     try:
-        return analysis_service.check_calculation_requirements(db, ek_id)
+        return seismic_service.check_calculation_requirements(db, ek_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         print(f"Error checking calculation requirements: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/save-load-analysis-params")
-async def save_load_analysis_params(
-    db: DbSessionDep,
-    params: LoadAnalysisParams = Body(...)
-):
-    """Save load analysis parameters"""
-    try:
-        result = load_analysis_service.save_load_analysis_params(db, params)
-        db.commit()
-        return result
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/get-load-analysis-params/{ek_id}")
-async def get_load_analysis_params(
-    db: DbSessionDep,
-    ek_id: int
-):
-    """Get load analysis parameters"""
-    return load_analysis_service.get_load_analysis_params(db, ek_id)
 

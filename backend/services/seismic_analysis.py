@@ -1,5 +1,5 @@
 """
-Analysis service - бизнес-логика для анализа и расчетов
+Seismic Analysis service - сейсмический анализ (M1, M2, K-коэффициенты, SIGMA, HCLPF)
 """
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
@@ -8,8 +8,8 @@ from sqlalchemy import text
 from repositories import SeismicRepository
 
 
-class AnalysisService:
-    """Analysis service"""
+class SeismicAnalysisService:
+    """Seismic analysis service - анализ изменения сейсмических требований"""
     
     def __init__(self):
         self.seismic_repo = SeismicRepository()
