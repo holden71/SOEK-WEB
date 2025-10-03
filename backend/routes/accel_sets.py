@@ -1,9 +1,10 @@
 from typing import Dict, List
 
 from fastapi import APIRouter, Body, HTTPException
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, or_, and_
 
 from db import DbSessionDep
+from database_models import AccelSet, EkSeismData
 from models import (
     AccelData,
     ClearAccelSetParams,
@@ -555,21 +556,61 @@ async def get_available_damping_factors(
     spectr_earthq_type: str = "МРЗ",
     calc_type: str = "ДЕТЕРМІНІСТИЧНИЙ",
 ):
-    """Get list of available damping factors - returns standard damping factors"""
+    """Get list of available damping factors from SRTN_ACCEL_SET table"""
     try:
         print(f"\n=== GET_AVAILABLE_DAMPING_FACTORS ===")
         print(f"EK_ID: {ek_id}, Type: {spectr_earthq_type}, Calc: {calc_type}")
         
-        # TODO: Query database when SRTN_SEISM_REQUIREMENTS table structure is clarified
-        # For now, return standard damping factors commonly used in seismic analysis
+        # Get element's location data using ORM
+        element = db.query(EkSeismData).filter(EkSeismData.EK_ID == ek_id).first()
         
-        # Standard damping factors (%) used in seismic analysis
-        standard_factors = [0.5, 1, 2, 3, 5, 7, 10]
+        if not element:
+            print(f"  ❌ Element with EK_ID {ek_id} not found")
+            print(f"=== END ===\n")
+            return {"damping_factors": []}
         
-        print(f"  ✓ Returning {len(standard_factors)} standard damping factors: {standard_factors}")
+        print(f"  Element location: PLANT_ID={element.PLANT_ID}, UNIT_ID={element.UNIT_ID}, "
+              f"BUILDING={element.BUILDING}, ROOM={element.ROOM}, LEV={element.LEV}")
+        
+        # Build filter conditions
+        filters = [
+            AccelSet.PLANT_ID == element.PLANT_ID,
+            AccelSet.UNIT_ID == element.UNIT_ID,
+            AccelSet.BUILDING == element.BUILDING,
+            AccelSet.SPECTR_EARTHQ_TYPE == spectr_earthq_type,
+            AccelSet.CALC_TYPE == calc_type,
+            AccelSet.SET_TYPE == 'ВИМОГИ',
+            AccelSet.DEMPF.isnot(None),
+        ]
+        
+        # Handle NULL ROOM comparison
+        if element.ROOM is None:
+            filters.append(AccelSet.ROOM.is_(None))
+        else:
+            filters.append(or_(AccelSet.ROOM == element.ROOM, AccelSet.ROOM.is_(None)))
+        
+        # Handle NULL LEV comparison
+        if element.LEV is None:
+            filters.append(AccelSet.LEV.is_(None))
+        else:
+            filters.append(or_(AccelSet.LEV == element.LEV, AccelSet.LEV.is_(None)))
+        
+        # Query unique DEMPF values using ORM
+        damping_factors = (
+            db.query(AccelSet.DEMPF)
+            .filter(and_(*filters))
+            .distinct()
+            .order_by(AccelSet.DEMPF)
+            .all()
+        )
+        
+        # Extract values from tuples
+        damping_factors = [float(dempf[0]) for dempf in damping_factors]
+        
+        print(f"  ✓ Found {len(damping_factors)} damping factors: {damping_factors}")
         print(f"=== END ===\n")
         
-        return {"damping_factors": standard_factors}
+        return {"damping_factors": damping_factors}
         
     except Exception as e:
         import traceback
