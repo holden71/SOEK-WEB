@@ -3,7 +3,7 @@ API router - агрегация всех endpoint'ов
 """
 from fastapi import APIRouter
 
-from .endpoints import (
+from api.endpoints import (
     plants,
     search,
     files,

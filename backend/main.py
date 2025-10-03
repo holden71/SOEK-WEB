@@ -4,9 +4,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core import DbSessionManager, settings
-from api.v1.router import api_router
+from api.router import api_router
 
 # Legacy routes - complex acceleration/excel logic still using old implementation
+from routes.excel import router as excel_router
+from routes.accel_sets import router as accel_router
 
 
 
@@ -43,6 +45,8 @@ app.add_middleware(
 app.include_router(api_router)
 
 # Legacy routers - complex logic, kept temporarily
+app.include_router(excel_router)
+app.include_router(accel_router)
 
 
 

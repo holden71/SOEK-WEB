@@ -34,10 +34,11 @@ const SpectraTab = ({
 
   // Create chart when data changes
   useEffect(() => {
-    if (hasData && createPlotlyChart) {
+    // Don't create chart if damping factor is not set yet
+    if (hasData && createPlotlyChart && dampingFactor !== null) {
       setTimeout(() => createPlotlyChart(), 100);
     }
-  }, [spectralData, requirementsData, spectrumType, selectedAxis, createPlotlyChart]);
+  }, [spectralData, requirementsData, spectrumType, selectedAxis, createPlotlyChart, dampingFactor]);
 
   // Show loading only when actually loading data
   if (loading || dampingFactorsLoading) {
@@ -69,9 +70,9 @@ const SpectraTab = ({
       {/* Damping Factor Selector */}
       <div className="damping-section">
         <label>Коефіцієнт демпфірування</label>
-        <select value={dampingFactor} onChange={handleDampingChange}>
+        <select value={dampingFactor || ''} onChange={handleDampingChange} disabled={dampingFactorsLoading || availableDampingFactors.length === 0}>
           {availableDampingFactors.length === 0 ? (
-            <option>Вимоги не імпортовані</option>
+            <option value="">Вимоги не імпортовані</option>
           ) : (
             availableDampingFactors.map(factor => (
               <option key={factor} value={factor}>{factor}</option>

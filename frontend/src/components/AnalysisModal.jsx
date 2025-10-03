@@ -227,7 +227,7 @@ const AnalysisModal = ({
   const [error, setError] = useState(null);
   const [selectedAxis, setSelectedAxis] = useState('x'); // New state for axis selection
   const [spectrumType, setSpectrumType] = useState('МРЗ'); // New state for spectrum type
-  const [dampingFactor, setDampingFactor] = useState(0.5); // New state for damping factor
+  const [dampingFactor, setDampingFactor] = useState(null); // New state for damping factor - will be set after loading
   const [availableDampingFactors, setAvailableDampingFactors] = useState([]); // Available damping factors from API
   const [dampingFactorsLoading, setDampingFactorsLoading] = useState(true); // Loading state for damping factors
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -323,14 +323,13 @@ const AnalysisModal = ({
       
       setAvailableDampingFactors(allFactors);
       
-      // Set default damping factor if current one is not available
+      // Always set the first available damping factor
       if (allFactors.length > 0) {
-        if (!allFactors.includes(dampingFactor)) {
-          console.log(`Поточний коефіцієнт ${dampingFactor} недоступний. Встановлюємо ${allFactors[0]}`);
-          setDampingFactor(allFactors[0]);
-        } else {
-          console.log(`Поточний коефіцієнт ${dampingFactor} доступний`);
-        }
+        console.log(`Встановлюємо перший доступний коефіцієнт: ${allFactors[0]}`);
+        setDampingFactor(allFactors[0]);
+      } else {
+        console.warn('Немає доступних коефіцієнтів демпфірування');
+        setDampingFactor(null);
       }
       
       console.log('=== ЗАВЕРШЕНО ЗАВАНТАЖЕННЯ КОЕФІЦІЄНТІВ ===\n');
@@ -372,8 +371,9 @@ const AnalysisModal = ({
       
       // Fetch new data for the element
       fetchAllSpectralData();
+      // First fetch available damping factors, then requirements will be fetched automatically via useEffect
       fetchAvailableDampingFactors(elementData.EK_ID || elementData.ek_id);
-      fetchAllRequirementsData(elementData.EK_ID || elementData.ek_id);
+      // fetchAllRequirementsData will be called automatically when dampingFactor is set
       
       // Small delay to ensure reset is applied before loading from DB
       setTimeout(() => {
@@ -596,7 +596,7 @@ const AnalysisModal = ({
 
   // Update requirements data when damping factor changes
   useEffect(() => {
-    if (elementData && (elementData.EK_ID || elementData.ek_id)) {
+    if (elementData && (elementData.EK_ID || elementData.ek_id) && dampingFactor !== null) {
       fetchAllRequirementsData(elementData.EK_ID || elementData.ek_id);
     }
   }, [dampingFactor]);
@@ -888,8 +888,7 @@ const AnalysisModal = ({
         }
       }
 
-      // Fetch requirements data for all available spectrum types
-      await fetchAllRequirementsData(ekId);
+      // Requirements data will be fetched automatically via useEffect when dampingFactor is set
     } catch (err) {
       setError(err.message);
       console.error('Error fetching spectral data:', err);
@@ -971,7 +970,7 @@ const AnalysisModal = ({
     setActiveSubTab('seismic');
     setSelectedAxis('x');
     setSpectrumType('МРЗ');
-    setDampingFactor(0.5);
+    setDampingFactor(null); // Reset to null, will be set when damping factors are loaded
     
     // Clear damping factors
     setAvailableDampingFactors([]);
@@ -1515,6 +1514,12 @@ const AnalysisModal = ({
   };
 
   const fetchAllRequirementsData = async (ekId) => {
+    // Don't fetch if damping factor is not set yet
+    if (dampingFactor === null) {
+      console.log('Коефіцієнт демпфірування ще не встановлено, пропускаємо завантаження вимог');
+      return;
+    }
+    
     try {
       const newAllRequirementsData = {};
 
