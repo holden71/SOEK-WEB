@@ -1,0 +1,215 @@
+"""
+Analysis service - бизнес-логика для анализа и расчетов
+"""
+from typing import Dict, Any, Optional
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+
+from repositories import SeismicRepository
+
+
+class AnalysisService:
+    """Analysis service"""
+    
+    def __init__(self):
+        self.seismic_repo = SeismicRepository()
+    
+    def save_analysis_result(
+        self,
+        db: Session,
+        ek_id: int,
+        spectrum_type: str,
+        m1: Optional[float] = None,
+        m2: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Save analysis result (M1, M2 values)"""
+        update_data = {}
+        
+        if spectrum_type == "МРЗ":
+            if m1 is not None:
+                update_data["M1_MRZ"] = m1
+            if m2 is not None:
+                update_data["M2_MRZ"] = m2
+        elif spectrum_type == "ПЗ":
+            if m1 is not None:
+                update_data["M1_PZ"] = m1
+            if m2 is not None:
+                update_data["M2_PZ"] = m2
+        
+        if update_data:
+            self.seismic_repo.update_fields(db, ek_id, **update_data)
+        
+        return {
+            "success": bool(update_data),
+            "message": f"Analysis results saved for {spectrum_type}" if update_data else "No data to update",
+            "updated_fields": update_data
+        }
+    
+    def save_stress_inputs(
+        self,
+        db: Session,
+        ek_id: int,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Save stress inputs"""
+        field_mapping = {
+            "natural_frequency": "F_MU",
+            "sigma_dop": "SIGMA_DOP",
+            "hclpf": "HCLPF",
+            "sigma_1": "SIGMA_1",
+            "sigma_2": "SIGMA_2",
+            "sigma_1_1_pz": "SIGMA_S_1_PZ",
+            "sigma_1_2_pz": "SIGMA_S_2_PZ",
+            "sigma_1_s1_pz": "SIGMA_S_S1_PZ",
+            "sigma_2_s2_pz": "SIGMA_S_S2_PZ",
+            "sigma_1_1_mrz": "SIGMA_S_1_MRZ",
+            "sigma_1_2_mrz": "SIGMA_S_2_MRZ",
+            "sigma_1_s1_mrz": "SIGMA_S_S1_MRZ",
+            "sigma_2_s2_mrz": "SIGMA_S_S2_MRZ",
+        }
+        
+        update_data = {}
+        for param_name, db_field in field_mapping.items():
+            if param_name in kwargs and kwargs[param_name] is not None:
+                update_data[db_field] = kwargs[param_name]
+        
+        if update_data:
+            self.seismic_repo.update_fields(db, ek_id, **update_data)
+        
+        return {
+            "success": bool(update_data),
+            "message": "Stress inputs saved successfully" if update_data else "No data to update",
+            "updated_fields": update_data
+        }
+    
+    def save_k_results(
+        self,
+        db: Session,
+        ek_id: int,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Save K calculation results"""
+        field_mapping = {
+            "k1_pz": "K1_PZ",
+            "k1_mrz": "K1_MRZ",
+            "k3_pz": "K3_PZ",
+            "k3_mrz": "K3_MRZ",
+            "k2_value": "K2_",
+            "n_pz": "N_PZ",
+            "n_mrz": "N_MRZ",
+        }
+        
+        update_data = {}
+        for param_name, db_field in field_mapping.items():
+            if param_name in kwargs and kwargs[param_name] is not None:
+                update_data[db_field] = kwargs[param_name]
+        
+        if update_data:
+            self.seismic_repo.update_fields(db, ek_id, **update_data)
+        
+        return {
+            "success": bool(update_data),
+            "message": "K results saved successfully" if update_data else "No data to update",
+            "updated_fields": update_data
+        }
+    
+    def get_k_results(self, db: Session, ek_id: int) -> Dict[str, Optional[float]]:
+        """Get K calculation results"""
+        query = text("""
+            SELECT K1_PZ, K1_MRZ, K3_PZ, K3_MRZ, K2_, N_PZ, N_MRZ
+            FROM SRTN_EK_SEISM_DATA
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise ValueError("Element not found")
+        
+        return {
+            "k1_pz": float(row[0]) if row[0] is not None else None,
+            "k1_mrz": float(row[1]) if row[1] is not None else None,
+            "k3_pz": float(row[2]) if row[2] is not None else None,
+            "k3_mrz": float(row[3]) if row[3] is not None else None,
+            "k2_value": float(row[4]) if row[4] is not None else None,
+            "n_pz": float(row[5]) if row[5] is not None else None,
+            "n_mrz": float(row[6]) if row[6] is not None else None,
+        }
+    
+    def get_calculation_results(self, db: Session, ek_id: int) -> Dict[str, Optional[float]]:
+        """Get all calculation results"""
+        query = text("""
+            SELECT M1_MRZ, M2_MRZ, M1_PZ, M2_PZ
+            FROM SRTN_EK_SEISM_DATA
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise ValueError("Element not found")
+        
+        return {
+            "m1_mrz": float(row[0]) if row[0] is not None else None,
+            "m2_mrz": float(row[1]) if row[1] is not None else None,
+            "m1_pz": float(row[2]) if row[2] is not None else None,
+            "m2_pz": float(row[3]) if row[3] is not None else None,
+        }
+    
+    def get_stress_inputs(self, db: Session, ek_id: int) -> Dict[str, Optional[float]]:
+        """Get stress inputs"""
+        query = text("""
+            SELECT F_MU, SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2,
+                   SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ,
+                   SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ
+            FROM SRTN_EK_SEISM_DATA
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise ValueError("Element not found")
+        
+        return {
+            "natural_frequency": float(row[0]) if row[0] is not None else None,
+            "sigma_dop": float(row[1]) if row[1] is not None else None,
+            "hclpf": float(row[2]) if row[2] is not None else None,
+            "sigma_1": float(row[3]) if row[3] is not None else None,
+            "sigma_2": float(row[4]) if row[4] is not None else None,
+            "sigma_1_1_pz": float(row[5]) if row[5] is not None else None,
+            "sigma_1_2_pz": float(row[6]) if row[6] is not None else None,
+            "sigma_1_s1_pz": float(row[7]) if row[7] is not None else None,
+            "sigma_2_s2_pz": float(row[8]) if row[8] is not None else None,
+            "sigma_1_1_mrz": float(row[9]) if row[9] is not None else None,
+            "sigma_1_2_mrz": float(row[10]) if row[10] is not None else None,
+            "sigma_1_s1_mrz": float(row[11]) if row[11] is not None else None,
+            "sigma_2_s2_mrz": float(row[12]) if row[12] is not None else None,
+        }
+    
+    def check_calculation_requirements(self, db: Session, ek_id: int) -> Dict[str, bool]:
+        """Check if calculation requirements are met"""
+        query = text("""
+            SELECT F_MU, ACCEL_SET_ID_MRZ, ACCEL_SET_ID_PZ
+            FROM SRTN_EK_SEISM_DATA
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise ValueError("Element not found")
+        
+        f_mu, accel_set_mrz, accel_set_pz = row
+        
+        return {
+            "has_frequency": f_mu is not None,
+            "has_accel_set_mrz": accel_set_mrz is not None,
+            "has_accel_set_pz": accel_set_pz is not None,
+            "can_calculate": f_mu is not None and (accel_set_mrz is not None or accel_set_pz is not None)
+        }
+

@@ -6,6 +6,8 @@ from .file import FileService
 from .model_3d import Model3DService
 from .load_analysis import LoadAnalysisService
 from .search import SearchService
+from .acceleration import AccelerationService
+from .analysis import AnalysisService
 
 __all__ = [
     "PlantService",
@@ -13,5 +15,7 @@ __all__ = [
     "Model3DService",
     "LoadAnalysisService",
     "SearchService",
+    "AccelerationService",
+    "AnalysisService",
 ]
 
