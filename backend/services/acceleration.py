@@ -124,7 +124,7 @@ class AccelerationService:
             
             # Find acceleration set
             query = text("""
-                SELECT ACCEL_SET_ID, X_PLOT_ID, Y_PLOT_ID, Z_PLOT_ID, PGA
+                SELECT ACCEL_SET_ID, X_PLOT_ID, Y_PLOT_ID, Z_PLOT_ID, PGA_
                 FROM SRTN_ACCEL_SET
                 WHERE PLANT_ID = :plant_id
                 AND UNIT_ID = :unit_id  

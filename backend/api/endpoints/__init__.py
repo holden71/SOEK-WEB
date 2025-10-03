@@ -10,7 +10,8 @@ from . import (
     locations,
     multimedia,
     acceleration,
-    analysis,
+    load_analysis,
+    seismic_analysis,
 )
 
 __all__ = [
@@ -22,5 +23,6 @@ __all__ = [
     "locations",
     "multimedia",
     "acceleration",
-    "analysis",
+    "load_analysis",
+    "seismic_analysis",
 ]
