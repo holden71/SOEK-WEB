@@ -3,24 +3,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from db import DbSessionManager
-from settings import settings
+from core import DbSessionManager, settings
+from api.v1.router import api_router
 
-from routes.plants import router as plants_router
-from routes.search import router as search_router
-from routes.excel import router as excel_router
-from routes.locations import router as locations_router
-from routes.accel_sets import router as accel_router
-from routes.load_analysis import router as load_analysis_router
-from routes.models_3d import router as models_3d_router
-from routes.files import router as files_router
-from routes.file_types import router as file_types_router
-from routes.multimedia import router as multimedia_router
-from routes.ek_models import router as ek_models_router
+# Legacy routes - complex acceleration/excel logic still using old implementation
+
+
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    """Application lifespan - initialization and cleanup"""
     DbSessionManager.initialize()
     try:
         yield
@@ -28,30 +21,45 @@ async def lifespan(_app: FastAPI):
         DbSessionManager.dispose()
 
 
-app = FastAPI(lifespan=lifespan)
+# Create FastAPI application
+app = FastAPI(
+    title="SOEK API",
+    description="Seismic analysis API for nuclear power plants",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
-# CORS
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"],  # Позволяет фронтенду читать заголовок Content-Disposition
+    expose_headers=["Content-Disposition"],
 )
 
-# Routers
-app.include_router(plants_router)
-app.include_router(search_router)
-app.include_router(excel_router)
-app.include_router(locations_router)
-app.include_router(accel_router)
-app.include_router(load_analysis_router)
-app.include_router(models_3d_router)
-app.include_router(files_router)
-app.include_router(file_types_router)
-app.include_router(multimedia_router)
-app.include_router(ek_models_router)
+# Include API router (new architecture)
+app.include_router(api_router)
+
+# Legacy routers - complex logic, kept temporarily
+
+
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "SOEK API",
+        "version": "1.0.0",
+        "docs": "/docs"
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
 
 
 if __name__ == "__main__":
@@ -61,5 +69,3 @@ if __name__ == "__main__":
         uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
     else:
         uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
