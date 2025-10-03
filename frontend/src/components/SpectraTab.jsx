@@ -19,54 +19,58 @@ const SpectraTab = ({
 }) => {
   const hasRequirements = requirementsData?.frequency?.length > 0;
   const hasCharacteristics = spectralData?.frequency?.length > 0;
-  const hasAnyData = hasRequirements || hasCharacteristics;
+  const hasData = hasRequirements || hasCharacteristics;
 
-  // Helper to get axis data
+  // Get axis data for current spectrum type
   const getAxisData = (data, axis) => {
     if (!data) return null;
-    const prefix = spectrumType.toLowerCase() === 'мрз' ? 'mrz' : 'pz';
-    return data[`${prefix}_${axis}`] || data[`${prefix.toLowerCase()}_${axis}`];
+    const prefix = spectrumType === 'МРЗ' ? 'mrz' : 'pz';
+    return data[`${prefix}_${axis}`];
   };
 
   const hasXData = getAxisData(spectralData, 'x')?.length > 0 || getAxisData(requirementsData, 'x')?.length > 0;
   const hasYData = getAxisData(spectralData, 'y')?.length > 0 || getAxisData(requirementsData, 'y')?.length > 0;
   const hasZData = getAxisData(spectralData, 'z')?.length > 0 || getAxisData(requirementsData, 'z')?.length > 0;
 
-  // Debug logging
-  console.log('🔍 Spectra Debug:', {
-    spectrumType,
-    hasRequirements,
-    hasCharacteristics,
-    spectralDataKeys: spectralData ? Object.keys(spectralData) : 'no data',
-    requirementsDataKeys: requirementsData ? Object.keys(requirementsData) : 'no data',
-    hasXData,
-    hasYData,
-    hasZData
-  });
-
   // Create chart when data changes
   useEffect(() => {
-    if (hasAnyData && createPlotlyChart) {
-      // Small delay to ensure DOM element is rendered
-      setTimeout(() => {
-        createPlotlyChart();
-      }, 100);
+    if (hasData && createPlotlyChart) {
+      setTimeout(() => createPlotlyChart(), 100);
     }
-  }, [spectralData, requirementsData, spectrumType, selectedAxis, hasAnyData, createPlotlyChart]);
+  }, [spectralData, requirementsData, spectrumType, selectedAxis, createPlotlyChart]);
+
+  // Show loading only when actually loading data
+  if (loading || dampingFactorsLoading) {
+    return (
+      <div className="spectra-tab">
+        <div className="loading-spinner-container">
+          <div className="loading-spinner"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if any
+  if (error) {
+    return (
+      <div className="spectra-tab">
+        <div className="state-message error">
+          <p>{error}</p>
+          <button onClick={fetchAllSpectralData} className="retry-btn">
+            Спробувати ще раз
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="spectra-tab">
-      {/* 1. Damping Factor - FIRST */}
+      {/* Damping Factor Selector */}
       <div className="damping-section">
         <label>Коефіцієнт демпфірування</label>
-        <select
-          value={dampingFactor}
-          onChange={handleDampingChange}
-          disabled={dampingFactorsLoading || availableDampingFactors.length === 0}
-        >
-          {dampingFactorsLoading ? (
-            <option>Завантаження...</option>
-          ) : availableDampingFactors.length === 0 ? (
+        <select value={dampingFactor} onChange={handleDampingChange}>
+          {availableDampingFactors.length === 0 ? (
             <option>Вимоги не імпортовані</option>
           ) : (
             availableDampingFactors.map(factor => (
@@ -74,33 +78,15 @@ const SpectraTab = ({
             ))
           )}
         </select>
-        {availableDampingFactors.length > 0 && (
-          <span className="available-hint">
-            Доступно: {availableDampingFactors.join(', ')}
-          </span>
-        )}
       </div>
 
-      {/* 2. Loading/Error States */}
-      {loading ? (
-        <div className="state-message">
-          <div className="spinner"></div>
-          <p>Завантаження...</p>
-        </div>
-      ) : error ? (
-        <div className="state-message error">
-          <p>{error}</p>
-          <button onClick={fetchAllSpectralData} className="retry-btn">
-            Спробувати ще раз
-          </button>
-        </div>
-      ) : !hasAnyData ? (
+      {!hasData ? (
         <div className="state-message empty">
           <p>Дані відсутні</p>
         </div>
       ) : (
         <>
-          {/* 3. Spectrum Type Selector */}
+          {/* Spectrum Type Buttons */}
           <div className="type-selector">
             <button 
               className={spectrumType === 'МРЗ' ? 'active' : ''}
@@ -116,7 +102,7 @@ const SpectraTab = ({
             </button>
           </div>
 
-          {/* 4. Axis Selector */}
+          {/* Axis Buttons */}
           <div className="axis-selector">
             {hasXData && (
               <button 
@@ -144,7 +130,7 @@ const SpectraTab = ({
             )}
           </div>
 
-          {/* 5. Data Status - IMPORTANT INFO */}
+          {/* Data Status */}
           <div className="data-status">
             <span className={hasRequirements ? 'ok' : 'no'}>
               Вимоги: {hasRequirements ? 'Знайдено' : 'Не знайдено'}
@@ -154,7 +140,7 @@ const SpectraTab = ({
             </span>
           </div>
 
-          {/* 6. Chart Area */}
+          {/* Chart */}
           <div className="chart-area">
             <div id="main-spectrum-chart"></div>
           </div>

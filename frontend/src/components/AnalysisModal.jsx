@@ -345,6 +345,9 @@ const AnalysisModal = ({
   // Reset stress inputs and fetch data when modal opens or element changes
   useEffect(() => {
     if (isOpen && elementData) {
+      // Clear all data first
+      clearAllModalData();
+      
       // Reset stress inputs to default values
       setStressInputs({
         // Общие характеристики
@@ -367,9 +370,11 @@ const AnalysisModal = ({
       // Clear calculation results when modal opens or element changes
       clearCalculationResults();
       
+      // Fetch new data for the element
       fetchAllSpectralData();
       fetchAvailableDampingFactors(elementData.EK_ID || elementData.ek_id);
       fetchAllRequirementsData(elementData.EK_ID || elementData.ek_id);
+      
       // Small delay to ensure reset is applied before loading from DB
       setTimeout(() => {
         fetchStressInputsFromDatabase();
@@ -942,6 +947,66 @@ const AnalysisModal = ({
       pz: { k1: null, k2: null, kMin: null, canCalculate: false, seismicCategory: null, coefficients: null },
       calculated: false
     });
+  };
+
+  // Clear all modal data when opening for a new element
+  const clearAllModalData = () => {
+    console.log('🧹 Очищення всіх даних модального вікна...');
+    
+    // Clear spectral and requirements data
+    setSpectralData(null);
+    setAllSpectralData({});
+    setRequirementsData(null);
+    setAllRequirementsData({});
+    setAnalysisResult(null);
+    setAllAnalysisResults({});
+    setPlotData(null);
+    
+    // Clear error and loading states
+    setError(null);
+    setLoading(false);
+    
+    // Reset UI states to defaults
+    setActiveTab('spectra');
+    setActiveSubTab('seismic');
+    setSelectedAxis('x');
+    setSpectrumType('МРЗ');
+    setDampingFactor(0.5);
+    
+    // Clear damping factors
+    setAvailableDampingFactors([]);
+    setDampingFactorsLoading(true);
+    
+    // Reset spectrum selection
+    setSpectrumSelection({
+      xc_pz: false,
+      xc_mrz: false,
+      vc_pz: false,
+      vc_mrz: false,
+      hc_pz: false,
+      hc_mrz: false
+    });
+    
+    // Reset frequency settings
+    setIsFrequencyEnabled(false);
+    setNaturalFrequency('');
+    setForceRecalculate(0);
+    
+    // Clear Plotly charts
+    try {
+      const chartElements = ['main-spectrum-chart'];
+      chartElements.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        if (element && element._plotly_graph) {
+          console.log(`🧹 Очищення графіка: ${elementId}`);
+          Plotly.purge(element);
+        }
+      });
+    } catch (error) {
+      console.warn('Помилка при очищенні графіків:', error);
+    }
+    
+    console.log('✅ Очищення завершено');
   };
 
   const calculateSigmaAlt = async (onCalculationComplete = null) => {
