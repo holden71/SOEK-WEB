@@ -4,6 +4,10 @@
 from typing import List
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+import base64
+import mimetypes
+import io
+import zipfile
 
 from repositories import Model3DRepository, MultimediaModelRepository, EkModel3DRepository, FileRepository, FileTypeRepository
 from models import Model3D, File, FileType, EkModel3D, MultimediaModel
@@ -295,62 +299,178 @@ class Model3DService:
                 detail=f"Error deleting multimedia: {str(e)}"
             )
 
-    def get_model_files_for_download(self, db: Session, model_id: int, include_multimedia: bool = False) -> dict:
-        """Get model files for download (main file and optionally multimedia)"""
+    def get_multimedia_by_model(self, db: Session, model_id: int) -> List[dict]:
+        """Get all multimedia files for a specific model with base64 content"""
         try:
-            # Get model
-            model = self.model_repo.get_by_id(db, model_id)
-            if not model:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"3D Model with ID {model_id} not found"
+            query = (
+                db.query(
+                    MultimediaModel.MULTIMED_3D_ID,
+                    MultimediaModel.SH_NAME,
+                    MultimediaModel.MULTIMED_FILE_ID,
+                    File.FILE_NAME,
+                    File.DATA,
+                    FileType.NAME.label('FILE_TYPE_NAME'),
+                    FileType.DEF_EXT.label('FILE_EXT')
                 )
+                .join(File, MultimediaModel.MULTIMED_FILE_ID == File.FILE_ID)
+                .join(FileType, File.FILE_TYPE_ID == FileType.FILE_TYPE_ID)
+                .filter(MultimediaModel.MODEL_ID == model_id)
+            )
 
-            # Get main model file
-            if not model.MODEL_FILE_ID:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Model file not found for model {model_id}"
+            results = query.all()
+
+            # Helper functions to determine file type
+            def is_image_ext(ext):
+                image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff'}
+                return ext.lower() in image_exts
+
+            def is_pdf_ext(ext):
+                return ext.lower() == '.pdf'
+
+            multimedia_data = []
+            for row in results:
+                file_ext = row.FILE_EXT or ''
+                # Convert binary content to base64
+                file_content_base64 = base64.b64encode(row.DATA).decode('utf-8') if row.DATA else None
+
+                multimedia_data.append({
+                    "MULTIMED_3D_ID": row.MULTIMED_3D_ID,
+                    "SH_NAME": row.SH_NAME,
+                    "MULTIMED_FILE_ID": row.MULTIMED_FILE_ID,
+                    "FILE_NAME": row.FILE_NAME,
+                    "FILE_TYPE_NAME": row.FILE_TYPE_NAME,
+                    "FILE_EXT": file_ext,
+                    "FILE_EXTENSION": file_ext,
+                    "FILE_CONTENT_BASE64": file_content_base64,
+                    "IS_IMAGE": is_image_ext(file_ext),
+                    "IS_PDF": is_pdf_ext(file_ext),
+                    "MULTIMEDIA_NAME": row.SH_NAME
+                })
+
+            return multimedia_data
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error fetching multimedia for model {model_id}: {str(e)}"
+            )
+
+    def download_model_files(self, db: Session, model_id: int, include_multimedia: bool = False) -> dict:
+        """Get model files for download - returns dict with content, filename, and mime_type"""
+        try:
+            # Get 3D model with file and file type using ORM
+            model_data = (
+                db.query(
+                    Model3D.MODEL_ID,
+                    Model3D.SH_NAME,
+                    Model3D.DESCR,
+                    Model3D.MODEL_FILE_ID,
+                    File.FILE_NAME,
+                    File.DATA,
+                    FileType.DEF_EXT
                 )
+                .join(File, Model3D.MODEL_FILE_ID == File.FILE_ID)
+                .join(FileType, File.FILE_TYPE_ID == FileType.FILE_TYPE_ID)
+                .filter(Model3D.MODEL_ID == model_id)
+                .first()
+            )
 
-            model_file = self.file_repo.get_by_id(db, model.MODEL_FILE_ID)
-            if not model_file:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Model file with ID {model.MODEL_FILE_ID} not found"
-                )
+            if not model_data:
+                raise HTTPException(status_code=404, detail="3D модель не знайдена")
 
-            files = [{
-                "file_name": model_file.FILE_NAME,
-                "file_content": model_file.FILE_CONTENT,
-                "is_main": True
-            }]
+            model_id_val, sh_name, descr, model_file_id, model_file_name, model_file_data, file_extension = model_data
 
-            # Get multimedia files if requested
-            if include_multimedia:
-                multimedia_relations = db.query(MultimediaModel).filter(
-                    MultimediaModel.MODEL_ID == model_id
-                ).all()
+            # Check and normalize model data
+            if model_file_data is None:
+                model_file_data = b""
+            elif isinstance(model_file_data, str):
+                model_file_data = model_file_data.encode('utf-8')
+            elif not isinstance(model_file_data, bytes):
+                model_file_data = bytes(model_file_data) if model_file_data else b""
 
-                for relation in multimedia_relations:
-                    mm_file = self.file_repo.get_by_id(db, relation.MULTIMED_FILE_ID)
-                    if mm_file:
-                        files.append({
-                            "file_name": mm_file.FILE_NAME,
-                            "file_content": mm_file.FILE_CONTENT,
-                            "is_main": False
-                        })
+            if not include_multimedia:
+                # Download only 3D model file
+                content_type, _ = mimetypes.guess_type(model_file_name)
+                if not content_type:
+                    content_type = 'application/octet-stream'
 
-            return {
-                "model_name": model.SH_NAME,
-                "files": files
-            }
+                # Use original filename from database
+                filename = model_file_name or f"model_{model_id}.bin"
+
+                return {
+                    "content": model_file_data,
+                    "filename": filename,
+                    "mime_type": content_type
+                }
+
+            else:
+                # Create ZIP archive with model and multimedia files
+                zip_buffer = io.BytesIO()
+
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    # Add main 3D model file
+                    model_filename = model_file_name or f"model_{model_id}"
+                    zip_file.writestr(model_filename, model_file_data)
+
+                    # Get all related multimedia files using ORM
+                    multimedia_files = (
+                        db.query(
+                            MultimediaModel.SH_NAME,
+                            File.FILE_NAME,
+                            File.DATA
+                        )
+                        .join(File, MultimediaModel.MULTIMED_FILE_ID == File.FILE_ID)
+                        .filter(MultimediaModel.MODEL_ID == model_id)
+                        .all()
+                    )
+
+                    # Add multimedia files to archive
+                    multimedia_count = 0
+                    for mm_name, file_name, file_data in multimedia_files:
+                        if file_data is None:
+                            file_data = b""
+                        elif isinstance(file_data, str):
+                            file_data = file_data.encode('utf-8')
+                        elif not isinstance(file_data, bytes):
+                            file_data = bytes(file_data) if file_data else b""
+
+                        # Create folder for multimedia files
+                        multimedia_filename = f"multimedia/{file_name}" if file_name else f"multimedia/file_{multimedia_count}"
+                        zip_file.writestr(multimedia_filename, file_data)
+                        multimedia_count += 1
+
+                    # Create info file
+                    info_content = f"""3D Model Information
+============================
+Model Name: {sh_name or 'Unnamed'}
+Description: {descr or 'No description'}
+Model ID: {model_id}
+Model File: {model_filename}
+Multimedia Files: {multimedia_count}
+
+This archive contains:
+- Main 3D model file: {model_filename}
+- Multimedia files folder: multimedia/ ({multimedia_count} files)
+"""
+                    zip_file.writestr("README.txt", info_content.encode('utf-8'))
+
+                zip_buffer.seek(0)
+                zip_data = zip_buffer.getvalue()
+
+                # Simple ASCII name for ZIP file
+                zip_filename = f"model_{model_id}_with_multimedia.zip"
+
+                return {
+                    "content": zip_data,
+                    "filename": zip_filename,
+                    "mime_type": "application/zip"
+                }
 
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error getting model files: {str(e)}"
+                detail=f"Error getting model files for download: {str(e)}"
             )
 
