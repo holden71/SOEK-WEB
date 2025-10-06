@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from repositories import Model3DRepository, MultimediaModelRepository, EkModel3DRepository, FileRepository, FileTypeRepository
-from models import Model3D, File, FileType, EkModel3D
+from models import Model3D, File, FileType, EkModel3D, MultimediaModel
 from schemas import CreateModel3DRequest, Model3DData, EkModel3DCreate, EkModel3DResponse
 
 
@@ -218,5 +218,139 @@ class Model3DService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error deleting EK model link: {str(e)}"
+            )
+
+    def get_all_multimedia(self, db: Session) -> List[dict]:
+        """Get all multimedia files with model information"""
+        try:
+            query = (
+                db.query(
+                    MultimediaModel.MULTIMED_3D_ID,
+                    MultimediaModel.SH_NAME,
+                    MultimediaModel.MULTIMED_FILE_ID,
+                    MultimediaModel.MODEL_ID,
+                    Model3D.SH_NAME.label('MODEL_SH_NAME'),
+                    File.FILE_NAME.label('FILE_NAME'),
+                    FileType.NAME.label('FILE_TYPE_NAME'),
+                    FileType.DEF_EXT.label('FILE_EXT')
+                )
+                .join(Model3D, MultimediaModel.MODEL_ID == Model3D.MODEL_ID)
+                .join(File, MultimediaModel.MULTIMED_FILE_ID == File.FILE_ID)
+                .join(FileType, File.FILE_TYPE_ID == FileType.FILE_TYPE_ID)
+            )
+
+            results = query.all()
+
+            multimedia_data = []
+            for row in results:
+                multimedia_data.append({
+                    "data": {
+                        "MULTIMED_3D_ID": row.MULTIMED_3D_ID,
+                        "SH_NAME": row.SH_NAME,
+                        "MULTIMED_FILE_ID": row.MULTIMED_FILE_ID,
+                        "MODEL_ID": row.MODEL_ID,
+                        "MODEL_SH_NAME": row.MODEL_SH_NAME,
+                        "FILE_NAME": row.FILE_NAME,
+                        "FILE_TYPE_NAME": row.FILE_TYPE_NAME,
+                        "FILE_EXT": row.FILE_EXT
+                    }
+                })
+
+            return multimedia_data
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error fetching multimedia data: {str(e)}"
+            )
+
+    def delete_multimedia(self, db: Session, multimed_id: int):
+        """Delete multimedia file and relation"""
+        try:
+            # Get multimedia relation
+            multimedia = self.multimedia_repo.get_by_id(db, multimed_id)
+            if not multimedia:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Multimedia with ID {multimed_id} not found"
+                )
+
+            # Delete the file
+            if multimedia.MULTIMED_FILE_ID:
+                file_obj = self.file_repo.get_by_id(db, multimedia.MULTIMED_FILE_ID)
+                if file_obj:
+                    db.delete(file_obj)
+
+            # Delete the multimedia relation
+            db.delete(multimedia)
+
+            return {"message": "Multimedia deleted successfully"}
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error deleting multimedia: {str(e)}"
+            )
+
+    def get_model_files_for_download(self, db: Session, model_id: int, include_multimedia: bool = False) -> dict:
+        """Get model files for download (main file and optionally multimedia)"""
+        try:
+            # Get model
+            model = self.model_repo.get_by_id(db, model_id)
+            if not model:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"3D Model with ID {model_id} not found"
+                )
+
+            # Get main model file
+            if not model.MODEL_FILE_ID:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Model file not found for model {model_id}"
+                )
+
+            model_file = self.file_repo.get_by_id(db, model.MODEL_FILE_ID)
+            if not model_file:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Model file with ID {model.MODEL_FILE_ID} not found"
+                )
+
+            files = [{
+                "file_name": model_file.FILE_NAME,
+                "file_content": model_file.FILE_CONTENT,
+                "is_main": True
+            }]
+
+            # Get multimedia files if requested
+            if include_multimedia:
+                multimedia_relations = db.query(MultimediaModel).filter(
+                    MultimediaModel.MODEL_ID == model_id
+                ).all()
+
+                for relation in multimedia_relations:
+                    mm_file = self.file_repo.get_by_id(db, relation.MULTIMED_FILE_ID)
+                    if mm_file:
+                        files.append({
+                            "file_name": mm_file.FILE_NAME,
+                            "file_content": mm_file.FILE_CONTENT,
+                            "is_main": False
+                        })
+
+            return {
+                "model_name": model.SH_NAME,
+                "files": files
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error getting model files: {str(e)}"
             )
 

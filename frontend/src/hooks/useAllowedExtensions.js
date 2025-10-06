@@ -19,7 +19,6 @@ export const useAllowedExtensions = () => {
       }
 
       const result = await response.json();
-      console.log('Отримано дозволені розширення:', result);
       setAllowedExtensions(result.allowed_extensions || []);
       setAcceptString(result.accept_string || '');
     } catch (err) {
@@ -56,10 +55,7 @@ export const useAllowedExtensions = () => {
     }
 
     const fileExtension = '.' + fileName.split('.').pop().toLowerCase();
-    console.log('Перевірка розширення:', fileExtension);
-    console.log('Дозволені розширення:', allowedExtensions);
     const isAllowed = allowedExtensions.some(ext => ext.extension.toLowerCase() === fileExtension);
-    console.log('Дозволено:', isAllowed);
 
     if (!isAllowed) {
       const allowedList = allowedExtensions.map(ext => ext.extension).join(', ');

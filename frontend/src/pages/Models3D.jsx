@@ -768,14 +768,6 @@ function Models3D() {
     }
   };
 
-  if (loading) {
-    return <div>Loading {getPageTitle().toLowerCase()}...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
-
   return (
     <div className="main-page">
       <PageHeader title={getPageTitle()} />

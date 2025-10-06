@@ -35,14 +35,15 @@ const MediaGalleryModal = ({ isOpen, onClose, modelData }) => {
       }
 
       const result = await response.json();
-      const allFiles = result.multimedia_files;
+      // API returns array directly, not wrapped in object
+      const allFiles = Array.isArray(result) ? result : (result.multimedia_files || []);
       const images = allFiles.filter(file => file.IS_IMAGE);
       const pdfs = allFiles.filter(file => file.IS_PDF);
-      
+
       setMultimediaFiles(allFiles);
       setImageFiles(images);
       setPdfFiles(pdfs);
-      
+
       // Set first file as selected if available
       if (allFiles.length > 0) {
         setSelectedFile(allFiles[0]);
