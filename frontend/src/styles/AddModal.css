@@ -90,6 +90,119 @@
   padding: 24px;
 }
 
+/* Element info section */
+.element-info-section {
+  background-color: #f0f8ff;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border-left: 4px solid #007bff;
+}
+
+.element-info-section .element-name {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.element-info-section .element-type {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+/* Checkbox container */
+.checkbox-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-option input[type="checkbox"] {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 2px 0 0 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 2px solid #d0d0d0 !important;
+  border-radius: 3px;
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  -moz-appearance: checkbox;
+}
+
+.checkbox-option input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.checkbox-text-main {
+  flex: 1;
+  line-height: 1.5;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.checkbox-text-info {
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+/* Legacy checkbox group - keep for compatibility */
+.checkbox-group {
+  background-color: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: #2c3e50;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkbox-label span {
+  font-size: 14px;
+}
+
+.checkbox-label .type-count {
+  color: #007bff;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -102,7 +215,7 @@
   font-size: 14px;
 }
 
-.form-group input,
+.form-group input:not([type="checkbox"]),
 .form-group textarea,
 .form-group select {
   width: 100%;

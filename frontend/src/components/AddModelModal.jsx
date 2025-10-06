@@ -3,7 +3,7 @@ import FileInput from './FileInput';
 import { useAllowedExtensions } from '../hooks/useAllowedExtensions';
 import '../styles/AddModal.css';
 
-function AddModelModal({ isOpen, onClose, onSave }) {
+function AddModelModal({ isOpen, onClose, onSave, elementData, sameTypeCount = 0 }) {
   const [formData, setFormData] = useState({
     sh_name: '',
     descr: '',
@@ -13,6 +13,7 @@ function AddModelModal({ isOpen, onClose, onSave }) {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [applyToAllTypes, setApplyToAllTypes] = useState(false);
 
   // Get allowed extensions
   const { allowedExtensions, acceptString, validateFileExtension, getExtensionInfo, refreshExtensions } = useAllowedExtensions();
@@ -136,7 +137,7 @@ function AddModelModal({ isOpen, onClose, onSave }) {
         }))
       };
 
-      await onSave(modelData);
+      await onSave(modelData, applyToAllTypes);
 
       // Reset form on success
       setFormData({
@@ -147,6 +148,7 @@ function AddModelModal({ isOpen, onClose, onSave }) {
         multimediaFiles: []
       });
       setErrors({});
+      setApplyToAllTypes(false);
       onClose();
     } catch (error) {
       console.error('Error saving 3D model:', error);
@@ -189,6 +191,7 @@ function AddModelModal({ isOpen, onClose, onSave }) {
         multimediaFiles: []
       });
       setErrors({});
+      setApplyToAllTypes(false);
       onClose();
     }
   };
@@ -210,6 +213,19 @@ function AddModelModal({ isOpen, onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
+          {elementData && (
+            <div className="element-info-section">
+              <div className="element-name">
+                {elementData.NAME || elementData.name || 'Елемент'}
+              </div>
+              {(elementData.PTYPE_TXT || elementData.ptype_txt || elementData.Ptype_Txt) && (
+                <div className="element-type">
+                  Тип: {elementData.PTYPE_TXT || elementData.ptype_txt || elementData.Ptype_Txt}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="sh_name">Коротка назва моделі *</label>
             <input
@@ -333,6 +349,26 @@ function AddModelModal({ isOpen, onClose, onSave }) {
 
           {errors.submit && (
             <div className="error-message submit-error">{errors.submit}</div>
+          )}
+
+          {sameTypeCount > 1 && (
+            <div className="form-group">
+              <label>Додаткові параметри</label>
+              <div className="checkbox-container">
+                <label className="checkbox-option">
+                  <input
+                    type="checkbox"
+                    checked={applyToAllTypes}
+                    onChange={(e) => setApplyToAllTypes(e.target.checked)}
+                    disabled={loading}
+                  />
+                  <span className="checkbox-text-main">
+                    Завантажити для всіх елементів цього типу{' '}
+                    <span className="checkbox-text-info">(знайдено {sameTypeCount} шт.)</span>
+                  </span>
+                </label>
+              </div>
+            </div>
           )}
 
           <div className="modal-actions">

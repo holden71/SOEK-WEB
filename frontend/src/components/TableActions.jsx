@@ -26,14 +26,22 @@ const TableActions = ({
 }) => {
   const actions = [
     {
-      key: 'import',
-      label: 'Імпорт характеристик',
-      onClick: onImportClick
-    },
-    {
-      key: 'analysis', 
+      key: 'analysis',
       label: 'Аналіз спектрів',
       onClick: onAnalysisClick
+    },
+    {
+      key: 'view_models',
+      label: 'Переглянути 3D модель',
+      onClick: onViewModelsClick,
+      condition: async (row) => {
+        if (!onViewModelsClick) return false;
+
+        const ekId = row?.original?.EK_ID || row?.original?.ek_id;
+        if (!ekId) return false;
+
+        return await checkElementModels(ekId);
+      }
     },
     {
       key: 'add_model',
@@ -42,17 +50,9 @@ const TableActions = ({
       condition: () => !!onAddModelClick
     },
     {
-      key: 'view_models',
-      label: 'Переглянути 3D модель',
-      onClick: onViewModelsClick,
-      condition: async (row) => {
-        if (!onViewModelsClick) return false;
-        
-        const ekId = row?.original?.EK_ID || row?.original?.ek_id;
-        if (!ekId) return false;
-        
-        return await checkElementModels(ekId);
-      }
+      key: 'import',
+      label: 'Імпорт характеристик',
+      onClick: onImportClick
     }
   ];
 

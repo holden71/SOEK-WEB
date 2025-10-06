@@ -52,6 +52,7 @@ function Main() {
   const [showAddModelModal, setShowAddModelModal] = useState(false);
   const [showViewModelsModal, setShowViewModelsModal] = useState(false);
   const [currentElementData, setCurrentElementData] = useState(null);
+  const [sameTypeCountForModel, setSameTypeCountForModel] = useState(0);
   
 
   const calculatePopupPosition = (rect) => {
@@ -113,6 +114,20 @@ function Main() {
   const handleAddModelClick = (e, row) => {
     const rowData = row.original;
     setCurrentElementData(rowData);
+
+    // Count items with the same ptype_id (try different field names)
+    const ptypeId = rowData?.ptype_id || rowData?.PTYPE_ID || rowData?.Ptype_Id;
+
+    if (ptypeId) {
+      const sameTypeItems = data.filter(item => {
+        const itemPtypeId = item?.ptype_id || item?.PTYPE_ID || item?.Ptype_Id;
+        return itemPtypeId === ptypeId;
+      });
+      setSameTypeCountForModel(sameTypeItems.length);
+    } else {
+      setSameTypeCountForModel(0);
+    }
+
     setShowAddModelModal(true);
   };
 
@@ -136,7 +151,7 @@ function Main() {
   };
 
   // Handle saving new 3D model with EK link
-  const handleSaveModel = async (modelData) => {
+  const handleSaveModel = async (modelData, applyToAllTypes = false) => {
     try {
       // First create the 3D model
       const response = await fetch('/api/models_3d', {
@@ -150,7 +165,7 @@ function Main() {
       if (!response.ok) {
         // Handle non-JSON error responses
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        
+
         try {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
@@ -162,7 +177,7 @@ function Main() {
         } catch (parseError) {
           console.error('Failed to parse error response:', parseError);
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -174,67 +189,85 @@ function Main() {
 
       const newModel = await response.json();
 
-      // Get EK_ID from current element data
-      const ekId = currentElementData?.EK_ID || currentElementData?.ek_id || currentElementData?.id;
-      
-      if (!ekId) {
-        throw new Error('EK_ID not found in element data');
-      }
-
       // Get model_id from response
       const modelId = newModel.data?.model_id || newModel.data?.MODEL_ID || newModel.MODEL_ID || newModel.model_id;
-      
+
       if (!modelId) {
         throw new Error('Model ID not found in API response');
       }
 
-      // Create link between EK and 3D model
-      const linkResponse = await fetch('/api/ek_models', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ek_id: ekId,
-          model_id: modelId,
-          sh_name: `Model for EK ${ekId}`
-        }),
-      });
+      // Get elements to link based on applyToAllTypes flag
+      let elementsToLink = [];
 
-      if (!linkResponse.ok) {
-        let errorMessage = `HTTP ${linkResponse.status}: ${linkResponse.statusText}`;
-        try {
-          const linkContentType = linkResponse.headers.get('content-type');
-          if (linkContentType && linkContentType.includes('application/json')) {
-            const errorData = await linkResponse.json();
-            // Ensure we get a string, not an object
-            if (typeof errorData.detail === 'string') {
-              errorMessage = errorData.detail;
-            } else if (typeof errorData.detail === 'object') {
-              errorMessage = JSON.stringify(errorData.detail);
-            } else {
-              errorMessage = errorData.message || errorData.error || errorMessage;
-            }
-          } else {
-            // Try to get text response if not JSON
-            const textResponse = await linkResponse.text();
-            if (textResponse) {
-              errorMessage = textResponse;
-            }
-          }
-        } catch (parseError) {
-          console.error('Failed to parse link error response:', parseError);
-          errorMessage = `Failed to parse error response: ${parseError.message}`;
-        }
-        
-        console.warn('Failed to link model to EK:', errorMessage);
-        alert(`3D модель створено, але не вдалося прив'язати до елементу: ${errorMessage}`);
+      if (applyToAllTypes && currentElementData?.ptype_id) {
+        // Get all elements with the same ptype_id
+        elementsToLink = data.filter(item => item.ptype_id === currentElementData.ptype_id);
       } else {
-        alert('3D модель успішно створено і прив\'язано!');
+        // Get only the current element
+        elementsToLink = [currentElementData];
+      }
+
+      // Link model to all selected elements
+      let successCount = 0;
+      let failCount = 0;
+      let errors = [];
+
+      for (const element of elementsToLink) {
+        const ekId = element?.EK_ID || element?.ek_id || element?.id;
+
+        if (!ekId) {
+          failCount++;
+          errors.push(`Element without EK_ID: ${element?.NAME || 'Unknown'}`);
+          continue;
+        }
+
+        try {
+          const linkResponse = await fetch('/api/ek_models', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ek_id: ekId,
+              model_id: modelId,
+              sh_name: `Model for EK ${ekId}`
+            }),
+          });
+
+          if (linkResponse.ok) {
+            successCount++;
+          } else {
+            failCount++;
+            const errorData = await linkResponse.json().catch(() => ({ detail: 'Unknown error' }));
+            errors.push(`EK ${ekId}: ${errorData.detail}`);
+          }
+        } catch (error) {
+          failCount++;
+          errors.push(`EK ${ekId}: ${error.message}`);
+        }
+      }
+
+      // Show result message
+      if (applyToAllTypes) {
+        let message = `3D модель створено!\n\nУспішно прив'язано: ${successCount} з ${elementsToLink.length} елементів`;
+        if (failCount > 0) {
+          message += `\n\nНе вдалося прив'язати: ${failCount} елементів`;
+          if (errors.length > 0 && errors.length <= 5) {
+            message += `\n\nПомилки:\n${errors.join('\n')}`;
+          }
+        }
+        alert(message);
+      } else {
+        if (successCount > 0) {
+          alert('3D модель успішно створено і прив\'язано!');
+        } else {
+          alert(`3D модель створено, але не вдалося прив'язати до елементу: ${errors[0] || 'Unknown error'}`);
+        }
       }
 
       setShowAddModelModal(false);
       setCurrentElementData(null);
+      setSameTypeCountForModel(0);
 
     } catch (error) {
       console.error('Error creating model:', error);
@@ -425,8 +458,11 @@ function Main() {
           onClose={() => {
             setShowAddModelModal(false);
             setCurrentElementData(null);
+            setSameTypeCountForModel(0);
           }}
           onSave={handleSaveModel}
+          elementData={currentElementData}
+          sameTypeCount={sameTypeCountForModel}
         />
 
         <ViewModelsModal
