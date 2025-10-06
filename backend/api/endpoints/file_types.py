@@ -47,3 +47,9 @@ async def delete_file_type(db: DbSessionDep, file_type_id: int):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Помилка видалення типу файлу: {str(e)}")
 
+
+@router.get("/file_types/extensions/allowed")
+async def get_allowed_extensions_detailed(db: DbSessionDep):
+    """Get detailed list of allowed file extensions with metadata"""
+    return file_service.get_allowed_extensions_detailed(db)
+

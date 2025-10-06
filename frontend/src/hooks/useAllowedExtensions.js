@@ -17,8 +17,9 @@ export const useAllowedExtensions = () => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
+      console.log('Отримано дозволені розширення:', result);
       setAllowedExtensions(result.allowed_extensions || []);
       setAcceptString(result.accept_string || '');
     } catch (err) {
@@ -37,12 +38,28 @@ export const useAllowedExtensions = () => {
 
   // Validate file extension
   const validateFileExtension = useCallback((fileName) => {
-    if (!fileName || allowedExtensions.length === 0) {
-      return { isValid: false, message: 'Файл не вибрано або список дозволених розширень не завантажено' };
+    if (!fileName) {
+      return { isValid: false, message: 'Файл не вибрано' };
+    }
+
+    // If extensions list is empty and not loading anymore, it means no file types configured
+    if (allowedExtensions.length === 0 && !loading) {
+      return {
+        isValid: false,
+        message: 'У базі даних немає дозволених типів файлів. Спочатку додайте типи файлів у відповідній таблиці.'
+      };
+    }
+
+    // If still loading, allow for now (will be validated on submit)
+    if (loading) {
+      return { isValid: true, message: '' };
     }
 
     const fileExtension = '.' + fileName.split('.').pop().toLowerCase();
+    console.log('Перевірка розширення:', fileExtension);
+    console.log('Дозволені розширення:', allowedExtensions);
     const isAllowed = allowedExtensions.some(ext => ext.extension.toLowerCase() === fileExtension);
+    console.log('Дозволено:', isAllowed);
 
     if (!isAllowed) {
       const allowedList = allowedExtensions.map(ext => ext.extension).join(', ');
@@ -53,7 +70,7 @@ export const useAllowedExtensions = () => {
     }
 
     return { isValid: true, message: '' };
-  }, [allowedExtensions]);
+  }, [allowedExtensions, loading]);
 
   // Get user-friendly description for extension
   const getExtensionInfo = useCallback((fileName) => {

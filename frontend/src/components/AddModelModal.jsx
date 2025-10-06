@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FileInput from './FileInput';
 import { useAllowedExtensions } from '../hooks/useAllowedExtensions';
 import '../styles/AddModal.css';
@@ -13,9 +13,16 @@ function AddModelModal({ isOpen, onClose, onSave }) {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  
+
   // Get allowed extensions
-  const { allowedExtensions, acceptString, validateFileExtension, getExtensionInfo } = useAllowedExtensions();
+  const { allowedExtensions, acceptString, validateFileExtension, getExtensionInfo, refreshExtensions } = useAllowedExtensions();
+
+  // Refresh extensions when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      refreshExtensions();
+    }
+  }, [isOpen, refreshExtensions]);
 
   // Handle multimedia file selection
   const handleMultimediaFileAdd = (file) => {

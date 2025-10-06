@@ -105,3 +105,25 @@ class FileService:
         extensions = [ft.DEF_EXT for ft in file_types if ft.DEF_EXT]
         return sorted(set(extensions))
 
+    def get_allowed_extensions_detailed(self, db: Session) -> dict:
+        """Get detailed list of allowed file extensions with metadata"""
+        file_types = self.file_type_repo.get_all(db)
+
+        allowed_extensions = []
+        for ft in file_types:
+            if ft.DEF_EXT:
+                allowed_extensions.append({
+                    "extension": ft.DEF_EXT,
+                    "name": ft.NAME,
+                    "description": ft.DESCR
+                })
+
+        # Create accept string for HTML input accept attribute
+        extensions_list = [ft.DEF_EXT for ft in file_types if ft.DEF_EXT]
+        accept_string = ",".join(sorted(set(extensions_list)))
+
+        return {
+            "allowed_extensions": allowed_extensions,
+            "accept_string": accept_string
+        }
+
