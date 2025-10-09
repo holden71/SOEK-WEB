@@ -12,6 +12,7 @@ from . import (
     acceleration,
     load_analysis,
     seismic_analysis,
+    excel,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "acceleration",
     "load_analysis",
     "seismic_analysis",
+    "excel",
 ]

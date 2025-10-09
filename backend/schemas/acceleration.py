@@ -22,8 +22,10 @@ class AccelData(BaseModel):
     lev2: Optional[float] = None
     pga: Optional[float] = None
     calc_type: str
-    set_type: str = "ВИМОГИ"
+    set_type: str = "ВІМОГИ"
     sheets: Dict[str, AccelDataItem]
+    ek_id: int  # Element ID for checking if can apply
+    can_overwrite: int = 0  # Allow overwriting existing sets
 
 
 class SetAccelProcedureParams(BaseModel):

@@ -10,7 +10,9 @@ from schemas.acceleration import (
     FindReqAccelSetResult,
     ClearAccelSetParams,
     ClearAccelSetResult,
-    SpectralDataResult
+    SpectralDataResult,
+    SetAccelProcedureParams,
+    SetAccelProcedureResult
 )
 from services.acceleration import AccelerationService
 
@@ -85,19 +87,31 @@ async def save_accel_data(
     db: DbSessionDep,
     data: AccelData = Body(...)
 ):
-    """Save acceleration data - simplified implementation"""
+    """Save acceleration data from Excel import"""
     try:
-        # This is a complex endpoint that requires significant logic
-        # For now, return a success response
-        # TODO: Implement full logic from old accel_sets.py
-        
-        return {
-            "message": "Acceleration data saved successfully",
-            "status": "success",
-            "note": "Simplified implementation - full logic to be added"
-        }
-        
+        result = acceleration_service.save_accel_data(
+            db=db,
+            plant_id=data.plant_id,
+            unit_id=data.unit_id,
+            building=data.building,
+            room=data.room,
+            lev=data.lev,
+            lev1=data.lev1,
+            lev2=data.lev2,
+            pga=data.pga,
+            calc_type=data.calc_type,
+            set_type=data.set_type,
+            sheets=data.sheets,
+            ek_id=data.ek_id,
+            can_overwrite=data.can_overwrite
+        )
+
+        db.commit()
+
+        return result
+
     except Exception as e:
+        db.rollback()
         print(f"Error saving acceleration data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -115,5 +129,29 @@ async def clear_accel_set(
     except Exception as e:
         db.rollback()
         print(f"Error clearing acceleration set: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/execute-set-all-ek-accel-set", response_model=SetAccelProcedureResult)
+async def execute_set_all_ek_accel_set(
+    db: DbSessionDep,
+    params: SetAccelProcedureParams = Body(...)
+):
+    """Execute procedure to set acceleration sets for EK elements"""
+    try:
+        result = acceleration_service.execute_set_all_ek_accel_set(
+            db=db,
+            ek_id=params.ek_id,
+            set_mrz=params.set_mrz,
+            set_pz=params.set_pz,
+            can_overwrite=params.can_overwrite,
+            do_for_all=params.do_for_all,
+            clear_sets=params.clear_sets
+        )
+        db.commit()
+        return SetAccelProcedureResult(**result)
+    except Exception as e:
+        db.rollback()
+        print(f"Error executing set_all_ek_accel_set: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

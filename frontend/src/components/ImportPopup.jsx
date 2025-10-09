@@ -119,7 +119,14 @@ const ImportPopup = ({
       
       // Step 3: Prepare data for saving to database
       console.log("Row data for import:", popupRowData);
-      
+
+      // Get EK_ID early for checking
+      const ekId = popupRowData.EK_ID || popupRowData.ek_id;
+
+      if (!ekId) {
+        throw new Error('Не вдалося отримати ID елемента');
+      }
+
       // The backend expects data according to the AccelData model
       const transformedData = {
         plant_id: selectedPlant,
@@ -132,54 +139,17 @@ const ImportPopup = ({
         pga: null,
         calc_type: "ДЕТЕРМІНИСТИЧНИЙ",
         set_type: "ХАРАКТЕРИСТИКИ",
-        sheets: {}
+        sheets: {},
+        ek_id: ekId,
+        can_overwrite: overwriteExisting ? 1 : 0
       };
       
       console.log("Transformed data for import:", transformedData);
       
-      // Process the single sheet
-      const normalizedData = {};
-      let hasFrequencyColumn = false;
-      let hasMrzOrPzColumn = false;
-      
-      Object.entries(sheetData).forEach(([colName, colValues]) => {
-        // Check for frequency column
-        if (colName.toLowerCase().includes('частота') || 
-            colName.toLowerCase().includes('frequency') || 
-            colName.toLowerCase().includes('freq') || 
-            colName.toLowerCase().includes('hz')) {
-          normalizedData[colName] = colValues;
-          hasFrequencyColumn = true;
-        } 
-        // Check for spectrum columns (МРЗ_x, МРЗ_y, etc.)
-        else if (colName.includes('_')) {
-          const [spectrumType, axis] = colName.split('_');
-          if (['МРЗ', 'ПЗ'].includes(spectrumType) && ['x', 'y', 'z', 'X', 'Y', 'Z'].includes(axis)) {
-            const normalizedColName = `${spectrumType}_${axis.toLowerCase()}`;
-            normalizedData[normalizedColName] = colValues;
-            hasMrzOrPzColumn = true;
-          } else {
-            normalizedData[colName] = colValues;
-          }
-        } else {
-          normalizedData[colName] = colValues;
-        }
-      });
-      
-      // Skip if no frequency column found
-      if (!hasFrequencyColumn) {
-        throw new Error('В аркуші не знайдено стовпчика з частотою');
-      }
-      
-      // Skip if no MRZ or PZ columns found
-      if (!hasMrzOrPzColumn) {
-        throw new Error('В аркуші відсутні стовпчики МРЗ або ПЗ');
-      }
-      
-      // Add sheet data to transformation with normalized column names
+      // Add sheet data to transformation (backend will handle normalization)
       transformedData.sheets[firstSheet.name] = {
         dempf: null,
-        data: normalizedData
+        data: sheetData
       };
       
       // Step 4: Send data to backend
@@ -221,14 +191,8 @@ const ImportPopup = ({
       
       const savedData = await saveResponse.json();
       console.log('Save response:', savedData);
-      
+
       // Step 5: Call the stored procedure
-      const ekId = popupRowData.EK_ID || popupRowData.ek_id;
-      
-      if (!ekId) {
-        throw new Error('Не вдалося отримати ID елемента');
-      }
-      
       const mrzSetId = savedData.mrz_set_id || 0;
       const pzSetId = savedData.pz_set_id || 0;
       

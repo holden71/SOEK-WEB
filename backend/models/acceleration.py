@@ -27,10 +27,6 @@ class AccelSet(Base):
     UNIT_ID = Column(Integer, ForeignKey('UNS_UNITS.UNIT_ID'))
     UNIT_NAME = Column(String(50))
     PGA_ = Column(Float)
-    PGA = Column(Float)
-    PGA_NS = Column(Float)
-    PGA_EW = Column(Float)
-    PGA_Z = Column(Float)
     SPECTR_EARTHQ_TYPE = Column(String(8))
     CALC_TYPE = Column(String(40))
     

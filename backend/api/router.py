@@ -14,6 +14,7 @@ from api.endpoints import (
     acceleration,
     seismic_analysis,
     load_analysis,
+    excel,
 )
 
 # Создаем главный роутер для API
@@ -30,4 +31,5 @@ api_router.include_router(multimedia.router)
 api_router.include_router(acceleration.router)
 api_router.include_router(seismic_analysis.router)
 api_router.include_router(load_analysis.router)
+api_router.include_router(excel.router)
 
