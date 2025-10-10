@@ -432,8 +432,6 @@ class AccelerationService:
                     raise NotImplementedError("ВІМОГИ import not yet implemented in new architecture")
 
             db.flush()
-            
-            print(f"DEBUG save_accel_data: Created sets - mrz_set_id={mrz_set_id}, pz_set_id={pz_set_id}")
 
             return {
                 "mrz_set_id": mrz_set_id,
@@ -615,8 +613,6 @@ class AccelerationService:
             Dictionary with processing results
         """
         try:
-            print(f"DEBUG execute_set_all_ek_accel_set: ek_id={ek_id}, set_mrz={set_mrz}, set_pz={set_pz}, can_overwrite={can_overwrite}, do_for_all={do_for_all}, clear_sets={clear_sets}")
-            
             # Call stored procedure - it handles all logic including cleanup
             result = self._call_set_all_ek_accel_set(
                 db=db,
@@ -627,21 +623,6 @@ class AccelerationService:
                 do_for_all=do_for_all,
                 clear_sets=clear_sets
             )
-            
-            print(f"DEBUG procedure result: {result}")
-            
-            # Verify what was actually written to DB
-            verify_query = text("""
-                SELECT ACCEL_SET_ID_MRZ, ACCEL_SET_ID_PZ 
-                FROM SRTN_EK_SEISM_DATA 
-                WHERE EK_ID = :ek_id
-            """)
-            verify_result = db.execute(verify_query, {"ek_id": ek_id})
-            verify_row = verify_result.fetchone()
-            if verify_row:
-                print(f"DEBUG DB verification: EK_ID={ek_id}, ACCEL_SET_ID_MRZ={verify_row[0]}, ACCEL_SET_ID_PZ={verify_row[1]}")
-            else:
-                print(f"DEBUG DB verification: EK_ID={ek_id} not found in DB")
 
             return result
 
