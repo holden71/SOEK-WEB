@@ -379,6 +379,13 @@
 .cancel-button:hover:not(:disabled) {
   background: #5a6268;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cancel-button:active:not(:disabled) {
+  background: #545b62;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .save-button {
@@ -389,6 +396,13 @@
 .save-button:hover:not(:disabled) {
   background: #0056b3;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.save-button:active:not(:disabled) {
+  background: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .cancel-button:focus,
@@ -443,7 +457,7 @@
   font-weight: 500;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
   border-radius: 0;
   font-size: 14px;
 }
@@ -451,6 +465,13 @@
 .select-file-button:hover:not(:disabled) {
   background-color: #0056b3;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.select-file-button:active:not(:disabled) {
+  background-color: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .select-file-button:focus {
@@ -659,12 +680,13 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .view-button:hover {
   background: #0056b3;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .view-button:focus {
@@ -673,7 +695,9 @@
 }
 
 .view-button:active {
-  transform: scale(0.95);
+  background: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .delete-link-button {

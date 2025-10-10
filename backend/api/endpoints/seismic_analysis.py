@@ -50,7 +50,9 @@ async def save_stress_inputs(
         result = seismic_service.save_stress_inputs(
             db,
             params.ek_id,
-            natural_frequency=params.natural_frequency,
+            first_nat_freq_x=params.first_nat_freq_x,
+            first_nat_freq_y=params.first_nat_freq_y,
+            first_nat_freq_z=params.first_nat_freq_z,
             sigma_dop=params.sigma_dop,
             hclpf=params.hclpf,
             sigma_1=params.sigma_1,
@@ -155,5 +157,36 @@ async def check_calculation_requirements(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         print(f"Error checking calculation requirements: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# TODO: УБРАТЬ ЭТУ ЗАГЛУШКУ - временная заглушка для тестирования
+@router.post("/calculate-sigma-alt")
+async def calculate_sigma_alt(
+    db: DbSessionDep,
+    params: dict = Body(...)
+):
+    """
+    ВРЕМЕННАЯ ЗАГЛУШКА! УДАЛИТЬ ПОСЛЕ РЕАЛИЗАЦИИ НАСТОЯЩЕЙ ЛОГИКИ!
+    Calculate sigma alternative values
+    """
+    try:
+        ek_id = params.get("ek_id")
+        if not ek_id:
+            raise HTTPException(status_code=400, detail="ek_id is required")
+        
+        # ЗАГЛУШКА: возвращаем тестовые значения
+        return {
+            "success": True,
+            "calculated_values": {
+                "SIGMA_S_ALT_1_PZ": 125.5,  # Тестовое значение
+                "SIGMA_S_ALT_2_PZ": 98.3,   # Тестовое значение
+                "SIGMA_S_ALT_1_MRZ": 145.7, # Тестовое значение
+                "SIGMA_S_ALT_2_MRZ": 112.4  # Тестовое значение
+            },
+            "message": "ВНИМАНИЕ: Это тестовые данные из заглушки!"
+        }
+    except Exception as e:
+        print(f"Error in calculate-sigma-alt stub: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

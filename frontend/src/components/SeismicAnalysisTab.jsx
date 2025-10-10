@@ -2,10 +2,6 @@ import React, { useState, useEffect } from 'react';
 import '../styles/SeismicAnalysisTab.css';
 
 const SeismicAnalysisTab = ({ 
-  isFrequencyEnabled, 
-  setIsFrequencyEnabled, 
-  naturalFrequency, 
-  setNaturalFrequency,
   allSpectralData,
   allRequirementsData,
   spectrumSelection = {
@@ -32,22 +28,6 @@ const SeismicAnalysisTab = ({
   saveKResults = () => {},
   elementData = null
 }) => {
-
-
-  const handleFrequencyToggle = () => {
-    setIsFrequencyEnabled(!isFrequencyEnabled);
-    if (!isFrequencyEnabled) {
-      setNaturalFrequency(''); // Clear value when disabling
-    }
-  };
-
-  const handleFrequencyChange = (e) => {
-    const value = e.target.value;
-    // Allow only numbers and decimal point
-    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-      setNaturalFrequency(value);
-    }
-  };
 
   // Helper: check if spectrum data has values for at least one axis
   const hasSpectrumData = (data, prefix) => {
@@ -427,29 +407,6 @@ const SeismicAnalysisTab = ({
               <div className="stress-inputs-section">
                 <h4 className="section-title">Загальні характеристики</h4>
                 
-                {/* Власна частота */}
-                <div className="stress-micro-group">
-                  <div className="stress-field">
-                    <label className="stress-checkbox-container">
-                      <input
-                        type="checkbox"
-                        checked={isFrequencyEnabled}
-                        onChange={handleFrequencyToggle}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="stress-label">Власна частота, Гц</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={naturalFrequency}
-                      onChange={handleFrequencyChange}
-                      disabled={!isFrequencyEnabled}
-                      placeholder="Введіть частоту"
-                      className={`stress-input ${!isFrequencyEnabled ? 'disabled' : ''}`}
-                    />
-                  </div>
-                </div>
-
                 {/* Допустимое напряжение и HCLPF */}
                 <div className="stress-group">
                   <div className="stress-field">
@@ -739,8 +696,8 @@ const SeismicAnalysisTab = ({
             className="calculate-button"
             onClick={async () => {
               try {
-                // Save stress inputs to database first (including natural frequency)
-                await saveStressInputs(stressInputs, isFrequencyEnabled, naturalFrequency);
+                // Save stress inputs to database first
+                await saveStressInputs(stressInputs);
                 
                 // Then calculate sigma alt values and k coefficients
                 await calculateSigmaAlt(async (sigmaResults) => {

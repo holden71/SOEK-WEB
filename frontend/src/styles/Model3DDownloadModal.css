@@ -139,11 +139,12 @@
   border-color: #007bff;
   background-color: #f8f9ff;
   transform: translateY(-0.5px);
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .download-option-button:active {
-  transform: translateY(0);
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .download-option-button:focus {

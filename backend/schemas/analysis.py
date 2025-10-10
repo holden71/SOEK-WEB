@@ -24,7 +24,9 @@ class SaveStressInputsParams(BaseModel):
     """Save stress inputs parameters schema"""
     ek_id: int
     # Общие характеристики
-    natural_frequency: Optional[float] = None
+    first_nat_freq_x: Optional[float] = None
+    first_nat_freq_y: Optional[float] = None
+    first_nat_freq_z: Optional[float] = None
     sigma_dop: Optional[float] = None
     hclpf: Optional[float] = None
     sigma_1: Optional[float] = None

@@ -342,7 +342,7 @@
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: all 0.2s ease;
   font-family: 'Arial', sans-serif;
   min-width: 120px;
 }
@@ -350,10 +350,13 @@
 .load-analysis-calculate-button:hover {
   background-color: #0056b3;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .load-analysis-calculate-button:active {
-  transform: translateY(0);
+  background-color: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .load-analysis-calculate-button.disabled,

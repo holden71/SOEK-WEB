@@ -15,7 +15,11 @@ const SpectraTab = ({
   setSpectrumType,
   selectedAxis,
   setSelectedAxis,
-  createPlotlyChart
+  createPlotlyChart,
+  naturalFrequencies,
+  setNaturalFrequencies,
+  elementData,
+  saveNaturalFrequencies
 }) => {
   const hasRequirements = requirementsData?.frequency?.length > 0;
   const hasCharacteristics = spectralData?.frequency?.length > 0;
@@ -32,13 +36,38 @@ const SpectraTab = ({
   const hasYData = getAxisData(spectralData, 'y')?.length > 0 || getAxisData(requirementsData, 'y')?.length > 0;
   const hasZData = getAxisData(spectralData, 'z')?.length > 0 || getAxisData(requirementsData, 'z')?.length > 0;
 
+  // Handlers for natural frequency inputs
+  const handleFrequencyToggle = (axis) => {
+    setNaturalFrequencies(prev => ({
+      ...prev,
+      [axis]: {
+        ...prev[axis],
+        enabled: !prev[axis].enabled,
+        value: !prev[axis].enabled ? prev[axis].value : ''
+      }
+    }));
+  };
+
+  const handleFrequencyChange = (axis, value) => {
+    // Allow only numbers and decimal point
+    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+      setNaturalFrequencies(prev => ({
+        ...prev,
+        [axis]: {
+          ...prev[axis],
+          value: value
+        }
+      }));
+    }
+  };
+
   // Create chart when data changes
   useEffect(() => {
     // Don't create chart if damping factor is not set yet
     if (hasData && createPlotlyChart && dampingFactor !== null) {
       setTimeout(() => createPlotlyChart(), 100);
     }
-  }, [spectralData, requirementsData, spectrumType, selectedAxis, createPlotlyChart, dampingFactor]);
+  }, [spectralData, requirementsData, spectrumType, selectedAxis, createPlotlyChart, dampingFactor, naturalFrequencies]);
 
   // Show loading only when actually loading data
   if (loading || dampingFactorsLoading) {
@@ -79,6 +108,40 @@ const SpectraTab = ({
             ))
           )}
         </select>
+      </div>
+
+      {/* Natural Frequencies Section */}
+      <div className="natural-frequencies-section">
+        <h4 className="section-title">Власні частоти коливань, Гц</h4>
+        <div className="frequency-inputs-grid">
+          {['x', 'y', 'z'].map((axis) => (
+            <div key={axis} className="frequency-field">
+              <label className="frequency-checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={naturalFrequencies[axis]?.enabled || false}
+                  onChange={() => handleFrequencyToggle(axis)}
+                />
+                <span className="frequency-checkmark"></span>
+                <span className="frequency-label">{axis.toUpperCase()}</span>
+              </label>
+              <input
+                type="text"
+                value={naturalFrequencies[axis]?.value || ''}
+                onChange={(e) => handleFrequencyChange(axis, e.target.value)}
+                disabled={!naturalFrequencies[axis]?.enabled}
+                placeholder="Частота"
+                className={`frequency-input ${!naturalFrequencies[axis]?.enabled ? 'disabled' : ''}`}
+              />
+            </div>
+          ))}
+        </div>
+        <button 
+          className="save-frequencies-button"
+          onClick={() => saveNaturalFrequencies()}
+        >
+          Зберегти частоти
+        </button>
       </div>
 
       {!hasData ? (

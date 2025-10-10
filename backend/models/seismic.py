@@ -75,6 +75,9 @@ class EkSeismData(Base):
     
     # Frequency and coefficients
     F_MU = Column(Float)
+    FIRST_NAT_FREQ_X = Column(Float)
+    FIRST_NAT_FREQ_Y = Column(Float)
+    FIRST_NAT_FREQ_Z = Column(Float)
     N_MRZ = Column(Float)
     N_PZ = Column(Float)
     K1_MRZ = Column(Float)

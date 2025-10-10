@@ -7,7 +7,7 @@
   padding: 2px 6px;
   font-size: 12px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
   min-width: 20px;
   height: 20px;
   display: flex;
@@ -18,10 +18,13 @@
 .tiny-analysis-button:hover {
   background: #138496;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tiny-analysis-button:active {
   background: #0f6674;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 /* Analysis Modal Styles */
@@ -555,12 +558,19 @@
   font-size: 14px;
   font-family: 'Arial', sans-serif;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .retry-button:hover {
   background: #0056b3;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.retry-button:active {
+  background: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .analysis-no-data {

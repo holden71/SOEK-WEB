@@ -214,6 +214,13 @@
 .view-button:hover {
   background: #2563eb;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.view-button:active {
+  background: #1d4ed8;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .view-button:focus {
@@ -238,6 +245,13 @@
   background: #dc2626;
   color: white;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.delete-link-button:active {
+  background: #b91c1c;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .delete-link-button:focus {

@@ -120,9 +120,10 @@ const calculateAnalysis = (requirements, characteristics) => {
   return result;
 };
 
-const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, naturalFreq = null) => {
-  // Если собственная частота не задана, используем обычный расчет
-  if (!naturalFreq || isNaN(naturalFreq) || naturalFreq <= 0) {
+const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, naturalFrequencies = null) => {
+  // Если собственные частоты не заданы, используем обычный расчет
+  if (!naturalFrequencies || 
+      (!naturalFrequencies.x?.enabled && !naturalFrequencies.y?.enabled && !naturalFrequencies.z?.enabled)) {
     return calculateAnalysis(requirements, characteristics);
   }
 
@@ -131,7 +132,7 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
     return null;
   }
 
-  console.log(`=== ЛОГИКА С ПЛАТО ДЛЯ ЧАСТОТЫ: ${naturalFreq} Гц ===`);
+  console.log('=== ЛОГИКА С ПЛАТО ДЛЯ ЧАСТОТ ПО ОСЯМ ===');
   
   const result = {};
 
@@ -152,24 +153,35 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
       continue;
     }
 
-    // Создаем общий массив частот, но только >= naturalFreq
-    const allFrequencies = [...new Set([...reqF, ...charF])]
-      .filter(f => f >= naturalFreq)
-      .sort((a, b) => a - b);
+    // Проверяем, включена ли частота для данной оси
+    const axisFreq = naturalFrequencies[axis];
+    const useFrequencyFilter = axisFreq?.enabled && axisFreq?.value && !isNaN(parseFloat(axisFreq.value)) && parseFloat(axisFreq.value) > 0;
     
-    if (allFrequencies.length === 0) {
-      result[`m_${axis}_max`] = 0;
-      continue;
+    let allFrequencies;
+    if (useFrequencyFilter) {
+      const naturalFreq = parseFloat(axisFreq.value);
+      console.log(`Ось ${axis}: используем фильтрацию по частоте ${naturalFreq} Гц`);
+      
+      // Создаем общий массив частот, но только >= naturalFreq
+      allFrequencies = [...new Set([...reqF, ...charF])]
+        .filter(f => f >= naturalFreq)
+        .sort((a, b) => a - b);
+      
+      if (allFrequencies.length === 0) {
+        result[`m_${axis}_max`] = 0;
+        console.log(`Ось ${axis}: нет точек после фильтрации по частоте ${naturalFreq} Гц`);
+        continue;
+      }
+      
+      console.log(`Ось ${axis}: частоты для расчета от ${allFrequencies[0]} до ${allFrequencies[allFrequencies.length-1]} Гц`);
+    } else {
+      console.log(`Ось ${axis}: частота не задана, используем все точки`);
+      allFrequencies = [...new Set([...reqF, ...charF])].sort((a, b) => a - b);
     }
-    
-    console.log(`Ось ${axis}: частоты для расчета от ${allFrequencies[0]} до ${allFrequencies[allFrequencies.length-1]} Гц`);
     
     // Интерполируем данные на отфильтрованные частоты (с плато!)
     const interpolatedReqV = interpolateData(allFrequencies, reqF, reqV);
     const interpolatedCharV = interpolateData(allFrequencies, charF, charV);
-
-    console.log(`Ось ${axis}: примеры интерполированных требований:`, interpolatedReqV.slice(0, 3));
-    console.log(`Ось ${axis}: примеры интерполированных характеристик:`, interpolatedCharV.slice(0, 3));
 
     // Вычисляем отношения
     const ratios = interpolatedReqV.map((reqValue, i) => {
@@ -179,8 +191,6 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
       }
       return reqValue / charValue;
     });
-
-    console.log(`Ось ${axis}: примеры отношений req/char:`, ratios.slice(0, 3));
 
     const maxRatio = Math.max(...ratios.filter(r => isFinite(r)));
     result[`m_${axis}_max`] = isFinite(maxRatio) ? maxRatio : 0;
@@ -196,12 +206,14 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
   result.m1 = Math.max(m_x_max, m_y_max, m_z_max);
   result.m2 = Math.sqrt(m_x_max**2 + m_y_max**2 + m_z_max**2);
   
-  // Подсчитываем количество отфильтрованных точек
-  const allFilteredFrequencies = [...new Set([...requirements.frequency, ...characteristics.frequency])]
-    .filter(f => f >= naturalFreq);
-  result.numberOfPoints = allFilteredFrequencies.length;
+  // Подсчитываем количество точек (с учетом фильтрации по осям)
+  const allFrequencies = [...new Set([...requirements.frequency, ...characteristics.frequency])];
+  result.numberOfPoints = allFrequencies.length;
 
-  console.log('Итоговый результат:', result);
+  console.log('=== РЕЗУЛЬТАТЫ С ФИЛЬТРАЦИЕЙ ПО ЧАСТОТАМ ПО ОСЯМ ===');
+  console.log(`m1 (max из X, Y, Z): ${result.m1}`);
+  console.log(`m2 (квадратный корень): ${result.m2}`);
+  console.log(`Количество точек: ${result.numberOfPoints}`);
   
   return result;
 };
@@ -234,9 +246,12 @@ const AnalysisModal = ({
   const [allAnalysisResults, setAllAnalysisResults] = useState({}); // New state for all analysis results
   const [plotData, setPlotData] = useState(null);
   
-  // Natural frequency states
-  const [isFrequencyEnabled, setIsFrequencyEnabled] = useState(false);
-  const [naturalFrequency, setNaturalFrequency] = useState('');
+  // Natural frequency states - three frequencies for X, Y, Z axes
+  const [naturalFrequencies, setNaturalFrequencies] = useState({
+    x: { enabled: false, value: '' },
+    y: { enabled: false, value: '' },
+    z: { enabled: false, value: '' }
+  });
   const [forceRecalculate, setForceRecalculate] = useState(0); // Force recalculation trigger
   
   // Spectrum selection states
@@ -438,15 +453,18 @@ const AnalysisModal = ({
       clearTimeout(frequencyTimerRef.current);
     }
 
-    // Only trigger recalculation if we have data and frequency is enabled
-    if (spectralData && requirementsData && isFrequencyEnabled) {
+    // Check if any frequency is enabled
+    const anyFrequencyEnabled = naturalFrequencies.x?.enabled || naturalFrequencies.y?.enabled || naturalFrequencies.z?.enabled;
+
+    // Only trigger recalculation if we have data and any frequency is enabled
+    if (spectralData && requirementsData && anyFrequencyEnabled) {
       frequencyTimerRef.current = setTimeout(() => {
         console.log('Auto-recalculating due to natural frequency change...');
         setForceRecalculate(prev => prev + 1);
       }, 500); // 500ms delay
-    } else if (!isFrequencyEnabled) {
-      // If frequency is disabled, also trigger recalculation to reset to normal calculation
-      console.log('Auto-recalculating due to frequency being disabled...');
+    } else if (!anyFrequencyEnabled) {
+      // If all frequencies are disabled, also trigger recalculation to reset to normal calculation
+      console.log('Auto-recalculating due to all frequencies being disabled...');
       setForceRecalculate(prev => prev + 1);
     }
 
@@ -456,7 +474,7 @@ const AnalysisModal = ({
         clearTimeout(frequencyTimerRef.current);
       }
     };
-  }, [naturalFrequency, isFrequencyEnabled, spectralData, requirementsData]);
+  }, [naturalFrequencies, spectralData, requirementsData]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -505,17 +523,15 @@ const AnalysisModal = ({
         }
       }, 100);
     }
-  }, [spectralData, activeTab, selectedAxis, requirementsData, spectrumType, isFrequencyEnabled, naturalFrequency]); // Added natural frequency dependencies
+  }, [spectralData, activeTab, selectedAxis, requirementsData, spectrumType, naturalFrequencies]); // Added natural frequencies dependencies
 
   // Calculate analysis for all available data
   useEffect(() => {
     const newAnalysisResults = {};
     let hasAnyResults = false;
 
-    // Determine natural frequency value for calculations
-    const naturalFreq = isFrequencyEnabled && naturalFrequency && !isNaN(parseFloat(naturalFrequency)) 
-      ? parseFloat(naturalFrequency) 
-      : null;
+    // Check if any natural frequency is enabled
+    const hasAnyFrequency = naturalFrequencies.x?.enabled || naturalFrequencies.y?.enabled || naturalFrequencies.z?.enabled;
 
     // Calculate for each spectrum type that has both requirements and spectral data
     for (const type of ['МРЗ', 'ПЗ']) {
@@ -523,9 +539,9 @@ const AnalysisModal = ({
       const specData = allSpectralData[type];
       
       if (reqData && specData) {
-        // Use natural frequency calculation if natural frequency is enabled
-        const result = naturalFreq !== null 
-          ? calculateAnalysisWithNaturalFrequency(reqData, specData, naturalFreq)
+        // Use natural frequency calculation if any frequency is enabled
+        const result = hasAnyFrequency
+          ? calculateAnalysisWithNaturalFrequency(reqData, specData, naturalFrequencies)
           : calculateAnalysis(reqData, specData);
           
         if (result) {
@@ -573,7 +589,7 @@ const AnalysisModal = ({
       }
       setPlotData(interpolated);
     }
-  }, [allRequirementsData, allSpectralData, spectrumType, elementData, isFrequencyEnabled, naturalFrequency, forceRecalculate]);
+  }, [allRequirementsData, allSpectralData, spectrumType, elementData, naturalFrequencies, forceRecalculate]);
 
   // Reset charts when modal opens with new data
   useEffect(() => {
@@ -717,9 +733,10 @@ const AnalysisModal = ({
       paper_bgcolor: '#ffffff'
     };
 
-    // Add green vertical line for natural frequency if enabled
-    if (isFrequencyEnabled && naturalFrequency && !isNaN(parseFloat(naturalFrequency))) {
-      const freq = parseFloat(naturalFrequency);
+    // Add green vertical line for natural frequency if enabled for current axis
+    const currentAxisFreq = naturalFrequencies[selectedAxis];
+    if (currentAxisFreq?.enabled && currentAxisFreq?.value && !isNaN(parseFloat(currentAxisFreq.value))) {
+      const freq = parseFloat(currentAxisFreq.value);
       layout.shapes = [{
         type: 'line',
         x0: freq,
@@ -738,7 +755,7 @@ const AnalysisModal = ({
         x: freq,
         y: 0.95,
         yref: 'paper',
-        text: `Власна частота: ${freq} Гц`,
+        text: `Власна частота ${selectedAxis.toUpperCase()}: ${freq} Гц`,
         showarrow: false,
         bgcolor: '#28a745',
         bordercolor: '#28a745',
@@ -987,8 +1004,11 @@ const AnalysisModal = ({
     });
     
     // Reset frequency settings
-    setIsFrequencyEnabled(false);
-    setNaturalFrequency('');
+    setNaturalFrequencies({
+      x: { enabled: false, value: '' },
+      y: { enabled: false, value: '' },
+      z: { enabled: false, value: '' }
+    });
     setForceRecalculate(0);
     
     // Clear Plotly charts
@@ -1204,7 +1224,7 @@ const AnalysisModal = ({
     }
   };
 
-  const saveStressInputs = async (stressInputsData, frequencyEnabled = null, frequencyValue = null) => {
+  const saveStressInputs = async (stressInputsData) => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
       console.warn('Cannot save stress inputs: missing element ID');
       return;
@@ -1218,17 +1238,6 @@ const AnalysisModal = ({
       const stressData = {
         ek_id: ekId
       };
-
-      // Use provided frequency values or fallback to component state
-      const freqEnabled = frequencyEnabled !== null ? frequencyEnabled : isFrequencyEnabled;
-      const freqValue = frequencyValue !== null ? frequencyValue : naturalFrequency;
-
-      // Add natural frequency if enabled
-      if (freqEnabled && freqValue && !isNaN(parseFloat(freqValue))) {
-        stressData.natural_frequency = parseFloat(freqValue);
-      } else {
-        stressData.natural_frequency = null;
-      }
 
       // Add all stress input fields - enabled fields get their values, disabled fields get null
       Object.keys(stressInputsData).forEach(key => {
@@ -1270,6 +1279,53 @@ const AnalysisModal = ({
       
     } catch (err) {
       console.error('Error saving stress inputs:', err);
+    }
+  };
+
+  // Function to save natural frequencies
+  const saveNaturalFrequencies = async () => {
+    if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
+      console.warn('Cannot save natural frequencies: missing element ID');
+      return;
+    }
+
+    const ekId = elementData.EK_ID || elementData.ek_id;
+    
+    try {
+      const stressData = {
+        ek_id: ekId,
+        first_nat_freq_x: null,
+        first_nat_freq_y: null,
+        first_nat_freq_z: null
+      };
+
+      // Add frequencies for enabled axes
+      ['x', 'y', 'z'].forEach(axis => {
+        const freqData = naturalFrequencies[axis];
+        if (freqData?.enabled && freqData?.value && !isNaN(parseFloat(freqData.value))) {
+          stressData[`first_nat_freq_${axis}`] = parseFloat(freqData.value);
+        }
+      });
+
+      const response = await fetch('/api/save-stress-inputs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(stressData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error saving natural frequencies:', errorData);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Natural frequencies saved successfully:', result);
+      
+    } catch (err) {
+      console.error('Error saving natural frequencies:', err);
     }
   };
 
@@ -1449,16 +1505,25 @@ const AnalysisModal = ({
       const result = await response.json();
       
       // Update stress inputs with values from database
-      if (result.stress_values) {
-        // Handle natural frequency
-        const firstNatFreq = result.stress_values['FIRST_NAT_FREQ'];
-        if (firstNatFreq !== null && firstNatFreq !== undefined && firstNatFreq !== '') {
-          setIsFrequencyEnabled(true);
-          setNaturalFrequency(firstNatFreq.toString());
-        } else {
-          setIsFrequencyEnabled(false);
-          setNaturalFrequency('');
-        }
+      if (result) {
+        // Handle natural frequencies for three axes
+        const newFrequencies = {
+          x: { enabled: false, value: '' },
+          y: { enabled: false, value: '' },
+          z: { enabled: false, value: '' }
+        };
+
+        ['x', 'y', 'z'].forEach(axis => {
+          const freqValue = result[`first_nat_freq_${axis}`];
+          if (freqValue !== null && freqValue !== undefined && freqValue !== '') {
+            newFrequencies[axis] = {
+              enabled: true,
+              value: freqValue.toString()
+            };
+          }
+        });
+
+        setNaturalFrequencies(newFrequencies);
 
         // Start with fresh default values
         const newStressInputs = {
@@ -1496,7 +1561,7 @@ const AnalysisModal = ({
         };
 
         Object.entries(fieldMapping).forEach(([dbColumn, formField]) => {
-          const dbValue = result.stress_values[dbColumn];
+          const dbValue = result[dbColumn.toLowerCase()];
           if (dbValue !== null && dbValue !== undefined && dbValue !== '') {
             newStressInputs[formField] = {
               enabled: true,
@@ -1620,6 +1685,10 @@ const AnalysisModal = ({
         selectedAxis={selectedAxis}
         setSelectedAxis={setSelectedAxis}
         createPlotlyChart={createPlotlyChart}
+        naturalFrequencies={naturalFrequencies}
+        setNaturalFrequencies={setNaturalFrequencies}
+        elementData={elementData}
+        saveNaturalFrequencies={saveNaturalFrequencies}
       />
     );
   };
@@ -1648,35 +1717,41 @@ const AnalysisModal = ({
       case 'seismic':
         return (
                       <SeismicAnalysisTab
-              isFrequencyEnabled={isFrequencyEnabled}
-              setIsFrequencyEnabled={setIsFrequencyEnabled}
-              naturalFrequency={naturalFrequency}
-              setNaturalFrequency={setNaturalFrequency}
               allSpectralData={allSpectralData}
               allRequirementsData={allRequirementsData}
               spectrumSelection={spectrumSelection}
               setSpectrumSelection={setSpectrumSelection}
               allAnalysisResults={allAnalysisResults}
-                          stressInputs={stressInputs}
-            setStressInputs={setStressInputs}
-                        saveStressInputs={saveStressInputs}
-          calculateSigmaAlt={calculateSigmaAlt}
-          calculationResults={calculationResults}
-          clearCalculationResults={clearCalculationResults}
-          fetchCalculationResults={fetchCalculationResultsFromDatabase}
-          kResults={kResults}
-          setKResults={setKResults}
-          saveKResults={saveKResults}
-          elementData={elementData}
+              stressInputs={stressInputs}
+              setStressInputs={setStressInputs}
+              saveStressInputs={saveStressInputs}
+              calculateSigmaAlt={calculateSigmaAlt}
+              calculationResults={calculationResults}
+              clearCalculationResults={clearCalculationResults}
+              fetchCalculationResults={fetchCalculationResultsFromDatabase}
+              kResults={kResults}
+              setKResults={setKResults}
+              saveKResults={saveKResults}
+              elementData={elementData}
             />
         );
       case 'pressure':
+        // For LoadAnalysisTab, use the first enabled frequency or null
+        const firstEnabledFreq = naturalFrequencies.x?.enabled && naturalFrequencies.x?.value 
+          ? parseFloat(naturalFrequencies.x.value) 
+          : naturalFrequencies.y?.enabled && naturalFrequencies.y?.value 
+            ? parseFloat(naturalFrequencies.y.value)
+            : naturalFrequencies.z?.enabled && naturalFrequencies.z?.value 
+              ? parseFloat(naturalFrequencies.z.value)
+              : null;
+        const anyFreqEnabled = naturalFrequencies.x?.enabled || naturalFrequencies.y?.enabled || naturalFrequencies.z?.enabled;
+        
         return (
           <LoadAnalysisTab
-            isFrequencyEnabled={isFrequencyEnabled}
-            setIsFrequencyEnabled={setIsFrequencyEnabled}
-            naturalFrequency={naturalFrequency}
-            setNaturalFrequency={setNaturalFrequency}
+            isFrequencyEnabled={anyFreqEnabled}
+            setIsFrequencyEnabled={() => {}} // Not used in LoadAnalysisTab
+            naturalFrequency={firstEnabledFreq}
+            setNaturalFrequency={() => {}} // Not used in LoadAnalysisTab
             allSpectralData={allSpectralData}
             allRequirementsData={allRequirementsData}
             allAnalysisResults={allAnalysisResults}

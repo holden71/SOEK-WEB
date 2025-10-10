@@ -53,7 +53,9 @@ class SeismicAnalysisService:
     ) -> Dict[str, Any]:
         """Save stress inputs"""
         field_mapping = {
-            "natural_frequency": "F_MU",
+            "first_nat_freq_x": "FIRST_NAT_FREQ_X",
+            "first_nat_freq_y": "FIRST_NAT_FREQ_Y",
+            "first_nat_freq_z": "FIRST_NAT_FREQ_Z",
             "sigma_dop": "SIGMA_DOP",
             "hclpf": "HCLPF",
             "sigma_1": "SIGMA_1",
@@ -161,7 +163,8 @@ class SeismicAnalysisService:
     def get_stress_inputs(self, db: Session, ek_id: int) -> Dict[str, Optional[float]]:
         """Get stress inputs"""
         query = text("""
-            SELECT F_MU, SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2,
+            SELECT FIRST_NAT_FREQ_X, FIRST_NAT_FREQ_Y, FIRST_NAT_FREQ_Z,
+                   SIGMA_DOP, HCLPF, SIGMA_1, SIGMA_2,
                    SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ,
                    SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ
             FROM SRTN_EK_SEISM_DATA
@@ -175,19 +178,21 @@ class SeismicAnalysisService:
             raise ValueError("Element not found")
         
         return {
-            "natural_frequency": float(row[0]) if row[0] is not None else None,
-            "sigma_dop": float(row[1]) if row[1] is not None else None,
-            "hclpf": float(row[2]) if row[2] is not None else None,
-            "sigma_1": float(row[3]) if row[3] is not None else None,
-            "sigma_2": float(row[4]) if row[4] is not None else None,
-            "sigma_1_1_pz": float(row[5]) if row[5] is not None else None,
-            "sigma_1_2_pz": float(row[6]) if row[6] is not None else None,
-            "sigma_1_s1_pz": float(row[7]) if row[7] is not None else None,
-            "sigma_2_s2_pz": float(row[8]) if row[8] is not None else None,
-            "sigma_1_1_mrz": float(row[9]) if row[9] is not None else None,
-            "sigma_1_2_mrz": float(row[10]) if row[10] is not None else None,
-            "sigma_1_s1_mrz": float(row[11]) if row[11] is not None else None,
-            "sigma_2_s2_mrz": float(row[12]) if row[12] is not None else None,
+            "first_nat_freq_x": float(row[0]) if row[0] is not None else None,
+            "first_nat_freq_y": float(row[1]) if row[1] is not None else None,
+            "first_nat_freq_z": float(row[2]) if row[2] is not None else None,
+            "sigma_dop": float(row[3]) if row[3] is not None else None,
+            "hclpf": float(row[4]) if row[4] is not None else None,
+            "sigma_1": float(row[5]) if row[5] is not None else None,
+            "sigma_2": float(row[6]) if row[6] is not None else None,
+            "sigma_1_1_pz": float(row[7]) if row[7] is not None else None,
+            "sigma_1_2_pz": float(row[8]) if row[8] is not None else None,
+            "sigma_1_s1_pz": float(row[9]) if row[9] is not None else None,
+            "sigma_2_s2_pz": float(row[10]) if row[10] is not None else None,
+            "sigma_1_1_mrz": float(row[11]) if row[11] is not None else None,
+            "sigma_1_2_mrz": float(row[12]) if row[12] is not None else None,
+            "sigma_1_s1_mrz": float(row[13]) if row[13] is not None else None,
+            "sigma_2_s2_mrz": float(row[14]) if row[14] is not None else None,
         }
     
     def check_calculation_requirements(self, db: Session, ek_id: int) -> Dict[str, bool]:

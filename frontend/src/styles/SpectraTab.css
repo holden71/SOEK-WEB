@@ -258,3 +258,128 @@
   }
 }
 
+/* Natural Frequencies Section */
+.natural-frequencies-section {
+  padding: 16px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.natural-frequencies-section .section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6c757d;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.frequency-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.frequency-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.frequency-checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  font-family: 'Arial', sans-serif;
+}
+
+.frequency-checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.frequency-checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #007bff;
+  border-radius: 4px;
+  margin-right: 8px;
+  position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.frequency-checkbox-container input[type="checkbox"]:checked + .frequency-checkmark {
+  background-color: #007bff;
+}
+
+.frequency-checkbox-container input[type="checkbox"]:checked + .frequency-checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.frequency-checkbox-container .frequency-label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.frequency-input {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  color: #495057;
+  font-family: 'Arial', sans-serif;
+  outline: none;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.frequency-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.frequency-input.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #e9ecef;
+}
+
+.save-frequencies-button {
+  align-self: flex-start;
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-frequencies-button:hover {
+  background: #0056b3;
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.save-frequencies-button:active {
+  background: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+

@@ -153,11 +153,13 @@
 .calculate-button:hover {
   background-color: #0056b3;
   transform: translateY(-0.5px);
-  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .calculate-button:active {
-  transform: translateY(0);
+  background-color: #004494;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .data-availability-section {
