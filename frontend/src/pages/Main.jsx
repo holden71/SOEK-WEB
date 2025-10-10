@@ -199,9 +199,15 @@ function Main() {
       // Get elements to link based on applyToAllTypes flag
       let elementsToLink = [];
 
-      if (applyToAllTypes && currentElementData?.ptype_id) {
-        // Get all elements with the same ptype_id
-        elementsToLink = data.filter(item => item.ptype_id === currentElementData.ptype_id);
+      // Get ptype_id with different case variations
+      const currentPtypeId = currentElementData?.ptype_id || currentElementData?.PTYPE_ID || currentElementData?.Ptype_Id;
+
+      if (applyToAllTypes && currentPtypeId) {
+        // Get all elements with the same ptype_id (check all case variations)
+        elementsToLink = data.filter(item => {
+          const itemPtypeId = item?.ptype_id || item?.PTYPE_ID || item?.Ptype_Id;
+          return itemPtypeId === currentPtypeId;
+        });
       } else {
         // Get only the current element
         elementsToLink = [currentElementData];

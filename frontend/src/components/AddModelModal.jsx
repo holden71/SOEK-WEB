@@ -362,9 +362,10 @@ function AddModelModal({ isOpen, onClose, onSave, elementData, sameTypeCount = 0
                     onChange={(e) => setApplyToAllTypes(e.target.checked)}
                     disabled={loading}
                   />
+                  <span className="checkbox-checkmark"></span>
                   <span className="checkbox-text-main">
-                    Завантажити для всіх елементів цього типу{' '}
-                    <span className="checkbox-text-info">(знайдено {sameTypeCount} шт.)</span>
+                    Застосувати для всіх елементів типу{' '}
+                    <span className="checkbox-text-info">({sameTypeCount} шт.)</span>
                   </span>
                 </label>
               </div>

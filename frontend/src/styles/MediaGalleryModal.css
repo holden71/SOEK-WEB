@@ -19,9 +19,9 @@
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  width: 85vw;
-  height: 85vh;
-  max-width: none;
+  width: 75vw;
+  height: 88vh;
+  max-width: 1400px;
   max-height: none;
   min-width: 600px;
   min-height: 500px;
@@ -215,8 +215,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  padding-bottom: 80px; /* Отступ для absolute footer */
+  padding: 12px;
+  padding-bottom: 70px; /* Отступ для absolute footer */
   overflow: hidden;
   min-height: 0;
 }
@@ -235,7 +235,7 @@
   overflow: auto;
   margin-bottom: 16px;
   min-height: 400px;
-  max-height: 600px;
+  max-height: none;
   position: relative;
   justify-content: center;
   align-items: center;
@@ -476,11 +476,27 @@
   width: 100%;
 }
 
+/* Medium screens */
+@media (min-width: 769px) and (max-width: 1199px) {
+  .media-gallery-modal {
+    width: 80vw;
+    height: 88vh;
+  }
+}
+
 /* Large screens - maintain aspect ratio */
 @media (min-width: 1200px) {
   .media-gallery-modal {
-    width: 80vw;
-    height: 80vh;
+    width: 70vw;
+    height: 85vh;
+  }
+}
+
+/* Extra large screens */
+@media (min-width: 1600px) {
+  .media-gallery-modal {
+    width: 65vw;
+    height: 85vh;
   }
 }
 
@@ -767,7 +783,7 @@
 /* PDF Viewer Styles */
 .pdf-viewer-content {
   width: 100%;
-  height: calc(100% - 80px); /* Высота минус футер */
+  height: 100%;
   min-height: 400px;
   flex: 1;
   overflow: hidden;
