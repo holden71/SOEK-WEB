@@ -72,7 +72,8 @@ class SeismicAnalysisService:
         
         update_data = {}
         for param_name, db_field in field_mapping.items():
-            if param_name in kwargs and kwargs[param_name] is not None:
+            if param_name in kwargs:
+                # Allow None values to clear fields in database
                 update_data[db_field] = kwargs[param_name]
         
         if update_data:

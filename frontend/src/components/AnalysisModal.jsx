@@ -1299,12 +1299,21 @@ const AnalysisModal = ({
         first_nat_freq_z: null
       };
 
-      // Add frequencies for enabled axes
+      // Process frequencies for all axes
       ['x', 'y', 'z'].forEach(axis => {
         const freqData = naturalFrequencies[axis];
-        if (freqData?.enabled && freqData?.value && !isNaN(parseFloat(freqData.value))) {
-          stressData[`first_nat_freq_${axis}`] = parseFloat(freqData.value);
+        if (freqData?.enabled) {
+          // If enabled, either save the value or explicitly set null to clear
+          if (freqData.value === '' || freqData.value === null || freqData.value === undefined) {
+            stressData[`first_nat_freq_${axis}`] = null;
+          } else if (!isNaN(parseFloat(freqData.value))) {
+            stressData[`first_nat_freq_${axis}`] = parseFloat(freqData.value);
+          } else {
+            // Invalid value, set null
+            stressData[`first_nat_freq_${axis}`] = null;
+          }
         }
+        // If not enabled, leave as null (from initialization)
       });
 
       const response = await fetch('/api/save-stress-inputs', {
