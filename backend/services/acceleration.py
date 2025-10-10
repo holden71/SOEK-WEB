@@ -478,6 +478,9 @@ class AccelerationService:
         # Find what we have for МРЗ
         mrz_available = {col: normalized_data.get(col) for col in mrz_cols if col in normalized_data}
 
+        # Find what we have for ПЗ
+        pz_available = {col: normalized_data.get(col) for col in pz_cols if col in normalized_data}
+
         # Auto-fill МРЗ
         if mrz_available:
             # Get first available MRZ column
@@ -486,9 +489,12 @@ class AccelerationService:
             result['МРЗ_X'] = mrz_available.get('МРЗ_X', first_mrz)
             result['МРЗ_Y'] = mrz_available.get('МРЗ_Y', result['МРЗ_X'])
             result['МРЗ_Z'] = mrz_available.get('МРЗ_Z', result['МРЗ_Y'])
-
-        # Find what we have for ПЗ
-        pz_available = {col: normalized_data.get(col) for col in pz_cols if col in normalized_data}
+        elif pz_available:
+            # If no MRZ data, copy from PZ
+            first_pz = next(iter(pz_available.values()))
+            result['МРЗ_X'] = pz_available.get('ПЗ_X', first_pz)
+            result['МРЗ_Y'] = pz_available.get('ПЗ_Y', result['МРЗ_X'])
+            result['МРЗ_Z'] = pz_available.get('ПЗ_Z', result['МРЗ_Y'])
 
         # Auto-fill ПЗ
         if pz_available:
