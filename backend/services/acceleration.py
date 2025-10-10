@@ -432,6 +432,8 @@ class AccelerationService:
                     raise NotImplementedError("ВІМОГИ import not yet implemented in new architecture")
 
             db.flush()
+            
+            print(f"DEBUG save_accel_data: Created sets - mrz_set_id={mrz_set_id}, pz_set_id={pz_set_id}")
 
             return {
                 "mrz_set_id": mrz_set_id,
@@ -607,6 +609,8 @@ class AccelerationService:
             Dictionary with processing results
         """
         try:
+            print(f"DEBUG execute_set_all_ek_accel_set: ek_id={ek_id}, set_mrz={set_mrz}, set_pz={set_pz}, can_overwrite={can_overwrite}, do_for_all={do_for_all}, clear_sets={clear_sets}")
+            
             # Call stored procedure - it handles all logic including cleanup
             result = self._call_set_all_ek_accel_set(
                 db=db,
@@ -617,6 +621,21 @@ class AccelerationService:
                 do_for_all=do_for_all,
                 clear_sets=clear_sets
             )
+            
+            print(f"DEBUG procedure result: {result}")
+            
+            # Verify what was actually written to DB
+            verify_query = text("""
+                SELECT ACCEL_SET_ID_MRZ, ACCEL_SET_ID_PZ 
+                FROM SRTN_EK_SEISM_DATA 
+                WHERE EK_ID = :ek_id
+            """)
+            verify_result = db.execute(verify_query, {"ek_id": ek_id})
+            verify_row = verify_result.fetchone()
+            if verify_row:
+                print(f"DEBUG DB verification: EK_ID={ek_id}, ACCEL_SET_ID_MRZ={verify_row[0]}, ACCEL_SET_ID_PZ={verify_row[1]}")
+            else:
+                print(f"DEBUG DB verification: EK_ID={ek_id} not found in DB")
 
             return result
 
@@ -676,15 +695,15 @@ class AccelerationService:
             dict with is_done_mrz and is_done_pz
         """
         try:
-            # Get raw DBAPI connection
-            raw_conn = db.get_bind().raw_connection()
+            # Get native Oracle connection
+            raw_conn = db.connection().connection.driver_connection
 
-            # Create OUT parameters
-            is_done_mrz = raw_conn.var(oracledb.NUMBER)
-            is_done_pz = raw_conn.var(oracledb.NUMBER)
-
-            # Call procedure
+            # Create cursor first
             cursor = raw_conn.cursor()
+            
+            # Create OUT parameters using cursor.var()
+            is_done_mrz = cursor.var(oracledb.NUMBER)
+            is_done_pz = cursor.var(oracledb.NUMBER)
             cursor.callproc('SET_EK_ACCEL_SET', [
                 ek_id,
                 set_mrz,
@@ -722,11 +741,11 @@ class AccelerationService:
             # Get native Oracle connection
             raw_conn = db.connection().connection.driver_connection
 
-            # Create OUT parameter
-            clear_result = raw_conn.var(oracledb.STRING)
-
-            # Call procedure
+            # Create cursor first
             cursor = raw_conn.cursor()
+            
+            # Create OUT parameter using cursor.var()
+            clear_result = cursor.var(oracledb.STRING)
             cursor.callproc('CLEAR_ACCEL_CET_ARRAYS', [set_id, clear_result])
 
             return str(clear_result.getvalue() or '')
@@ -751,20 +770,20 @@ class AccelerationService:
             dict with all OUT parameters
         """
         try:
-            # Get raw DBAPI connection
-            raw_conn = db.get_bind().raw_connection()
+            # Get native Oracle connection
+            raw_conn = db.connection().connection.driver_connection
 
-            # Create OUT parameters
-            done_for_id_mrz = raw_conn.var(oracledb.NUMBER)
-            done_for_id_pz = raw_conn.var(oracledb.NUMBER)
-            done_for_all_mrz = raw_conn.var(oracledb.NUMBER)
-            done_for_all_pz = raw_conn.var(oracledb.NUMBER)
-            total_ek = raw_conn.var(oracledb.NUMBER)
-            processed_mrz = raw_conn.var(oracledb.NUMBER)
-            processed_pz = raw_conn.var(oracledb.NUMBER)
-
-            # Call procedure
+            # Create cursor first
             cursor = raw_conn.cursor()
+            
+            # Create OUT parameters using cursor.var()
+            done_for_id_mrz = cursor.var(oracledb.NUMBER)
+            done_for_id_pz = cursor.var(oracledb.NUMBER)
+            done_for_all_mrz = cursor.var(oracledb.NUMBER)
+            done_for_all_pz = cursor.var(oracledb.NUMBER)
+            total_ek = cursor.var(oracledb.NUMBER)
+            processed_mrz = cursor.var(oracledb.NUMBER)
+            processed_pz = cursor.var(oracledb.NUMBER)
             cursor.callproc('SET_ALL_EK_ACCEL_SET', [
                 ek_id,
                 set_mrz,
