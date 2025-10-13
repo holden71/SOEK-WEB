@@ -671,6 +671,7 @@ function Import() {
         lev2: level2,
         pga: pga ? parseFloat(pga) : null,
         calc_type: type,
+        set_type: 'ВИМОГИ',  // Import page always imports requirements, not characteristics
         sheets: {}
       };
 

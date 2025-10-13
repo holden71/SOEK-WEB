@@ -297,7 +297,7 @@ class AccelerationService:
         calc_type: str,
         set_type: str,
         sheets: Dict[str, Dict],
-        ek_id: int,
+        ek_id: Optional[int],
         can_overwrite: int
     ) -> Dict[str, Any]:
         """
@@ -314,8 +314,10 @@ class AccelerationService:
             lev2: Level to (optional)
             pga: Peak ground acceleration (optional)
             calc_type: Calculation type
-            set_type: Set type (ВІМОГИ or ХАРАКТЕРИСТИКИ)
+            set_type: Set type (ВИМОГИ or ХАРАКТЕРИСТИКИ)
             sheets: Dictionary of sheet data
+            ek_id: Element ID (optional, required only for ХАРАКТЕРИСТИКИ)
+            can_overwrite: Allow overwriting existing sets
 
         Returns:
             Dictionary with created set IDs
@@ -330,20 +332,21 @@ class AccelerationService:
             unit_row = unit_result.fetchone()
             unit_name = unit_row[0] if unit_row else None
 
-            # Check if we can apply sets BEFORE creating them
-            can_apply, current_mrz, current_pz = self.check_can_apply_sets(db, ek_id, can_overwrite)
-            if not can_apply:
-                raise ValueError(
-                    f"Елемент вже має характеристики (МРЗ={current_mrz}, ПЗ={current_pz}). "
-                    f"Для перезапису встановіть галочку 'Перезаписати існуючі'"
-                )
+            # Check if we can apply sets BEFORE creating them (only for ХАРАКТЕРИСТИКИ)
+            if set_type == "ХАРАКТЕРИСТИКИ" and ek_id is not None:
+                can_apply, current_mrz, current_pz = self.check_can_apply_sets(db, ek_id, can_overwrite)
+                if not can_apply:
+                    raise ValueError(
+                        f"Елемент вже має характеристики (МРЗ={current_mrz}, ПЗ={current_pz}). "
+                        f"Для перезапису встановіть галочку 'Перезаписати існуючі'"
+                    )
 
             # Process each sheet
             mrz_set_id = None
             pz_set_id = None
 
             for sheet_name, sheet_info in sheets.items():
-                dempf = sheet_info.dempf  # For ВІМОГИ
+                dempf = sheet_info.dempf  # For ВИМОГИ
                 data = sheet_info.data
 
                 # Determine SPECTR_EARTHQ_TYPE based on set_type
@@ -426,10 +429,87 @@ class AccelerationService:
                         y_data=filled_data.get("ПЗ_Y", []),
                         z_data=filled_data.get("ПЗ_Z", [])
                     )
+                elif set_type == "ВИМОГИ":
+                    # For requirements, we create two sets: МРЗ and ПЗ with DEMPF
+                    # Extract frequency data
+                    frequency_data = None
+                    frequency_col_name = None
+
+                    # Search for frequency column (case-insensitive, with various formats)
+                    for key in data.keys():
+                        key_lower = key.lower().replace(' ', '').replace(',', '').replace('.', '')
+                        if any(x in key_lower for x in ['частота', 'frequency', 'freq', 'hz', 'гц']):
+                            frequency_data = data[key]
+                            frequency_col_name = key
+                            break
+
+                    if not frequency_data:
+                        # Log available columns for debugging
+                        available_cols = ', '.join(data.keys())
+                        raise ValueError(f"Frequency column not found in data. Available columns: {available_cols}")
+
+                    # Auto-fill missing columns
+                    filled_data = self._auto_fill_spectrum_data(data)
+
+                    # Validate that we have at least some МРЗ or ПЗ data
+                    has_mrz = any(key.startswith('МРЗ_') for key in filled_data.keys())
+                    has_pz = any(key.startswith('ПЗ_') for key in filled_data.keys())
+
+                    if not has_mrz and not has_pz:
+                        available_cols = ', '.join(data.keys())
+                        raise ValueError(
+                            f"No МРЗ or ПЗ spectrum columns found in data. "
+                            f"Expected columns like 'МРЗ_X', 'МРЗ_Y', 'МРЗ_Z', 'ПЗ_X', 'ПЗ_Y', 'ПЗ_Z'. "
+                            f"Available columns: {available_cols}"
+                        )
+
+                    # Create МРЗ set with DEMPF
+                    mrz_set_id = self._create_accel_set_with_plots(
+                        db=db,
+                        plant_id=plant_id,
+                        plant_name=plant_name,
+                        unit_id=unit_id,
+                        unit_name=unit_name,
+                        building=building,
+                        room=room,
+                        lev=lev,
+                        lev1=lev1,
+                        lev2=lev2,
+                        pga=pga,
+                        calc_type=calc_type,
+                        set_type=set_type,
+                        spectr_earthq_type="МРЗ",
+                        dempf=dempf,  # Pass DEMPF for requirements
+                        frequency_data=frequency_data,
+                        x_data=filled_data.get("МРЗ_X", []),
+                        y_data=filled_data.get("МРЗ_Y", []),
+                        z_data=filled_data.get("МРЗ_Z", [])
+                    )
+
+                    # Create ПЗ set with DEMPF
+                    pz_set_id = self._create_accel_set_with_plots(
+                        db=db,
+                        plant_id=plant_id,
+                        plant_name=plant_name,
+                        unit_id=unit_id,
+                        unit_name=unit_name,
+                        building=building,
+                        room=room,
+                        lev=lev,
+                        lev1=lev1,
+                        lev2=lev2,
+                        pga=pga,
+                        calc_type=calc_type,
+                        set_type=set_type,
+                        spectr_earthq_type="ПЗ",
+                        dempf=dempf,  # Pass DEMPF for requirements
+                        frequency_data=frequency_data,
+                        x_data=filled_data.get("ПЗ_X", []),
+                        y_data=filled_data.get("ПЗ_Y", []),
+                        z_data=filled_data.get("ПЗ_Z", [])
+                    )
                 else:
-                    # For ВІМОГИ, create sets based on DEMPF and earthquake type
-                    # This is the old logic for requirements
-                    raise NotImplementedError("ВІМОГИ import not yet implemented in new architecture")
+                    raise ValueError(f"Unknown set_type: {set_type}. Expected 'ВИМОГИ' or 'ХАРАКТЕРИСТИКИ'")
 
             db.flush()
 
@@ -450,6 +530,7 @@ class AccelerationService:
         - If MRZ_X and MRZ_Y exist but not MRZ_Z, copy MRZ_Y to MRZ_Z
         - Same logic for PZ columns
         - If PZ columns missing, copy from MRZ
+        - If only x, y, z columns exist (without МРЗ/ПЗ prefix), use them for both МРЗ and ПЗ
         """
         result = {}
 
@@ -478,6 +559,20 @@ class AccelerationService:
 
         # Find what we have for ПЗ
         pz_available = {col: normalized_data.get(col) for col in pz_cols if col in normalized_data}
+
+        # Check for simple x, y, z columns (without МРЗ/ПЗ prefix)
+        simple_cols = {}
+        for axis in ['X', 'Y', 'Z']:
+            if axis in normalized_data:
+                simple_cols[axis] = normalized_data[axis]
+        
+        # If we have simple x, y, z columns and no prefixed columns, use them for both МРЗ and ПЗ
+        if simple_cols and not mrz_available and not pz_available:
+            # Use simple columns for both МРЗ and ПЗ
+            for axis in ['X', 'Y', 'Z']:
+                if axis in simple_cols:
+                    mrz_available[f'МРЗ_{axis}'] = simple_cols[axis]
+                    pz_available[f'ПЗ_{axis}'] = simple_cols[axis]
 
         # Auto-fill МРЗ
         if mrz_available:

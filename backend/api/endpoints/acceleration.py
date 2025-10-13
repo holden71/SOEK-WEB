@@ -74,7 +74,7 @@ async def find_req_accel_set(
             params.building,
             params.room,
             params.calc_type,
-            params.set_type or "ВІМОГИ"
+            params.set_type or "ВИМОГИ"
         )
         return FindReqAccelSetResult(**result)
     except Exception as e:

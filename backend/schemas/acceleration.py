@@ -22,9 +22,9 @@ class AccelData(BaseModel):
     lev2: Optional[float] = None
     pga: Optional[float] = None
     calc_type: str
-    set_type: str = "ВІМОГИ"
+    set_type: str = "ВИМОГИ"
     sheets: Dict[str, AccelDataItem]
-    ek_id: int  # Element ID for checking if can apply
+    ek_id: Optional[int] = None  # Element ID (optional, required only for ХАРАКТЕРИСТИКИ)
     can_overwrite: int = 0  # Allow overwriting existing sets
 
 
