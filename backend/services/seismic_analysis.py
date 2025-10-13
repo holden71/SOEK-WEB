@@ -140,10 +140,12 @@ class SeismicAnalysisService:
             "n_mrz": float(row[6]) if row[6] is not None else None,
         }
     
-    def get_calculation_results(self, db: Session, ek_id: int) -> Dict[str, Optional[float]]:
-        """Get all calculation results"""
+    def get_calculation_results(self, db: Session, ek_id: int) -> Dict[str, Any]:
+        """Get all calculation results including sigma_alt values"""
         query = text("""
-            SELECT M1_MRZ, M2_MRZ, M1_PZ, M2_PZ
+            SELECT M1_MRZ, M2_MRZ, M1_PZ, M2_PZ,
+                   SIGMA_S_ALT_1_PZ, SIGMA_S_ALT_2_PZ,
+                   SIGMA_S_ALT_1_MRZ, SIGMA_S_ALT_2_MRZ
             FROM SRTN_EK_SEISM_DATA
             WHERE EK_ID = :ek_id
         """)
@@ -154,11 +156,23 @@ class SeismicAnalysisService:
         if not row:
             raise ValueError("Element not found")
         
+        # Build calculated_values dict with only non-null sigma_alt values
+        calculated_values = {}
+        if row[4] is not None:
+            calculated_values["SIGMA_S_ALT_1_PZ"] = float(row[4])
+        if row[5] is not None:
+            calculated_values["SIGMA_S_ALT_2_PZ"] = float(row[5])
+        if row[6] is not None:
+            calculated_values["SIGMA_S_ALT_1_MRZ"] = float(row[6])
+        if row[7] is not None:
+            calculated_values["SIGMA_S_ALT_2_MRZ"] = float(row[7])
+        
         return {
             "m1_mrz": float(row[0]) if row[0] is not None else None,
             "m2_mrz": float(row[1]) if row[1] is not None else None,
             "m1_pz": float(row[2]) if row[2] is not None else None,
             "m2_pz": float(row[3]) if row[3] is not None else None,
+            "calculated_values": calculated_values
         }
     
     def get_stress_inputs(self, db: Session, ek_id: int) -> Dict[str, Optional[float]]:
@@ -186,20 +200,25 @@ class SeismicAnalysisService:
             "hclpf": float(row[4]) if row[4] is not None else None,
             "sigma_1": float(row[5]) if row[5] is not None else None,
             "sigma_2": float(row[6]) if row[6] is not None else None,
-            "sigma_1_1_pz": float(row[7]) if row[7] is not None else None,
-            "sigma_1_2_pz": float(row[8]) if row[8] is not None else None,
-            "sigma_1_s1_pz": float(row[9]) if row[9] is not None else None,
-            "sigma_2_s2_pz": float(row[10]) if row[10] is not None else None,
-            "sigma_1_1_mrz": float(row[11]) if row[11] is not None else None,
-            "sigma_1_2_mrz": float(row[12]) if row[12] is not None else None,
-            "sigma_1_s1_mrz": float(row[13]) if row[13] is not None else None,
-            "sigma_2_s2_mrz": float(row[14]) if row[14] is not None else None,
+            # Return keys matching database column names in lowercase
+            "sigma_s_1_pz": float(row[7]) if row[7] is not None else None,
+            "sigma_s_2_pz": float(row[8]) if row[8] is not None else None,
+            "sigma_s_s1_pz": float(row[9]) if row[9] is not None else None,
+            "sigma_s_s2_pz": float(row[10]) if row[10] is not None else None,
+            "sigma_s_1_mrz": float(row[11]) if row[11] is not None else None,
+            "sigma_s_2_mrz": float(row[12]) if row[12] is not None else None,
+            "sigma_s_s1_mrz": float(row[13]) if row[13] is not None else None,
+            "sigma_s_s2_mrz": float(row[14]) if row[14] is not None else None,
         }
     
-    def check_calculation_requirements(self, db: Session, ek_id: int) -> Dict[str, bool]:
-        """Check if calculation requirements are met"""
+    def check_calculation_requirements(self, db: Session, ek_id: int) -> Dict[str, Any]:
+        """Check if calculation requirements are met for sigma_alt calculations"""
         query = text("""
-            SELECT F_MU, ACCEL_SET_ID_MRZ, ACCEL_SET_ID_PZ
+            SELECT 
+                SIGMA_S_1_PZ, SIGMA_S_S1_PZ, M1_PZ,
+                SIGMA_S_2_PZ, SIGMA_S_S2_PZ,
+                SIGMA_S_1_MRZ, SIGMA_S_S1_MRZ, M1_MRZ,
+                SIGMA_S_2_MRZ, SIGMA_S_S2_MRZ
             FROM SRTN_EK_SEISM_DATA
             WHERE EK_ID = :ek_id
         """)
@@ -210,12 +229,72 @@ class SeismicAnalysisService:
         if not row:
             raise ValueError("Element not found")
         
-        f_mu, accel_set_mrz, accel_set_pz = row
+        (
+            sigma_s_1_pz, sigma_s_s1_pz, m1_pz,
+            sigma_s_2_pz, sigma_s_s2_pz,
+            sigma_s_1_mrz, sigma_s_s1_mrz, m1_mrz,
+            sigma_s_2_mrz, sigma_s_s2_mrz
+        ) = row
+        
+        # Check requirements for PZ sigma_alt_1
+        pz_sigma_alt_1_missing = []
+        if sigma_s_1_pz is None:
+            pz_sigma_alt_1_missing.append("(σ₁)₁")
+        if sigma_s_s1_pz is None:
+            pz_sigma_alt_1_missing.append("(σ₁)s₁")
+        if m1_pz is None:
+            pz_sigma_alt_1_missing.append("m₁")
+        
+        # Check requirements for PZ sigma_alt_2
+        pz_sigma_alt_2_missing = []
+        if sigma_s_2_pz is None:
+            pz_sigma_alt_2_missing.append("(σ₁)₂")
+        if sigma_s_s2_pz is None:
+            pz_sigma_alt_2_missing.append("(σ₂)s₂")
+        if m1_pz is None:
+            pz_sigma_alt_2_missing.append("m₁")
+        
+        # Check requirements for MRZ sigma_alt_1
+        mrz_sigma_alt_1_missing = []
+        if sigma_s_1_mrz is None:
+            mrz_sigma_alt_1_missing.append("(σ₁)₁")
+        if sigma_s_s1_mrz is None:
+            mrz_sigma_alt_1_missing.append("(σ₁)s₁")
+        if m1_mrz is None:
+            mrz_sigma_alt_1_missing.append("m₁")
+        
+        # Check requirements for MRZ sigma_alt_2
+        mrz_sigma_alt_2_missing = []
+        if sigma_s_2_mrz is None:
+            mrz_sigma_alt_2_missing.append("(σ₁)₂")
+        if sigma_s_s2_mrz is None:
+            mrz_sigma_alt_2_missing.append("(σ₂)s₂")
+        if m1_mrz is None:
+            mrz_sigma_alt_2_missing.append("m₁")
         
         return {
-            "has_frequency": f_mu is not None,
-            "has_accel_set_mrz": accel_set_mrz is not None,
-            "has_accel_set_pz": accel_set_pz is not None,
-            "can_calculate": f_mu is not None and (accel_set_mrz is not None or accel_set_pz is not None)
+            "success": True,
+            "requirements": {
+                "pz": {
+                    "sigma_alt_1": {
+                        "can_calculate": len(pz_sigma_alt_1_missing) == 0,
+                        "missing_fields": pz_sigma_alt_1_missing
+                    },
+                    "sigma_alt_2": {
+                        "can_calculate": len(pz_sigma_alt_2_missing) == 0,
+                        "missing_fields": pz_sigma_alt_2_missing
+                    }
+                },
+                "mrz": {
+                    "sigma_alt_1": {
+                        "can_calculate": len(mrz_sigma_alt_1_missing) == 0,
+                        "missing_fields": mrz_sigma_alt_1_missing
+                    },
+                    "sigma_alt_2": {
+                        "can_calculate": len(mrz_sigma_alt_2_missing) == 0,
+                        "missing_fields": mrz_sigma_alt_2_missing
+                    }
+                }
+            }
         }
 

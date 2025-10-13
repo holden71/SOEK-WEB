@@ -153,33 +153,110 @@ async def check_calculation_requirements(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# TODO: УБРАТЬ ЭТУ ЗАГЛУШКУ - временная заглушка для тестирования
 @router.post("/calculate-sigma-alt")
 async def calculate_sigma_alt(
     db: DbSessionDep,
     params: dict = Body(...)
 ):
     """
-    ВРЕМЕННАЯ ЗАГЛУШКА! УДАЛИТЬ ПОСЛЕ РЕАЛИЗАЦИИ НАСТОЯЩЕЙ ЛОГИКИ!
-    Calculate sigma alternative values
+    Calculate sigma alternative values using formulas:
+    - SIGMA_S_ALT_1 = SIGMA_S_1 + SIGMA_S_S1 * (M1 - 1)
+    - SIGMA_S_ALT_2 = SIGMA_S_2 + SIGMA_S_S2 * (M1 - 1)
     """
     try:
         ek_id = params.get("ek_id")
         if not ek_id:
             raise HTTPException(status_code=400, detail="ek_id is required")
         
-        # ЗАГЛУШКА: возвращаем тестовые значения
+        # Check if element exists
+        from sqlalchemy import text
+        check_query = text("SELECT COUNT(*) FROM SRTN_EK_SEISM_DATA WHERE EK_ID = :ek_id")
+        check_result = db.execute(check_query, {"ek_id": ek_id})
+        if check_result.scalar() == 0:
+            raise HTTPException(status_code=404, detail=f"Element with EK_ID {ek_id} not found")
+        
+        # Get required data from database
+        data_query = text("""
+            SELECT 
+                SIGMA_S_1_PZ, SIGMA_S_2_PZ, SIGMA_S_S1_PZ, SIGMA_S_S2_PZ, M1_PZ,
+                SIGMA_S_1_MRZ, SIGMA_S_2_MRZ, SIGMA_S_S1_MRZ, SIGMA_S_S2_MRZ, M1_MRZ
+            FROM SRTN_EK_SEISM_DATA 
+            WHERE EK_ID = :ek_id
+        """)
+        
+        result = db.execute(data_query, {"ek_id": ek_id})
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No data found for EK_ID {ek_id}")
+        
+        (
+            sigma_s_1_pz, sigma_s_2_pz, sigma_s_s1_pz, sigma_s_s2_pz, m1_pz,
+            sigma_s_1_mrz, sigma_s_2_mrz, sigma_s_s1_mrz, sigma_s_s2_mrz, m1_mrz
+        ) = row
+        
+        # Calculate sigma_alt values and prepare updates
+        update_fields = []
+        update_params = {"ek_id": ek_id}
+        calculated_values = {}
+        
+        # Calculate SIGMA_S_ALT_1_PZ
+        if all(v is not None for v in [sigma_s_1_pz, sigma_s_s1_pz, m1_pz]):
+            sigma_alt_1_pz = sigma_s_1_pz + sigma_s_s1_pz * (m1_pz - 1)
+            update_fields.append("SIGMA_S_ALT_1_PZ = :sigma_alt_1_pz")
+            update_params["sigma_alt_1_pz"] = sigma_alt_1_pz
+            calculated_values["SIGMA_S_ALT_1_PZ"] = sigma_alt_1_pz
+        
+        # Calculate SIGMA_S_ALT_2_PZ
+        if all(v is not None for v in [sigma_s_2_pz, sigma_s_s2_pz, m1_pz]):
+            sigma_alt_2_pz = sigma_s_2_pz + sigma_s_s2_pz * (m1_pz - 1)
+            update_fields.append("SIGMA_S_ALT_2_PZ = :sigma_alt_2_pz")
+            update_params["sigma_alt_2_pz"] = sigma_alt_2_pz
+            calculated_values["SIGMA_S_ALT_2_PZ"] = sigma_alt_2_pz
+        
+        # Calculate SIGMA_S_ALT_1_MRZ
+        if all(v is not None for v in [sigma_s_1_mrz, sigma_s_s1_mrz, m1_mrz]):
+            sigma_alt_1_mrz = sigma_s_1_mrz + sigma_s_s1_mrz * (m1_mrz - 1)
+            update_fields.append("SIGMA_S_ALT_1_MRZ = :sigma_alt_1_mrz")
+            update_params["sigma_alt_1_mrz"] = sigma_alt_1_mrz
+            calculated_values["SIGMA_S_ALT_1_MRZ"] = sigma_alt_1_mrz
+        
+        # Calculate SIGMA_S_ALT_2_MRZ
+        if all(v is not None for v in [sigma_s_2_mrz, sigma_s_s2_mrz, m1_mrz]):
+            sigma_alt_2_mrz = sigma_s_2_mrz + sigma_s_s2_mrz * (m1_mrz - 1)
+            update_fields.append("SIGMA_S_ALT_2_MRZ = :sigma_alt_2_mrz")
+            update_params["sigma_alt_2_mrz"] = sigma_alt_2_mrz
+            calculated_values["SIGMA_S_ALT_2_MRZ"] = sigma_alt_2_mrz
+        
+        # If no calculations were possible, return success with empty values
+        if not update_fields:
+            return {
+                "success": True,
+                "message": "No calculations performed - insufficient data for both PZ and MRZ",
+                "calculated_values": {}
+            }
+        
+        # Update database with calculated values
+        update_query = text(f"""
+            UPDATE SRTN_EK_SEISM_DATA 
+            SET {', '.join(update_fields)}
+            WHERE EK_ID = :ek_id
+        """)
+        
+        db.execute(update_query, update_params)
+        db.commit()
+        
         return {
             "success": True,
-            "calculated_values": {
-                "SIGMA_S_ALT_1_PZ": 125.5,  # Тестовое значение
-                "SIGMA_S_ALT_2_PZ": 98.3,   # Тестовое значение
-                "SIGMA_S_ALT_1_MRZ": 145.7, # Тестовое значение
-                "SIGMA_S_ALT_2_MRZ": 112.4  # Тестовое значение
-            },
-            "message": "ВНИМАНИЕ: Это тестовые данные из заглушки!"
+            "message": f"Successfully calculated {len(calculated_values)} sigma alt value(s)",
+            "calculated_values": calculated_values
         }
+        
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
-        print(f"Error in calculate-sigma-alt stub: {e}")
+        db.rollback()
+        print(f"Error calculating sigma alt: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

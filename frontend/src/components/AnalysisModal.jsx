@@ -131,8 +131,6 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
       requirements.frequency.length === 0 || characteristics.frequency.length === 0) {
     return null;
   }
-
-  console.log('=== ЛОГИКА С ПЛАТО ДЛЯ ЧАСТОТ ПО ОСЯМ ===');
   
   const result = {};
 
@@ -160,7 +158,6 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
     let allFrequencies;
     if (useFrequencyFilter) {
       const naturalFreq = parseFloat(axisFreq.value);
-      console.log(`Ось ${axis}: используем фильтрацию по частоте ${naturalFreq} Гц`);
       
       // Создаем общий массив частот, но только >= naturalFreq
       allFrequencies = [...new Set([...reqF, ...charF])]
@@ -169,13 +166,9 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
       
       if (allFrequencies.length === 0) {
         result[`m_${axis}_max`] = 0;
-        console.log(`Ось ${axis}: нет точек после фильтрации по частоте ${naturalFreq} Гц`);
         continue;
       }
-      
-      console.log(`Ось ${axis}: частоты для расчета от ${allFrequencies[0]} до ${allFrequencies[allFrequencies.length-1]} Гц`);
     } else {
-      console.log(`Ось ${axis}: частота не задана, используем все точки`);
       allFrequencies = [...new Set([...reqF, ...charF])].sort((a, b) => a - b);
     }
     
@@ -197,8 +190,6 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
     if (ratios.includes(Infinity)) {
       result[`m_${axis}_max`] = Infinity;
     }
-    
-    console.log(`Ось ${axis}: максимальное отношение = ${result[`m_${axis}_max`]}`);
   }
 
   const { m_x_max, m_y_max, m_z_max } = result;
@@ -209,11 +200,6 @@ const calculateAnalysisWithNaturalFrequency = (requirements, characteristics, na
   // Подсчитываем количество точек (с учетом фильтрации по осям)
   const allFrequencies = [...new Set([...requirements.frequency, ...characteristics.frequency])];
   result.numberOfPoints = allFrequencies.length;
-
-  console.log('=== РЕЗУЛЬТАТЫ С ФИЛЬТРАЦИЕЙ ПО ЧАСТОТАМ ПО ОСЯМ ===');
-  console.log(`m1 (max из X, Y, Z): ${result.m1}`);
-  console.log(`m2 (квадратный корень): ${result.m2}`);
-  console.log(`Количество точек: ${result.numberOfPoints}`);
   
   return result;
 };
@@ -225,10 +211,6 @@ const AnalysisModal = ({
   selectedPlant,
   selectedUnit
 }) => {
-  // Отладочная информация
-  console.log('AnalysisModal - elementData:', elementData);
-  console.log('AnalysisModal - elementData?.EK_ID:', elementData?.EK_ID);
-  console.log('AnalysisModal - elementData?.ek_id:', elementData?.ek_id);
   const [activeTab, setActiveTab] = useState('spectra');
   const [activeSubTab, setActiveSubTab] = useState('seismic'); // New state for subtabs
   const [spectralData, setSpectralData] = useState(null);
@@ -362,25 +344,6 @@ const AnalysisModal = ({
       // Clear all data first
       clearAllModalData();
       
-      // Reset stress inputs to default values
-      setStressInputs({
-        // Общие характеристики
-        sigma_dop: { enabled: false, value: '' },
-        hclpf: { enabled: false, value: '' },
-        sigma_1: { enabled: false, value: '' },
-        sigma_2: { enabled: false, value: '' },
-        // Поля для ПЗ
-        sigma_1_1_pz: { enabled: false, value: '' },
-        sigma_1_2_pz: { enabled: false, value: '' },
-        sigma_1_s1_pz: { enabled: false, value: '' },
-        sigma_2_s2_pz: { enabled: false, value: '' },
-        // Поля для МРЗ
-        sigma_1_1_mrz: { enabled: false, value: '' },
-        sigma_1_2_mrz: { enabled: false, value: '' },
-        sigma_1_s1_mrz: { enabled: false, value: '' },
-        sigma_2_s2_mrz: { enabled: false, value: '' }
-      });
-      
       // Clear calculation results when modal opens or element changes
       clearCalculationResults();
       
@@ -390,12 +353,11 @@ const AnalysisModal = ({
       fetchAvailableDampingFactors(elementData.EK_ID || elementData.ek_id);
       // fetchAllRequirementsData will be called automatically when dampingFactor is set
       
-      // Small delay to ensure reset is applied before loading from DB
-      setTimeout(() => {
-        fetchStressInputsFromDatabase();
-        fetchCalculationResultsFromDatabase();
-        fetchKResultsFromDatabase();
-      }, 100);
+      // Fetch stress inputs, calculation results and K results from database
+      // The fetchStressInputsFromDatabase function will set the correct values
+      fetchStressInputsFromDatabase();
+      fetchCalculationResultsFromDatabase();
+      fetchKResultsFromDatabase();
     }
   }, [isOpen, elementData]);
 
@@ -923,12 +885,6 @@ const AnalysisModal = ({
     const ekId = elementData.EK_ID || elementData.ek_id;
     
     try {
-      console.log('=== Збереження результатів аналізу ===');
-      console.log('EK_ID:', ekId);
-      console.log('Spectrum Type:', spectrumTypeForSave);
-      console.log('M1:', m1);
-      console.log('M2:', m2);
-
       const response = await fetch('/api/save-analysis-result', {
         method: 'POST',
         headers: {
@@ -948,8 +904,7 @@ const AnalysisModal = ({
         return;
       }
 
-      const result = await response.json();
-      console.log('✓ Результати аналізу збережено:', result);
+      await response.json();
       
     } catch (err) {
       console.error('Error saving analysis results:', err);
@@ -967,8 +922,6 @@ const AnalysisModal = ({
 
   // Clear all modal data when opening for a new element
   const clearAllModalData = () => {
-    console.log('🧹 Очищення всіх даних модального вікна...');
-    
     // Clear spectral and requirements data
     setSpectralData(null);
     setAllSpectralData({});
@@ -1017,15 +970,12 @@ const AnalysisModal = ({
       chartElements.forEach(elementId => {
         const element = document.getElementById(elementId);
         if (element && element._plotly_graph) {
-          console.log(`🧹 Очищення графіка: ${elementId}`);
           Plotly.purge(element);
         }
       });
     } catch (error) {
-      console.warn('Помилка при очищенні графіків:', error);
+      console.warn('Error clearing charts:', error);
     }
-    
-    console.log('✅ Очищення завершено');
   };
 
   const calculateSigmaAlt = async (onCalculationComplete = null) => {
@@ -1493,6 +1443,8 @@ const AnalysisModal = ({
     const ekId = elementData.EK_ID || elementData.ek_id;
     
     try {
+      console.log('🔍 Завантаження stress inputs з БД, EK_ID:', ekId);
+      
       const response = await fetch(`/api/get-stress-inputs?ek_id=${ekId}`, {
         method: 'GET',
         headers: {
@@ -1502,11 +1454,12 @@ const AnalysisModal = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error fetching stress inputs:', errorData);
+        console.error('❌ Помилка завантаження:', errorData);
         return;
       }
 
       const result = await response.json();
+      console.log('📥 Отримані дані з БД:', result);
       
       // Update stress inputs with values from database
       if (result) {
@@ -1564,21 +1517,27 @@ const AnalysisModal = ({
           'SIGMA_S_S2_MRZ': 'sigma_2_s2_mrz'
         };
 
+        let fieldsFound = 0;
         Object.entries(fieldMapping).forEach(([dbColumn, formField]) => {
-          const dbValue = result[dbColumn.toLowerCase()];
+          const dbKey = dbColumn.toLowerCase();
+          const dbValue = result[dbKey];
+          console.log(`  ${dbColumn} (${dbKey}): ${dbValue}`);
           if (dbValue !== null && dbValue !== undefined && dbValue !== '') {
             newStressInputs[formField] = {
               enabled: true,
               value: dbValue.toString()
             };
+            fieldsFound++;
           }
         });
 
+        console.log(`✅ Знайдено ${fieldsFound} заповнених полів`);
+        console.log('Фінальний newStressInputs:', newStressInputs);
         setStressInputs(newStressInputs);
       }
       
     } catch (err) {
-      console.error('Error fetching stress inputs:', err);
+      console.error('❌ Помилка fetchStressInputsFromDatabase:', err);
     }
   };
 
