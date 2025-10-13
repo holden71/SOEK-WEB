@@ -29,15 +29,15 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
   return (
     <div className="calculation-tab-content">
       <div className="summary-section">
-        <h3 className="summary-title">Аналіз спектрів</h3>
+        <h3 className="summary-title">Попередні розрахунки</h3>
         
         <div className="summary-table-container">
           <table className="summary-table">
             <thead>
               <tr>
                 <th className="parameter-header">Параметр</th>
-                <th className="spectrum-header mrz-header">МРЗ</th>
                 <th className="spectrum-header pz-header">ПЗ</th>
+                <th className="spectrum-header mrz-header">МРЗ</th>
               </tr>
             </thead>
             <tbody>
@@ -46,8 +46,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>m₁</strong>
                   <span className="parameter-description">max(m<sub>x</sub>, m<sub>y</sub>, m<sub>z</sub>)</span>
                 </td>
-                <td className="value-cell">{formatValue(mrzResult?.m1)}</td>
                 <td className="value-cell">{formatValue(pzResult?.m1)}</td>
+                <td className="value-cell">{formatValue(mrzResult?.m1)}</td>
               </tr>
               
               <tr className="main-criteria-row">
@@ -55,8 +55,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>m₂</strong>
                   <span className="parameter-description">√(m<sub>x</sub>² + m<sub>y</sub>² + m<sub>z</sub>²)</span>
                 </td>
-                <td className="value-cell">{formatValue(mrzResult?.m2)}</td>
                 <td className="value-cell">{formatValue(pzResult?.m2)}</td>
+                <td className="value-cell">{formatValue(mrzResult?.m2)}</td>
               </tr>
               
               <tr className="divider-row">
@@ -68,8 +68,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>m<sub>x</sub></strong>
                   <span className="parameter-description">по осі X</span>
                 </td>
-                <td className="value-cell">{formatValue(mrzResult?.m_x_max)}</td>
                 <td className="value-cell">{formatValue(pzResult?.m_x_max)}</td>
+                <td className="value-cell">{formatValue(mrzResult?.m_x_max)}</td>
               </tr>
               
               <tr>
@@ -77,8 +77,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>m<sub>y</sub></strong>
                   <span className="parameter-description">по осі Y</span>
                 </td>
-                <td className="value-cell">{formatValue(mrzResult?.m_y_max)}</td>
                 <td className="value-cell">{formatValue(pzResult?.m_y_max)}</td>
+                <td className="value-cell">{formatValue(mrzResult?.m_y_max)}</td>
               </tr>
               
               <tr>
@@ -86,8 +86,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>m<sub>z</sub></strong>
                   <span className="parameter-description">по осі Z</span>
                 </td>
-                <td className="value-cell">{formatValue(mrzResult?.m_z_max)}</td>
                 <td className="value-cell">{formatValue(pzResult?.m_z_max)}</td>
+                <td className="value-cell">{formatValue(mrzResult?.m_z_max)}</td>
               </tr>
               
               <tr className="divider-row">
@@ -99,8 +99,8 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
                   <strong>Точки розрахунку</strong>
                   <span className="parameter-description">кількість</span>
                 </td>
-                <td className="value-cell info-value">{mrzResult?.numberOfPoints || '—'}</td>
                 <td className="value-cell info-value">{pzResult?.numberOfPoints || '—'}</td>
+                <td className="value-cell info-value">{mrzResult?.numberOfPoints || '—'}</td>
               </tr>
             </tbody>
           </table>
@@ -109,15 +109,15 @@ const CalculationAnalysisTab = ({ analysisResult, allAnalysisResults = {} }) => 
         {/* Status indicators */}
         <div className="status-indicators">
           <div className="status-item">
-            <span className={`status-dot ${mrzResult ? 'available' : 'unavailable'}`}></span>
-            <span className={mrzResult ? 'status-available' : 'status-unavailable'}>
-              МРЗ: {mrzResult ? 'Доступно' : 'Недоступно'}
-            </span>
-          </div>
-          <div className="status-item">
             <span className={`status-dot ${pzResult ? 'available' : 'unavailable'}`}></span>
             <span className={pzResult ? 'status-available' : 'status-unavailable'}>
               ПЗ: {pzResult ? 'Доступно' : 'Недоступно'}
+            </span>
+          </div>
+          <div className="status-item">
+            <span className={`status-dot ${mrzResult ? 'available' : 'unavailable'}`}></span>
+            <span className={mrzResult ? 'status-available' : 'status-unavailable'}>
+              МРЗ: {mrzResult ? 'Доступно' : 'Недоступно'}
             </span>
           </div>
         </div>

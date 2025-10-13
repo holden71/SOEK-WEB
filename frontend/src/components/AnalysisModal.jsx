@@ -1781,7 +1781,7 @@ const AnalysisModal = ({
       <div className="analysis-modal" ref={modalRef}>
         <div className="analysis-modal-header">
           <div className="modal-title-section">
-            <h2>Аналіз спектрів</h2>
+            <h2>Попередні розрахункив</h2>
             {elementData && (
               <div className="element-info">
                 <div className="element-main-info">
@@ -1821,7 +1821,7 @@ const AnalysisModal = ({
             className={`tab-button ${activeTab === 'analysis' ? 'active' : ''}`}
             onClick={() => setActiveTab('analysis')}
           >
-            Аналіз спектрів
+            Попередні розрахунки
           </button>
           <button 
             className={`tab-button ${activeTab === 'calculation' ? 'active' : ''}`}
