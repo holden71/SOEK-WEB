@@ -45,26 +45,19 @@ async def save_stress_inputs(
     db: DbSessionDep,
     params: SaveStressInputsParams = Body(...)
 ):
-    """Save stress inputs"""
+    """Save stress inputs - only update fields that were explicitly provided in the request"""
     try:
+        # Use model_dump(exclude_unset=True) to get only fields that were explicitly set in the request
+        # This way we don't overwrite fields that weren't included in the request
+        params_dict = params.model_dump(exclude_unset=True)
+        
+        # Remove ek_id from params_dict as it's passed separately
+        ek_id = params_dict.pop('ek_id')
+        
         result = seismic_service.save_stress_inputs(
             db,
-            params.ek_id,
-            first_nat_freq_x=params.first_nat_freq_x,
-            first_nat_freq_y=params.first_nat_freq_y,
-            first_nat_freq_z=params.first_nat_freq_z,
-            sigma_dop=params.sigma_dop,
-            hclpf=params.hclpf,
-            sigma_1=params.sigma_1,
-            sigma_2=params.sigma_2,
-            sigma_1_1_pz=params.sigma_1_1_pz,
-            sigma_1_2_pz=params.sigma_1_2_pz,
-            sigma_1_s1_pz=params.sigma_1_s1_pz,
-            sigma_2_s2_pz=params.sigma_2_s2_pz,
-            sigma_1_1_mrz=params.sigma_1_1_mrz,
-            sigma_1_2_mrz=params.sigma_1_2_mrz,
-            sigma_1_s1_mrz=params.sigma_1_s1_mrz,
-            sigma_2_s2_mrz=params.sigma_2_s2_mrz,
+            ek_id,
+            **params_dict  # Pass only the fields that were explicitly provided
         )
         db.commit()
         return SaveStressInputsResponse(**result)

@@ -1233,15 +1233,16 @@ const AnalysisModal = ({
     const ekId = elementData.EK_ID || elementData.ek_id;
     
     try {
-
-      // Prepare data for API call - send all fields regardless of enabled state
+      // Prepare data for API call - ONLY send enabled fields
       const stressData = {
         ek_id: ekId
       };
 
-      // Add all stress input fields - enabled fields get their values, disabled fields get null
+      // Add ONLY enabled stress input fields
       Object.keys(stressInputsData).forEach(key => {
         const field = stressInputsData[key];
+        
+        // Only process enabled fields
         if (field && field.enabled) {
           if (field.value === '' || field.value === null || field.value === undefined) {
             // Send null for empty values to clear database
@@ -1253,10 +1254,8 @@ const AnalysisModal = ({
             // Invalid numeric value, send null
             stressData[key] = null;
           }
-        } else {
-          // Disabled field - send null to clear database
-          stressData[key] = null;
         }
+        // Disabled field - don't include it in the request at all
       });
 
       const response = await fetch('/api/save-stress-inputs', {
@@ -1273,9 +1272,7 @@ const AnalysisModal = ({
         return;
       }
 
-      const result = await response.json();
-      
-      // Don't clear calculation results automatically - let user decide when to recalculate
+      await response.json();
       
     } catch (err) {
       console.error('Error saving stress inputs:', err);
@@ -1293,15 +1290,14 @@ const AnalysisModal = ({
     
     try {
       const stressData = {
-        ek_id: ekId,
-        first_nat_freq_x: null,
-        first_nat_freq_y: null,
-        first_nat_freq_z: null
+        ek_id: ekId
       };
 
-      // Process frequencies for all axes
+      // Process frequencies for all axes - only include enabled fields
       ['x', 'y', 'z'].forEach(axis => {
         const freqData = naturalFrequencies[axis];
+        
+        // Only process enabled fields
         if (freqData?.enabled) {
           // If enabled, either save the value or explicitly set null to clear
           if (freqData.value === '' || freqData.value === null || freqData.value === undefined) {
@@ -1313,7 +1309,8 @@ const AnalysisModal = ({
             stressData[`first_nat_freq_${axis}`] = null;
           }
         }
-        // If not enabled, leave as null (from initialization)
+        // If not enabled, don't include this field in the request at all
+        // This way we don't overwrite existing values in the database
       });
 
       const response = await fetch('/api/save-stress-inputs', {
@@ -1330,8 +1327,7 @@ const AnalysisModal = ({
         return;
       }
 
-      const result = await response.json();
-      console.log('Natural frequencies saved successfully:', result);
+      await response.json();
       
     } catch (err) {
       console.error('Error saving natural frequencies:', err);
@@ -1497,7 +1493,6 @@ const AnalysisModal = ({
     const ekId = elementData.EK_ID || elementData.ek_id;
     
     try {
-
       const response = await fetch(`/api/get-stress-inputs?ek_id=${ekId}`, {
         method: 'GET',
         headers: {
