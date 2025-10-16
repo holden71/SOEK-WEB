@@ -160,8 +160,14 @@ async def calculate_sigma_alt(
 ):
     """
     Calculate sigma alternative values using formulas:
-    - SIGMA_S_ALT_1 = SIGMA_S_1 + SIGMA_S_S1 * (M1 - 1)
-    - SIGMA_S_ALT_2 = SIGMA_S_2 + SIGMA_S_S2 * (M1 - 1)
+    - (σs)₁* = (σs)₁ + (σs)s₁ × (m₁ - 1)
+    - (σs)₂* = (σs)₂ + (σs)s₂ × (m₁ - 1)
+    
+    Where:
+    - (σs)₁* - SIGMA_S_ALT_1 - alternative stress value 1
+    - (σs)₁ - SIGMA_S_1 - stress value 1
+    - (σs)s₁ - SIGMA_S_S1 - seismic stress value 1
+    - m₁ - M1 - analysis coefficient
     """
     try:
         ek_id = params.get("ek_id")

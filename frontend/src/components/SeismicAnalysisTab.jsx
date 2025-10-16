@@ -247,7 +247,7 @@ const SeismicAnalysisTab = ({
     const hclpfVal = stressInputs.hclpf?.enabled && stressInputs.hclpf?.value && !isNaN(parseFloat(stressInputs.hclpf.value)) ? parseFloat(stressInputs.hclpf.value) : null;
     const m1Pz = allAnalysisResults?.['ПЗ']?.m1;
     const m1Mrz = allAnalysisResults?.['МРЗ']?.m1;
-    const m1Val = (m1Pz ?? m1Mrz);
+    const m1Val = m1Pz ?? m1Mrz;
     const fMuVal = elementData?.F_MU ?? elementData?.f_mu ?? null;
     const pgaVal = elementData?.PGA_ ?? elementData?.pga_ ?? elementData?.PGA ?? elementData?.pga ?? null;
     let k2Value = null;
@@ -263,11 +263,18 @@ const SeismicAnalysisTab = ({
       pgaVal !== null && !isNaN(pgaVal) && pgaVal > 0
     ) {
       k2Value = hclpfVal / (m1Val * fMuVal * pgaVal);
+      console.log('k2Value', k2Value);
+      console.log('hclpfVal', hclpfVal);
+      console.log('m1Val', m1Val);
+      console.log('fMuVal', fMuVal);
+      console.log('pgaVal', pgaVal);
+
     }
     pzResult.k2 = k2Value;
     mrzResult.k2 = k2Value;
     pzResult.k2Missing = missingK2;
     mrzResult.k2Missing = missingK2;
+    
     
     const newKResults = {
       mrz: mrzResult,
@@ -449,7 +456,7 @@ const SeismicAnalysisTab = ({
                   </div>
                 </div>
 
-                {/* sigma_1, sigma_2 - общие характеристики */}
+                {/* (σs)₁, (σs)₂ - общие характеристики */}
                 <div className="stress-group">
                   <div className="stress-field">
                     <label className="stress-checkbox-container">
@@ -459,7 +466,7 @@ const SeismicAnalysisTab = ({
                         onChange={() => handleStressToggle('sigma_1')}
                       />
                       <span className="checkmark"></span>
-                      <span className="stress-label">σ₁, мПа</span>
+                      <span className="stress-label">(σs)₁, мПа</span>
                     </label>
                     <input
                       type="text"
@@ -478,7 +485,7 @@ const SeismicAnalysisTab = ({
                         onChange={() => handleStressToggle('sigma_2')}
                       />
                       <span className="checkmark"></span>
-                      <span className="stress-label">σ₂, мПа</span>
+                      <span className="stress-label">(σs)₂, мПа</span>
                     </label>
                     <input
                       type="text"
@@ -504,7 +511,7 @@ const SeismicAnalysisTab = ({
 
 
 
-              {/* (sigma_1)_1, (sigma_1)_2 для ПЗ - группа */}
+              {/* (σs)₁, (σs)₂ для ПЗ - группа */}
               <div className="stress-group">
                 <div className="stress-field">
                   <label className="stress-checkbox-container">
@@ -514,7 +521,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_1_1_pz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₁)₁, мПа</span>
+                    <span className="stress-label">(σs)₁, мПа</span>
                   </label>
                   <input
                     type="text"
@@ -533,7 +540,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_1_2_pz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₁)₂, мПа</span>
+                    <span className="stress-label">(σs)₂, мПа</span>
                   </label>
                   <input
                     type="text"
@@ -546,7 +553,7 @@ const SeismicAnalysisTab = ({
                 </div>
               </div>
 
-              {/* (sigma_1)_s1, (sigma_2)_s2 для ПЗ - группа */}
+              {/* (σs)s₁, (σs)s₂ для ПЗ - группа */}
               <div className="stress-group">
                 <div className="stress-field">
                   <label className="stress-checkbox-container">
@@ -556,7 +563,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_1_s1_pz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₁)s₁, мПа</span>
+                    <span className="stress-label">(σs)s₁, мПа</span>
                   </label>
                   <input
                     type="text"
@@ -575,7 +582,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_2_s2_pz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₂)s₂, мПа</span>
+                    <span className="stress-label">(σs)s₂, мПа</span>
                   </label>
                   <input
                     type="text"
@@ -601,7 +608,7 @@ const SeismicAnalysisTab = ({
 
 
 
-              {/* (sigma_1)_1, (sigma_1)_2 для МРЗ - группа */}
+              {/* (σs)₁, (σs)₂ для МРЗ - группа */}
               <div className="stress-group">
                 <div className="stress-field">
                   <label className="stress-checkbox-container">
@@ -611,7 +618,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_1_1_mrz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₁)₁, мПа</span>
+                    <span className="stress-label">(σs)₁, мПа</span>
                   </label>
                   <input
                     type="text"
@@ -630,7 +637,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_1_2_mrz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₁)₂, мПа</span>
+                    <span className="stress-label">(σs)₂, мПа</span>
                   </label>
                   <input
                     type="text"
@@ -643,7 +650,7 @@ const SeismicAnalysisTab = ({
                 </div>
               </div>
 
-              {/* (sigma_1)_s1, (sigma_2)_s2 для МРЗ - группа */}
+              {/* (σs)s₁, (σs)s₂ для МРЗ - группа */}
               <div className="stress-group">
                 <div className="stress-field">
                   <label className="stress-checkbox-container">
@@ -653,7 +660,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_1_s1_mrz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₁)s₁, мПа</span>
+                    <span className="stress-label">(σs)s₁, мПа</span>
                   </label>
                   <input
                     type="text"
@@ -672,7 +679,7 @@ const SeismicAnalysisTab = ({
                       onChange={() => handleStressToggle('sigma_2_s2_mrz')}
                     />
                     <span className="checkmark"></span>
-                    <span className="stress-label">(σ₂)s₂, мПа</span>
+                    <span className="stress-label">(σs)s₂, мПа</span>
                   </label>
                   <input
                     type="text"
