@@ -229,6 +229,9 @@ const SeismicAnalysisTab = ({
   const seismicCategoryInfo = determineSeismicCategory();
 
   // Функция для расчета всех коэффициентов k
+  // TODO: Даже если k уже были рассчитаны когда-то, то их значения не подтягиваются назад из базы
+  // Нужно исправить: перед расчетом проверять, есть ли уже сохраненные значения в kResults
+  // и использовать их вместо пересчета, либо предлагать пользователю выбор (пересчитать или использовать существующие)
   const calculateAllKCoefficients = async (sigmaData = null) => {
     const mrzResult = calculateKCoefficient(sigmaData);
     const pzResult = calculateKCoefficientPZ(sigmaData);
@@ -248,6 +251,7 @@ const SeismicAnalysisTab = ({
     const m1Pz = allAnalysisResults?.['ПЗ']?.m1;
     const m1Mrz = allAnalysisResults?.['МРЗ']?.m1;
     const m1Val = m1Pz ?? m1Mrz;
+    // TODO: Значения для ПЗ и МРЗ должны быть разными. Т.е. нужно разделить m1Val
     const fMuVal = elementData?.F_MU ?? elementData?.f_mu ?? null;
     const pgaVal = elementData?.PGA_ ?? elementData?.pga_ ?? elementData?.PGA ?? elementData?.pga ?? null;
     let k2Value = null;

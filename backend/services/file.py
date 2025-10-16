@@ -107,6 +107,9 @@ class FileService:
 
     def get_allowed_extensions_detailed(self, db: Session) -> dict:
         """Get detailed list of allowed file extensions with metadata"""
+        # TODO: В будущем надо конкретизировать, какие типы относятся к моделям, а какие к мультимедиа
+        # Добавить поле в FILE_TYPES для категоризации (например, IS_MODEL, IS_MULTIMEDIA)
+        # и фильтровать типы файлов в зависимости от контекста использования
         file_types = self.file_type_repo.get_all(db)
 
         allowed_extensions = []

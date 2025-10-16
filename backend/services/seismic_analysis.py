@@ -118,6 +118,8 @@ class SeismicAnalysisService:
     
     def get_k_results(self, db: Session, ek_id: int) -> Dict[str, Optional[float]]:
         """Get K calculation results"""
+        # TODO: Даже если k уже были рассчитаны когда-то, то их значения не подтягиваются назад из базы
+        # Проверить: возвращаются ли данные корректно, возможно нужно добавить SEISMIC_CATEGORY_PZ
         query = text("""
             SELECT K1_PZ, K1_MRZ, K3_PZ, K3_MRZ, K2_, N_PZ, N_MRZ
             FROM SRTN_EK_SEISM_DATA

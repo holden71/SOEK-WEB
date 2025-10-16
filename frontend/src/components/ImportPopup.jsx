@@ -196,6 +196,7 @@ const ImportPopup = ({
       const mrzSetId = savedData.mrz_set_id || 0;
       const pzSetId = savedData.pz_set_id || 0;
       
+      // TODO: do_for_all по-моему не работает корректно. Нужно перепроверить вместе с процедурой.
       const procedureParams = {
         ek_id: ekId,
         set_mrz: mrzSetId,

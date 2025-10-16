@@ -16,6 +16,8 @@ function AddModelModal({ isOpen, onClose, onSave, elementData, sameTypeCount = 0
   const [applyToAllTypes, setApplyToAllTypes] = useState(false);
 
   // Get allowed extensions
+  // TODO: В будущем надо конкретизировать, какие типы относятся к моделям, а какие к мультимедиа
+  // Сейчас используются все типы файлов для обоих случаев (основной файл модели и мультимедиа)
   const { allowedExtensions, acceptString, validateFileExtension, getExtensionInfo, refreshExtensions } = useAllowedExtensions();
 
   // Refresh extensions when modal opens

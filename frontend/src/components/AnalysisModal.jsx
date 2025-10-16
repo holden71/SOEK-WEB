@@ -1309,6 +1309,12 @@ const AnalysisModal = ({
   };
 
   // Function to fetch K coefficient results from database
+  // TODO: Даже если k уже были рассчитаны когда-то, то их значения не подтягиваются назад из базы
+  // Нужно исправить: проверить почему загруженные значения не отображаются или сбрасываются
+  // Возможные причины:
+  // 1. Состояние kResults перезаписывается пустыми значениями после загрузки
+  // 2. Отображение не обновляется при изменении kResults
+  // 3. Условия canCalculate некорректно обрабатывают загруженные данные
   const fetchKResultsFromDatabase = async () => {
     if (!elementData || (!elementData.EK_ID && !elementData.ek_id)) {
       console.warn('Cannot fetch K results: missing element ID');
